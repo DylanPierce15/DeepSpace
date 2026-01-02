@@ -1,0 +1,177 @@
+{
+  "clock": 17,
+  "documentClock": 17,
+  "tombstones": {},
+  "tombstoneHistoryStartsAtClock": 1,
+  "schema": {
+    "schemaVersion": 2,
+    "sequences": {
+      "com.tldraw.store": 5,
+      "com.tldraw.asset": 1,
+      "com.tldraw.camera": 1,
+      "com.tldraw.canvas_storage": 1,
+      "com.tldraw.document": 2,
+      "com.tldraw.instance": 25,
+      "com.tldraw.instance_page_state": 5,
+      "com.tldraw.page": 1,
+      "com.tldraw.instance_presence": 6,
+      "com.tldraw.pointer": 1,
+      "com.tldraw.shape": 4,
+      "com.tldraw.asset.bookmark": 2,
+      "com.tldraw.asset.image": 5,
+      "com.tldraw.asset.video": 5,
+      "com.tldraw.shape.arrow": 7,
+      "com.tldraw.shape.bookmark": 2,
+      "com.tldraw.shape.draw": 3,
+      "com.tldraw.shape.embed": 4,
+      "com.tldraw.shape.frame": 1,
+      "com.tldraw.shape.geo": 12,
+      "com.tldraw.shape.group": 0,
+      "com.tldraw.shape.highlight": 1,
+      "com.tldraw.shape.image": 5,
+      "com.tldraw.shape.line": 6,
+      "com.tldraw.shape.note": 9,
+      "com.tldraw.shape.text": 4,
+      "com.tldraw.shape.video": 4,
+      "com.tldraw.shape.miyagi-widget": 0,
+      "com.tldraw.shape.miyagi-widget-overlay": 0,
+      "com.tldraw.shape.canvas-link": 0,
+      "com.tldraw.shape.canvas-link-overlay": 0,
+      "com.tldraw.shape.file": 0,
+      "com.tldraw.shape.file-overlay": 0,
+      "com.tldraw.shape.tile-overlay": 0,
+      "com.tldraw.shape.univer": 0,
+      "com.tldraw.shape.block": 0,
+      "com.tldraw.binding.arrow": 1
+    }
+  },
+  "documents": [
+    {
+      "state": {
+        "gridSize": 10,
+        "name": "DeepSpace",
+        "meta": {
+          "roomId": "room-e545baca-b190-4e55-aa2e-a21517e8e9e5",
+          "canvasMode": "dock",
+          "canvasName": "DeepSpace",
+          "canvasSpace": {
+            "spaceType": "dock",
+            "config": {
+              "type": "dock",
+              "name": "Dock Space",
+              "description": "Dock mode with macOS-style dock bar for widgets (zoom locked at 50% via DOCK_MODE_ZOOM constant)"
+            },
+            "lastUpdated": 1767382434329
+          }
+        },
+        "id": "document:document",
+        "typeName": "document"
+      },
+      "lastChangedClock": 17
+    },
+    {
+      "state": {
+        "meta": {},
+        "id": "page:YgYpHG-EIx5izyxJ-Cj_3",
+        "name": "Page 1",
+        "index": "a1",
+        "typeName": "page"
+      },
+      "lastChangedClock": 0
+    },
+    {
+      "state": {
+        "id": "shape:0FbakEWU9otdhvNA",
+        "typeName": "shape",
+        "type": "canvas-link",
+        "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
+        "index": "a27UCZ6G",
+        "x": 1764.0546875,
+        "y": 786.1640625,
+        "rotation": 0,
+        "isLocked": false,
+        "opacity": 1,
+        "meta": {
+          "justCreated": false,
+          "createdAt": 1767382412338,
+          "dockOrder": 1,
+          "showDefaultHandles": false
+        },
+        "props": {
+          "w": 400,
+          "h": 400,
+          "targetCanvasId": "room-197b7884-d81d-4905-8d15-4163f50fa258",
+          "label": "App Tracker",
+          "linkType": "realfile",
+          "targetSpaceType": "freeform"
+        }
+      },
+      "lastChangedClock": 15
+    },
+    {
+      "state": {
+        "widgets": {},
+        "global": {
+          "user_scoped_storage": {
+            "user_37iOKJastKy0nTKJSH1YIC50yFp": {
+              "tiling-view-active": false,
+              "tiling-view-config": {
+                "layout": {
+                  "type": "window",
+                  "tileId": "tile-1767382362918-1",
+                  "widgetId": null,
+                  "screenId": 1
+                },
+                "focusedTileId": "tile-1767382362918-1",
+                "screens": {
+                  "1": {
+                    "type": "window",
+                    "tileId": "tile-1767382362918-1",
+                    "widgetId": null,
+                    "screenId": 1
+                  },
+                  "2": null,
+                  "3": null
+                },
+                "activeScreen": 1,
+                "spacing": 14
+              }
+            }
+          }
+        },
+        "id": "canvas_storage:main",
+        "typeName": "canvas_storage"
+      },
+      "lastChangedClock": 4
+    },
+    {
+      "state": {
+        "id": "shape:1gglhDinNlSuoCyq",
+        "typeName": "shape",
+        "type": "canvas-link",
+        "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
+        "index": "a14ECmPV",
+        "x": 1170,
+        "y": 798,
+        "rotation": 0,
+        "isLocked": false,
+        "opacity": 1,
+        "meta": {
+          "justCreated": true,
+          "createdAt": 1767382409550,
+          "dockOrder": 0,
+          "showDefaultHandles": false
+        },
+        "props": {
+          "w": 400,
+          "h": 400,
+          "targetCanvasId": "room-6ef4368f-8b10-481b-b9f2-7faf4e6598f6",
+          "label": "Out Reach Space (Google Scholar & LinkedIn)",
+          "linkType": "realfile",
+          "targetSpaceType": "freeform"
+        }
+      },
+      "lastChangedClock": 7
+    }
+  ]
+}
