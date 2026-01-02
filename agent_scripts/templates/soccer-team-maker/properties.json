@@ -1,0 +1,17 @@
+{
+  "id": "soccer-team-maker",
+  "name": "Soccer Team Maker",
+  "description": "Create balanced teams for your pickup game",
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiSoccerBall"
+  },
+  "showByDefault": true,
+  "category": "Sports",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "partSpace": true,
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/soccer-team-maker-1765923094616.png"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "weather",
+  "name": "Weather",
+  "description": "Comprehensive weather widget with 5-day forecast, multiple locations, and iPhone-style UI built in React",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiCloud"
+  },
+  "showByDefault": true,
+  "category": "Information",
+  "defaultSize": {
+    "width": 500,
+    "height": 400
+  },
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/weather-1765923139573.png"
+}

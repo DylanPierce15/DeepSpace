@@ -1,0 +1,21 @@
+{
+  "id": "email-drafter",
+  "name": "Email Drafter",
+  "description": "Draft professional emails expressing interest in research work",
+  "categories": [
+    "communication",
+    "research"
+  ],
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiMail"
+  },
+  "inputs": [],
+  "version": 1,
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "isReactWidget": true,
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/email-drafter-1765922987671.png"
+}

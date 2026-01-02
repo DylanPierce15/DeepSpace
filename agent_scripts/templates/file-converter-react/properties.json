@@ -1,0 +1,16 @@
+{
+  "id": "file-converter",
+  "name": "File Converter",
+  "description": "Advanced file converter with smart storage and history tracking",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiRefreshCw"
+  },
+  "showByDefault": true,
+  "category": "Productivity",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/file-converter-1765923003670.png"
+}

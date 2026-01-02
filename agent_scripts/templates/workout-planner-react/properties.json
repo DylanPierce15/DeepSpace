@@ -1,0 +1,17 @@
+{
+  "id": "workout-planner",
+  "name": "AI Workout Planner",
+  "description": "Generate a personalized daily recurring workout and add it to your time calendar",
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiWeightLiftingUp"
+  },
+  "showByDefault": true,
+  "category": "Health",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "isReactWidget": true,
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/workout-planner-1765923145573.png"
+}

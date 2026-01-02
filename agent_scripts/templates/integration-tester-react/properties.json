@@ -1,0 +1,16 @@
+{
+  "id": "integration-tester-react",
+  "name": "Integration Tester",
+  "description": "Test Miyagi API integrations with expected inputs and outputs",
+  "category": "Developer Tools",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiTerminal"
+  },
+  "showByDefault": true,
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/integration-tester-react-1765923015469.png"
+}

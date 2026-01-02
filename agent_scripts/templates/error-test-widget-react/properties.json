@@ -1,0 +1,14 @@
+{
+  "id": "error-test-widget-react",
+  "name": "Error Handling Test",
+  "description": "Test widget to verify error boundary behavior - caught vs uncaught errors",
+  "icon": "🧪",
+  "showByDefault": false,
+  "category": "Development",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "isReactWidget": true,
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/error-test-widget-react-1765922990712.png"
+}

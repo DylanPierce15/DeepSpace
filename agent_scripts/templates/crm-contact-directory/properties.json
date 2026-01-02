@@ -1,0 +1,22 @@
+{
+  "id": "crm-contact-directory",
+  "name": "Contact Directory",
+  "description": "Searchable contact management with company filters and interaction history",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiUsers"
+  },
+  "showByDefault": true,
+  "category": "CRM",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "tags": [
+    "contacts",
+    "directory",
+    "crm",
+    "business"
+  ],
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/crm-contact-directory-1765922960471.png"
+}

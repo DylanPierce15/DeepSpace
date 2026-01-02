@@ -1,0 +1,16 @@
+{
+  "id": "notepad",
+  "name": "Notepad",
+  "description": "A test notepad widget to validate JSX compilation process",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiEdit3"
+  },
+  "showByDefault": true,
+  "category": "Development",
+  "defaultSize": {
+    "width": 500,
+    "height": 400
+  },
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/notepad-1765923052180.png"
+}

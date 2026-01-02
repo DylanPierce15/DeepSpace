@@ -1,0 +1,21 @@
+{
+  "id": "linkedin-analyzer",
+  "name": "LinkedIn Profile Analyzer",
+  "description": "Analyze LinkedIn profiles for outreach potential and generate talking points",
+  "categories": [
+    "social",
+    "networking"
+  ],
+  "icon": {
+    "type": "react-icon",
+    "value": "Bs:BsLinkedin"
+  },
+  "inputs": [],
+  "version": 1,
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "isReactWidget": true,
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/linkedin-analyzer-1765923024635.png"
+}

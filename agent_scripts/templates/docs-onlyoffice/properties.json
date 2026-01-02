@@ -1,0 +1,16 @@
+{
+  "id": "document-react",
+  "name": "Document (React)",
+  "description": "Collaborative word processor for text documents",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiFileText"
+  },
+  "showByDefault": true,
+  "category": "Productivity",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/document-react-1765922981805.png"
+}

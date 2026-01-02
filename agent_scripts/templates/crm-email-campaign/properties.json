@@ -1,0 +1,40 @@
+{
+  "id": "crm-email-campaign",
+  "name": "Email Campaign Generator",
+  "description": "Generate personalized email campaigns using contact directory data and AI",
+  "category": "CRM",
+  "tags": [
+    "email",
+    "campaign",
+    "crm",
+    "marketing",
+    "personalization"
+  ],
+  "version": "1.0.0",
+  "author": "Miyagi",
+  "dependencies": [
+    "crm-contact-directory"
+  ],
+  "features": [
+    "Reads from contact directory",
+    "Uses enrichment data for personalization",
+    "AI-powered email generation",
+    "Bulk email creation",
+    "Custom templates with placeholders",
+    "Copy to clipboard functionality"
+  ],
+  "settings": {
+    "requiresContactDirectory": true,
+    "usesAI": true,
+    "supportsBulkOperations": true
+  },
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiMail"
+  },
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/crm-email-campaign-1765922966571.png",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  }
+}

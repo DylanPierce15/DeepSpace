@@ -1,0 +1,13 @@
+{
+  "name": "miyagi-deepspace-canvas",
+  "version": "1.0.0",
+  "description": "Miyagi DeepSpace Canvas Repository",
+  "scripts": {
+    "setup": "./setup-miyagi-local.sh",
+    "pull": "node agent_scripts/pull_and_unpack.js",
+    "push": "node agent_scripts/pack_and_push.js"
+  },
+  "author": "",
+  "license": "ISC"
+}
+

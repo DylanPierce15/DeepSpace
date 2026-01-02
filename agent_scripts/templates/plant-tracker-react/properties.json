@@ -1,0 +1,16 @@
+{
+  "id": "plant-tracker-react",
+  "name": "Plant Tracker",
+  "description": "Track your plants, watering schedule, and care reminders with visual health indicators",
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiPlantRoots"
+  },
+  "showByDefault": true,
+  "category": "Productivity",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/plant-tracker-react-1765923058449.png"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "chat-widget-react",
+  "name": "Chat Room (React)",
+  "description": "Real-time chat room for collaborative conversations",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiMessageSquare"
+  },
+  "showByDefault": true,
+  "category": "Communication",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "type": "react",
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/chat-widget-react-1765922954421.png"
+}

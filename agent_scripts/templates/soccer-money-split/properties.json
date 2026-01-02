@@ -1,0 +1,17 @@
+{
+  "id": "soccer-money-split",
+  "name": "Soccer Money Splitter",
+  "description": "Split field costs and expenses among players",
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiReceiveMoney"
+  },
+  "showByDefault": true,
+  "category": "Sports",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "partSpace": true,
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/soccer-money-split-1765923088550.png"
+}

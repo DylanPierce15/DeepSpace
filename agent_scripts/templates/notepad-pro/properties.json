@@ -1,0 +1,15 @@
+{
+  "id": "notepad-pro",
+  "name": "Notepad Pro",
+  "description": "Professional note-taking with folders, rich text editing, and file-based storage",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiFileText"
+  },
+  "category": "Productivity",
+  "defaultSize": {
+    "width": 800,
+    "height": 600
+  }
+}
+

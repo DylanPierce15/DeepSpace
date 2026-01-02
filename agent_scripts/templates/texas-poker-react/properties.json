@@ -1,0 +1,16 @@
+{
+  "id": "texas-poker",
+  "name": "Texas Hold'em Poker",
+  "description": "Play No-Limit Texas Hold'em poker with friends in real-time. Features a modern poker table, visual cards, and complete betting mechanics including raise, fold, call, and check.",
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiPokerHand"
+  },
+  "showByDefault": true,
+  "category": "Games",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/texas-poker-1765923109592.png"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "notepad-full",
+  "name": "Notepad Full",
+  "description": "A fully customizable notepad with drag-drop, folders, and grid layouts",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiEdit3"
+  },
+  "category": "Productivity",
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/notepad-full-1765923049547.png",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  }
+}

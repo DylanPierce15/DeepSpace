@@ -1,0 +1,13 @@
+{
+  "id": "wow-rotation-stats-react",
+  "name": "wow-rotation-stats-react",
+  "description": "Saved from widget on 12/19/2025",
+  "icon": "💾",
+  "showByDefault": true,
+  "category": "Saved Templates",
+  "defaultSize": {
+    "width": 714.2069245057096,
+    "height": 753.3634502662015
+  },
+  "isReactWidget": true
+}

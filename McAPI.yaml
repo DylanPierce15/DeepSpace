@@ -1,0 +1,6909 @@
+name: miyagi-integrations
+version: "auto"
+description: "Auto-generated from route-owned Zod schemas"
+base_url: http://localhost:3001/api/integrations
+
+# USAGE: Call integrations using the `endpoint` field with miyagiAPI:
+#   miyagiAPI.post('/generate-text', { prompt: '...' })
+#   miyagiAPI.get('/status')
+# Always use the exact endpoint (with leading /) as shown in each tool definition.
+
+auth:
+  type: user_session
+  description: "All tools require authenticated user session via JWT token"
+
+defaults:
+  headers:
+    Accept: application/json
+    Content-Type: application/json
+    Authorization: "Bearer {user_jwt_token}"
+
+tools:
+
+  generate_text:
+    method: POST
+    endpoint: /generate-text
+    description: "Generate text with LLM"
+    input_schema:
+      type: object
+      properties:
+        prompt:
+          type: string
+          minLength: 1
+        provider:
+          type: string
+          enum:
+            - openai
+            - anthropic
+          default: openai
+        model:
+          type: string
+          enum:
+            - gpt-4o
+            - gpt-4o-mini
+            - gpt-5-nano
+            - gpt-5-mini
+            - gpt-5
+            - claude-3-5-haiku-20241022
+            - claude-sonnet-4-20250514
+          default: "gpt-4o-mini"
+        max_tokens:
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 200000
+          default: 8192
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 2
+          default: 1
+        system_prompt:
+          type: string
+      required:
+        - prompt
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            text:
+              type: string
+            provider:
+              type: string
+            model:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  google_calendar_events:
+    method: GET
+    endpoint: /google-calendar-events
+    description: "List Google Calendar events within a time range"
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            requiresOAuth:
+              type: boolean
+            authUrl:
+              type: string
+            events:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  summary:
+                    type: string
+                  description:
+                    type: string
+                  start:
+                    type: object
+                    properties: {}
+                    additionalProperties: true
+                  end:
+                    type: object
+                    properties: {}
+                    additionalProperties: true
+                  htmlLink:
+                    type: string
+                required:
+                  - id
+                additionalProperties: false
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  google_calendar_create_events:
+    method: POST
+    endpoint: /google-calendar-create-events
+    description: "Create events on the user's Google Calendar"
+    input_schema:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+                minLength: 1
+              description:
+                type: string
+              start:
+                type: string
+                minLength: 1
+              end:
+                anyOf:
+                  - 
+                    type: string
+                    minLength: 1
+                  - 
+                    type: null
+              allDay:
+                type: boolean
+                default: false
+              groupId:
+                type: string
+            required:
+              - title
+              - start
+              - end
+            additionalProperties: false
+          minItems: 1
+      required:
+        - events
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            requiresOAuth:
+              type: boolean
+            authUrl:
+              type: string
+            created:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  htmlLink:
+                    type: string
+                  summary:
+                    type: string
+                  start:
+                    type: string
+                  end:
+                    type: string
+                required:
+                  - id
+                additionalProperties: false
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  search_web:
+    method: POST
+    endpoint: /search-web
+    description: "Search web pages and get AI-summarized content with citations"
+    input_schema:
+      type: object
+      properties:
+        searchPrompt:
+          type: string
+          minLength: 1
+        queryHints:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          default: []
+        count:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 5
+        parseResultsPrompt:
+          type: string
+        constraints:
+          type: object
+          properties:
+            allowDomains:
+              type: array
+              items:
+                type: string
+                minLength: 1
+            denyDomains:
+              type: array
+              items:
+                type: string
+                minLength: 1
+            dateRange:
+              type: object
+              properties:
+                from:
+                  type: string
+                to:
+                  type: string
+              additionalProperties: false
+            safe:
+              type: boolean
+          additionalProperties: false
+      required:
+        - searchPrompt
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+        error:
+          type: string
+      required:
+        - success
+    output_description: "data contains: { summary, citations[], sources[] }"
+
+  search_web_raw:
+    method: POST
+    endpoint: /search-web-raw
+    description: "Search web pages and return raw results without AI summarization (includes extracted text)"
+    input_schema:
+      type: object
+      properties:
+        searchPrompt:
+          type: string
+          minLength: 1
+        queryHints:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          default: []
+        count:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 5
+        constraints:
+          type: object
+          properties:
+            allowDomains:
+              type: array
+              items:
+                type: string
+                minLength: 1
+            denyDomains:
+              type: array
+              items:
+                type: string
+                minLength: 1
+            dateRange:
+              type: object
+              properties:
+                from:
+                  type: string
+                to:
+                  type: string
+              additionalProperties: false
+            safe:
+              type: boolean
+          additionalProperties: false
+      required:
+        - searchPrompt
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+        error:
+          type: string
+      required:
+        - success
+    output_description: "data contains: { sources[{ url, title, snippet, extractedText }], query }"
+
+  search_web_ai:
+    method: POST
+    endpoint: /search-web-ai
+    description: "Search web pages and process results with ChatGPT using custom prompt"
+    input_schema:
+      type: object
+      properties:
+        searchPrompt:
+          type: string
+          minLength: 1
+        queryHints:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          default: []
+        count:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 5
+        constraints:
+          type: object
+          properties:
+            allowDomains:
+              type: array
+              items:
+                type: string
+                minLength: 1
+            denyDomains:
+              type: array
+              items:
+                type: string
+                minLength: 1
+            dateRange:
+              type: object
+              properties:
+                from:
+                  type: string
+                to:
+                  type: string
+              additionalProperties: false
+            safe:
+              type: boolean
+          additionalProperties: false
+        aiPrompt:
+          type: string
+          minLength: 1
+        provider:
+          type: string
+          enum:
+            - openai
+            - anthropic
+          default: openai
+        model:
+          type: string
+        max_tokens:
+          type: integer
+          exclusiveMinimum: 0
+          maximum: 200000
+          default: 16000
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 2
+          default: 0.7
+      required:
+        - searchPrompt
+        - aiPrompt
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            aiResponse:
+              type: string
+            sources:
+              type: array
+              items:
+                type: object
+                properties:
+                  url:
+                    type: string
+                  title:
+                    type: string
+                  snippet:
+                    type: string
+                  extractedText:
+                    type: string
+                required:
+                  - url
+                additionalProperties: false
+            query:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  search_images:
+    method: POST
+    endpoint: /search-images
+    description: "Search for images and return URLs with metadata"
+    input_schema:
+      type: object
+      properties:
+        searchPrompt:
+          type: string
+          minLength: 1
+        queryHints:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          default: []
+        count:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 10
+      required:
+        - searchPrompt
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            assets:
+              type: array
+              items:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  url:
+                    type: string
+                  title:
+                    type: string
+                  width:
+                    type: number
+                  height:
+                    type: number
+                additionalProperties: true
+            images:
+              type: array
+            summary:
+              type: string
+            debug:
+              type: object
+              additionalProperties: {}
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  search_videos:
+    method: POST
+    endpoint: /search-videos
+    description: "Search for videos and return URLs with metadata (duration, views, thumbnails)"
+    input_schema:
+      type: object
+      properties:
+        searchPrompt:
+          type: string
+          minLength: 1
+        queryHints:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          default: []
+        count:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 10
+      required:
+        - searchPrompt
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            assets:
+              type: array
+              items:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  url:
+                    type: string
+                  title:
+                    type: string
+                  duration:
+                    type: string
+                  views:
+                    type: number
+                additionalProperties: true
+            videos:
+              type: array
+            summary:
+              type: string
+            debug:
+              type: object
+              additionalProperties: {}
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  search_pdfs:
+    method: POST
+    endpoint: /search-pdfs
+    description: "Search for PDF documents and return URLs with metadata"
+    input_schema:
+      type: object
+      properties:
+        searchPrompt:
+          type: string
+          minLength: 1
+        queryHints:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          default: []
+        count:
+          type: integer
+          minimum: 1
+          maximum: 15
+          default: 10
+      required:
+        - searchPrompt
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+        error:
+          type: string
+      required:
+        - success
+    output_description: "data contains: { assets[], citations[], summary }"
+
+  search_academic:
+    method: POST
+    endpoint: /search-academic
+    description: "Search academic/educational content (.edu domains) with AI-summarized results and citations"
+    input_schema:
+      type: object
+      properties:
+        searchPrompt:
+          type: string
+          minLength: 1
+        queryHints:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          default: []
+        count:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 5
+        parseResultsPrompt:
+          type: string
+      required:
+        - searchPrompt
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            summary:
+              type: string
+            citations:
+              type: array
+              items:
+                type: object
+                properties:
+                  url:
+                    type: string
+                  title:
+                    type: string
+                  snippet:
+                    type: string
+                required:
+                  - url
+                additionalProperties: false
+            sources:
+              type: array
+            debug:
+              type: object
+              additionalProperties: {}
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  advanced_web_search:
+    method: POST
+    endpoint: /advanced-web-search
+    description: "Advanced multi-modal web search with structured output for widgets"
+    input_schema:
+      type: object
+      properties:
+        searchPrompt:
+          type: string
+          minLength: 1
+        queryHints:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          default: []
+        searchType:
+          type: string
+          enum:
+            - web
+            - images
+            - videos
+            - pdfs
+            - academic
+            - all
+          default: all
+        count:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 5
+        constraints:
+          type: object
+          properties:
+            allowDomains:
+              type: array
+              items:
+                type: string
+                minLength: 1
+            denyDomains:
+              type: array
+              items:
+                type: string
+                minLength: 1
+            dateRange:
+              type: object
+              properties:
+                from:
+                  type: string
+                to:
+                  type: string
+              additionalProperties: false
+            safe:
+              type: boolean
+          additionalProperties: false
+        schemaId:
+          type: string
+          minLength: 1
+        schema: {}
+        parseResultsPrompt:
+          type: string
+      required:
+        - searchPrompt
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            dataset: {}
+            citations:
+              type: array
+              items:
+                type: object
+                properties:
+                  url:
+                    type: string
+                  title:
+                    type: string
+                required:
+                  - url
+                additionalProperties: false
+            assets:
+              type: array
+              items:
+                type: object
+                properties:
+                  url:
+                    type: string
+                  title:
+                    type: string
+                  type:
+                    type: string
+                required:
+                  - url
+                additionalProperties: false
+            summary:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  generate_image:
+    method: POST
+    endpoint: /generate-image
+    description: "Generate image from prompt (async)"
+    input_schema:
+      type: object
+      properties:
+        prompt:
+          type: string
+          minLength: 1
+        reference_images:
+          type: array
+          items:
+            type: string
+      required:
+        - prompt
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            imageUrls:
+              type: array
+              items:
+                type: string
+            taskId:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  generate_image_classic:
+    method: POST
+    endpoint: /generate-image-classic
+    description: "Generate image from text with full parameter control (classic fast model)"
+    input_schema:
+      type: object
+      properties:
+        prompt:
+          type: string
+          minLength: 3
+        negative_prompt:
+          type: string
+          minLength: 3
+        styling:
+          type: object
+          properties:
+            style:
+              type: string
+              enum:
+                - photo
+                - digital-art
+                - 3d
+                - painting
+                - low-poly
+                - pixel-art
+                - anime
+                - cyberpunk
+                - comic
+                - vintage
+                - cartoon
+                - vector
+                - studio-shot
+                - dark
+                - sketch
+                - mockup
+                - 2000s-pone
+                - 70s-vibe
+                - watercolor
+                - art-nouveau
+                - origami
+                - surreal
+                - fantasy
+                - traditional-japan
+            colors:
+              type: array
+              items:
+                type: object
+                properties:
+                  color:
+                    type: string
+                    pattern: "^#[0-9A-Fa-f]{6}$"
+                  weight:
+                    type: number
+                    minimum: 0.05
+                    maximum: 1
+                required:
+                  - color
+                  - weight
+                additionalProperties: false
+              minItems: 1
+              maxItems: 5
+            effects:
+              type: object
+              properties:
+                color:
+                  type: string
+                  enum:
+                    - b&w
+                    - pastel
+                    - sepia
+                    - dramatic
+                    - vibrant
+                    - orange&teal
+                    - film-filter
+                    - split
+                    - electric
+                    - pastel-pink
+                    - gold-glow
+                    - autumn
+                    - muted-green
+                    - deep-teal
+                    - duotone
+                    - terracotta&teal
+                    - red&blue
+                    - cold-neon
+                    - burgundy&blue
+                lightning:
+                  type: string
+                  enum:
+                    - studio
+                    - warm
+                    - cinematic
+                    - volumetric
+                    - golden-hour
+                    - long-exposure
+                    - cold
+                    - iridescent
+                    - dramatic
+                    - hardlight
+                    - redscale
+                    - indoor-light
+                framing:
+                  type: string
+                  enum:
+                    - portrait
+                    - macro
+                    - panoramic
+                    - aerial-view
+                    - close-up
+                    - cinematic
+                    - high-angle
+                    - low-angle
+                    - symmetry
+                    - fish-eye
+                    - first-person
+              additionalProperties: false
+          additionalProperties: false
+        guidance_scale:
+          type: number
+          minimum: 0
+          maximum: 2
+        image:
+          type: object
+          properties:
+            size:
+              type: string
+              enum:
+                - square_1_1
+                - classic_4_3
+                - traditional_3_4
+                - widescreen_16_9
+                - social_story_9_16
+                - smartphone_horizontal_20_9
+                - smartphone_vertical_9_20
+                - standard_3_2
+                - portrait_2_3
+                - horizontal_2_1
+                - vertical_1_2
+                - social_5_4
+                - social_post_4_5
+          additionalProperties: false
+        num_images:
+          type: integer
+          minimum: 1
+          maximum: 4
+        seed:
+          type: integer
+          minimum: 0
+          maximum: 1000000
+        filter_nsfw:
+          type: boolean
+      required:
+        - prompt
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            images:
+              type: array
+              items:
+                type: object
+                properties:
+                  base64:
+                    type: string
+                  has_nsfw:
+                    type: boolean
+                required:
+                  - base64
+                  - has_nsfw
+                additionalProperties: false
+            meta: {}
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  generate_image_mystic:
+    method: POST
+    endpoint: /generate-image-mystic
+    description: "Generate ultra-realistic, high-resolution images using Freepik Mystic model"
+    input_schema:
+      type: object
+      properties:
+        prompt:
+          type: string
+          minLength: 1
+        webhook_url:
+          type: string
+          format: uri
+        structure_reference:
+          type: string
+        structure_strength:
+          type: integer
+          minimum: 0
+          maximum: 100
+        style_reference:
+          type: string
+        adherence:
+          type: integer
+          minimum: 0
+          maximum: 100
+        hdr:
+          type: integer
+          minimum: 0
+          maximum: 100
+        resolution:
+          type: string
+          enum:
+            - 1k
+            - 2k
+            - 4k
+        aspect_ratio:
+          type: string
+          enum:
+            - square_1_1
+            - classic_4_3
+            - traditional_3_4
+            - widescreen_16_9
+            - social_story_9_16
+            - smartphone_horizontal_20_9
+            - smartphone_vertical_9_20
+            - standard_3_2
+            - portrait_2_3
+            - horizontal_2_1
+            - vertical_1_2
+            - social_5_4
+            - social_post_4_5
+        model:
+          type: string
+          enum:
+            - realism
+            - fluid
+            - zen
+            - flexible
+            - super_real
+            - editorial_portraits
+        creative_detailing:
+          type: integer
+          minimum: 0
+          maximum: 100
+        engine:
+          type: string
+          enum:
+            - automatic
+            - magnific_illusio
+            - magnific_sharpy
+            - magnific_sparkle
+        fixed_generation:
+          type: boolean
+        filter_nsfw:
+          type: boolean
+        styling:
+          type: object
+          properties:
+            styles:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  strength:
+                    type: integer
+                    minimum: 0
+                    maximum: 100
+                required:
+                  - name
+                  - strength
+                additionalProperties: false
+              maxItems: 1
+            characters:
+              type: array
+              items:
+                type: object
+                properties:
+                  strength:
+                    type: integer
+                    minimum: 0
+                    maximum: 100
+                  id:
+                    type: string
+                required:
+                  - strength
+                  - id
+                additionalProperties: false
+              maxItems: 1
+            colors:
+              type: array
+              items:
+                type: object
+                properties:
+                  color:
+                    type: string
+                    pattern: "^#[0-9A-Fa-f]{6}$"
+                  weight:
+                    type: number
+                    minimum: 0
+                    maximum: 1
+                required:
+                  - color
+                  - weight
+                additionalProperties: false
+              minItems: 1
+              maxItems: 5
+          additionalProperties: false
+      required:
+        - prompt
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            imageUrls:
+              type: array
+              items:
+                type: string
+            taskId:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  generate_image_flux_dev:
+    method: POST
+    endpoint: /generate-image-flux-dev
+    description: "Generate images using Freepik Flux Dev model"
+    input_schema:
+      type: object
+      properties:
+        prompt:
+          type: string
+          minLength: 1
+        webhook_url:
+          type: string
+          format: uri
+        aspect_ratio:
+          type: string
+          enum:
+            - square_1_1
+            - classic_4_3
+            - traditional_3_4
+            - widescreen_16_9
+            - social_story_9_16
+            - standard_3_2
+            - portrait_2_3
+            - horizontal_2_1
+            - vertical_1_2
+            - social_post_4_5
+        styling:
+          type: object
+          properties:
+            effects:
+              type: object
+              properties:
+                color:
+                  type: string
+                framing:
+                  type: string
+                lightning:
+                  type: string
+              additionalProperties: false
+            colors:
+              type: array
+              items:
+                type: object
+                properties:
+                  color:
+                    type: string
+                    pattern: "^#[0-9A-Fa-f]{6}$"
+                  weight:
+                    type: number
+                    minimum: 0
+                    maximum: 1
+                required:
+                  - color
+                  - weight
+                additionalProperties: false
+              minItems: 1
+              maxItems: 5
+          additionalProperties: false
+        seed:
+          type: integer
+          minimum: 1
+          maximum: 4294967295
+      required:
+        - prompt
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            imageUrls:
+              type: array
+              items:
+                type: string
+            base64Images:
+              type: array
+              items:
+                type: string
+            taskId:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  generate_image_flux_pro:
+    method: POST
+    endpoint: /generate-image-flux-pro
+    description: "Generate images using Freepik Flux Pro v1.1 model"
+    input_schema:
+      type: object
+      properties:
+        prompt:
+          type: string
+          minLength: 1
+        prompt_upsampling:
+          type: boolean
+        seed:
+          anyOf:
+            - 
+              type: integer
+            - 
+              type: null
+        aspect_ratio:
+          type: string
+          enum:
+            - square_1_1
+            - classic_4_3
+            - traditional_3_4
+            - widescreen_16_9
+            - social_story_9_16
+            - standard_3_2
+            - portrait_2_3
+            - horizontal_2_1
+            - vertical_1_2
+            - social_post_4_5
+        safety_tolerance:
+          type: integer
+          minimum: 0
+          maximum: 6
+        output_format:
+          anyOf:
+            - 
+              type: string
+              enum:
+                - jpeg
+                - png
+            - 
+              type: null
+        webhook_url:
+          type: string
+          format: uri
+      required:
+        - prompt
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            imageUrls:
+              type: array
+              items:
+                type: string
+            base64Images:
+              type: array
+              items:
+                type: string
+            taskId:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  generate_image_hyperflux:
+    method: POST
+    endpoint: /generate-image-hyperflux
+    description: "Generate images using Freepik Hyperflux model"
+    input_schema:
+      type: object
+      properties:
+        prompt:
+          type: string
+          minLength: 1
+        webhook_url:
+          type: string
+          format: uri
+        aspect_ratio:
+          type: string
+          enum:
+            - square_1_1
+            - classic_4_3
+            - traditional_3_4
+            - widescreen_16_9
+            - social_story_9_16
+            - standard_3_2
+            - portrait_2_3
+            - horizontal_2_1
+            - vertical_1_2
+            - social_post_4_5
+        styling:
+          type: object
+          properties:
+            effects:
+              type: object
+              properties:
+                color:
+                  type: string
+                framing:
+                  type: string
+                lightning:
+                  type: string
+              additionalProperties: false
+            colors:
+              type: array
+              items:
+                type: object
+                properties:
+                  color:
+                    type: string
+                    pattern: "^#[0-9A-Fa-f]{6}$"
+                  weight:
+                    type: number
+                    minimum: 0
+                    maximum: 1
+                required:
+                  - color
+                  - weight
+                additionalProperties: false
+              minItems: 1
+              maxItems: 5
+          additionalProperties: false
+        seed:
+          type: integer
+          minimum: 1
+          maximum: 4294967295
+      required:
+        - prompt
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            imageUrls:
+              type: array
+              items:
+                type: string
+            base64Images:
+              type: array
+              items:
+                type: string
+            taskId:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  generate_image_seedream:
+    method: POST
+    endpoint: /generate-image-seedream
+    description: "Generate images using Freepik Seedream v3 model"
+    input_schema:
+      type: object
+      properties:
+        prompt:
+          type: string
+          minLength: 1
+        webhook_url:
+          type: string
+          format: uri
+        aspect_ratio:
+          type: string
+          enum:
+            - square_1_1
+            - widescreen_16_9
+            - social_story_9_16
+            - portrait_2_3
+            - traditional_3_4
+            - standard_3_2
+            - classic_4_3
+        guidance_scale:
+          type: number
+          minimum: 0
+          maximum: 20
+        seed:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+      required:
+        - prompt
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            imageUrls:
+              type: array
+              items:
+                type: string
+            base64Images:
+              type: array
+              items:
+                type: string
+            taskId:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  generate_image_seedream_v4:
+    method: POST
+    endpoint: /generate-image-seedream-v4
+    description: "Generate images using Freepik Seedream v4 model"
+    input_schema:
+      type: object
+      properties:
+        prompt:
+          type: string
+          minLength: 1
+        webhook_url:
+          type: string
+          format: uri
+        aspect_ratio:
+          type: string
+          enum:
+            - square_1_1
+            - widescreen_16_9
+            - social_story_9_16
+            - portrait_2_3
+            - traditional_3_4
+            - standard_3_2
+            - classic_4_3
+        guidance_scale:
+          type: number
+          minimum: 0
+          maximum: 20
+        seed:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+      required:
+        - prompt
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            imageUrls:
+              type: array
+              items:
+                type: string
+            base64Images:
+              type: array
+              items:
+                type: string
+            taskId:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  generate_image_gpt:
+    method: POST
+    endpoint: /generate-image-gpt
+    description: "Generate images using OpenAI GPT Image models (gpt-image-1.5, gpt-image-1, gpt-image-1-mini)"
+    input_schema:
+      type: object
+      properties:
+        prompt:
+          type: string
+          minLength: 1
+        model:
+          type: string
+          enum:
+            - gpt-image-1.5
+            - gpt-image-1
+            - gpt-image-1-mini
+          default: "gpt-image-1"
+        n:
+          type: integer
+          minimum: 1
+          maximum: 4
+          default: 1
+        size:
+          type: string
+          enum:
+            - 1024x1024
+            - 1536x1024
+            - 1024x1536
+            - auto
+          default: 1024x1024
+        quality:
+          type: string
+          enum:
+            - low
+            - medium
+            - high
+            - auto
+          default: auto
+      required:
+        - prompt
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            base64Images:
+              type: array
+              items:
+                type: string
+            usage:
+              type: object
+              properties:
+                inputTokens:
+                  type: number
+                outputTokens:
+                  type: number
+                totalTokens:
+                  type: number
+              required:
+                - inputTokens
+                - outputTokens
+                - totalTokens
+              additionalProperties: false
+            cost:
+              type: object
+              properties:
+                billingUnits:
+                  type: number
+                unitCost:
+                  type: number
+                totalCost:
+                  type: number
+                breakdown:
+                  type: object
+                  additionalProperties: {}
+              required:
+                - billingUnits
+                - unitCost
+                - totalCost
+                - breakdown
+              additionalProperties: false
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  remove_background:
+    method: POST
+    endpoint: /remove-background
+    description: "Remove background from image"
+    input_schema:
+      type: object
+      properties:
+        image_url:
+          type: string
+          format: uri
+      required:
+        - image_url
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            originalUrl:
+              type: string
+            processedUrl:
+              type: string
+            previewUrl:
+              type: string
+            highResUrl:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  generate_video:
+    method: POST
+    endpoint: /generate-video
+    description: "Generate a video from an image and prompt"
+    input_schema:
+      type: object
+      properties:
+        image:
+          type: string
+          minLength: 1
+        prompt:
+          type: string
+          minLength: 1
+        duration:
+          type: integer
+          minimum: 1
+          maximum: 60
+      required:
+        - image
+        - prompt
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            videoUrls:
+              type: array
+              items:
+                type: string
+            taskId:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  upscale_image:
+    method: POST
+    endpoint: /upscale-image
+    description: "Precision upscale an image"
+    input_schema:
+      type: object
+      properties:
+        image:
+          type: string
+          minLength: 1
+        webhook_url:
+          type: string
+          format: uri
+        sharpen:
+          type: integer
+          minimum: 0
+          maximum: 100
+        smart_grain:
+          type: integer
+          minimum: 0
+          maximum: 100
+        ultra_detail:
+          type: integer
+          minimum: 0
+          maximum: 100
+        target_resolution:
+          type: string
+          enum:
+            - 1k-2k
+            - 2k-4k
+            - 4k-8k
+            - 5k-10k
+      required:
+        - image
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            taskId:
+              type: string
+            status:
+              type: string
+            generatedUrls:
+              type: array
+              items:
+                type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  upscale_status_taskId:
+    method: POST
+    endpoint: /upscale-status/{taskId}
+    description: "Get upscaling task status"
+    input_schema:
+      type: object
+      properties:
+        taskId:
+          type: string
+          minLength: 1
+      required:
+        - taskId
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            status:
+              type: string
+            generatedUrls:
+              type: array
+              items:
+                type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  upscale_tasks:
+    method: GET
+    endpoint: /upscale-tasks
+    description: "List upscaling tasks"
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            tasks:
+              type: array
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  relight_image:
+    method: POST
+    endpoint: /relight-image
+    description: "Relight an image"
+    input_schema:
+      type: object
+      properties:
+        image:
+          type: string
+          minLength: 1
+        webhook_url:
+          type: string
+          format: uri
+        prompt:
+          type: string
+        transfer_light_from_reference_image:
+          type: string
+        transfer_light_from_lightmap:
+          type: string
+        light_transfer_strength:
+          type: integer
+          minimum: 0
+          maximum: 100
+        interpolate_from_original:
+          type: boolean
+        change_background:
+          type: boolean
+        style:
+          type: string
+          enum:
+            - standard
+            - darker_but_realistic
+            - clean
+            - smooth
+            - brighter
+            - contrasted_n_hdr
+            - just_composition
+        preserve_details:
+          type: boolean
+        advanced_settings: {}
+      required:
+        - image
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            taskId:
+              type: string
+            status:
+              type: string
+            generatedUrls:
+              type: array
+              items:
+                type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  relight_status_taskId:
+    method: POST
+    endpoint: /relight-status/{taskId}
+    description: "Get relighting task status"
+    input_schema:
+      type: object
+      properties:
+        taskId:
+          type: string
+          minLength: 1
+      required:
+        - taskId
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            status:
+              type: string
+            generatedUrls:
+              type: array
+              items:
+                type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  relight_tasks:
+    method: GET
+    endpoint: /relight-tasks
+    description: "List relighting tasks"
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            tasks:
+              type: array
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  style_transfer_image:
+    method: POST
+    endpoint: /style-transfer-image
+    description: "Style transfer from a reference image"
+    input_schema:
+      type: object
+      properties:
+        image:
+          type: string
+          minLength: 1
+        reference_image:
+          type: string
+          minLength: 1
+        webhook_url:
+          type: string
+          format: uri
+        prompt:
+          type: string
+        style_strength:
+          type: integer
+          minimum: 0
+          maximum: 100
+        structure_strength:
+          type: integer
+          minimum: 0
+          maximum: 100
+        is_portrait:
+          type: boolean
+        portrait_style:
+          type: string
+          enum:
+            - standard
+            - pop
+            - super_pop
+        portrait_beautifier:
+          type: string
+          enum:
+            - beautify_face
+            - beautify_face_max
+        flavor:
+          type: string
+          enum:
+            - faithful
+            - gen_z
+            - psychedelia
+            - detaily
+            - clear
+            - donotstyle
+            - donotstyle_sharp
+        engine:
+          type: string
+          enum:
+            - balanced
+            - definio
+            - illusio
+            - 3d_cartoon
+            - colorful_anime
+            - caricature
+            - real
+            - super_real
+            - softy
+        fixed_generation:
+          type: boolean
+      required:
+        - image
+        - reference_image
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            taskId:
+              type: string
+            status:
+              type: string
+            generatedUrls:
+              type: array
+              items:
+                type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  expand_image:
+    method: POST
+    endpoint: /expand-image
+    description: "Outpaint/expand an image"
+    input_schema:
+      type: object
+      properties:
+        image:
+          type: string
+          minLength: 1
+        webhook_url:
+          type: string
+          format: uri
+        prompt:
+          type: string
+        left:
+          type: integer
+          minimum: 0
+          maximum: 2048
+        right:
+          type: integer
+          minimum: 0
+          maximum: 2048
+        top:
+          type: integer
+          minimum: 0
+          maximum: 2048
+        bottom:
+          type: integer
+          minimum: 0
+          maximum: 2048
+      required:
+        - image
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            taskId:
+              type: string
+            status:
+              type: string
+            generatedUrls:
+              type: array
+              items:
+                type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  search_icons:
+    method: POST
+    endpoint: /search-icons
+    description: "Search Freepik icons"
+    input_schema:
+      type: object
+      properties:
+        term:
+          type: string
+          minLength: 1
+        page:
+          type: integer
+          minimum: 1
+        per_page:
+          type: integer
+          minimum: 1
+          maximum: 100
+        family_id:
+          type: integer
+        order:
+          type: string
+          enum:
+            - relevance
+            - recent
+        thumbnail_size:
+          type: string
+      required:
+        - term
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            icons:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: number
+                  name:
+                    type: string
+                  style:
+                    type: string
+                  thumbnail:
+                    type: string
+                  free_svg:
+                    type: boolean
+                required:
+                  - id
+                  - name
+                additionalProperties: false
+            total:
+              type: number
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  download_icon:
+    method: POST
+    endpoint: /download-icon
+    description: "Download a Freepik icon"
+    input_schema:
+      type: object
+      properties:
+        id:
+          type: integer
+        format:
+          type: string
+          enum:
+            - svg
+            - png
+      required:
+        - id
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            downloadUrl:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  search_stock_images:
+    method: POST
+    endpoint: /search-stock-images
+    description: "Search stock images"
+    input_schema:
+      type: object
+      properties:
+        term:
+          type: string
+          minLength: 1
+        page:
+          type: integer
+          minimum: 1
+        per_page:
+          type: integer
+          minimum: 1
+          maximum: 100
+        order:
+          type: string
+          enum:
+            - relevance
+            - recent
+            - popular
+        orientation:
+          type: string
+          enum:
+            - horizontal
+            - vertical
+            - square
+        category:
+          type: string
+        color:
+          type: string
+        min_width:
+          type: integer
+        min_height:
+          type: integer
+        premium:
+          type: boolean
+      required:
+        - term
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            images:
+              type: array
+            pagination: {}
+            total:
+              type: number
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  search_stock_videos:
+    method: POST
+    endpoint: /search-stock-videos
+    description: "Search stock videos"
+    input_schema:
+      type: object
+      properties:
+        term:
+          type: string
+          minLength: 1
+        page:
+          type: integer
+          minimum: 1
+        order:
+          type: string
+          enum:
+            - relevance
+            - recent
+            - popular
+        orientation:
+          type: string
+          enum:
+            - horizontal
+            - vertical
+            - square
+        category:
+          type: string
+        duration:
+          type: string
+          enum:
+            - short
+            - medium
+            - long
+        fps:
+          type: integer
+        premium:
+          type: boolean
+      required:
+        - term
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            videos:
+              type: array
+            pagination: {}
+            total:
+              type: number
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  search_market_symbols:
+    method: POST
+    endpoint: /search-market-symbols
+    description: "Search stock market symbols"
+    input_schema:
+      type: object
+      properties:
+        term:
+          type: string
+          minLength: 1
+      required:
+        - term
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            symbols:
+              type: array
+              items:
+                type: object
+                properties:
+                  symbol:
+                    type: string
+                  name:
+                    type: string
+                  type:
+                    type: string
+                  region:
+                    type: string
+                  currency:
+                    type: string
+                  matchScore:
+                    type: number
+                required:
+                  - symbol
+                  - name
+                  - type
+                  - region
+                  - currency
+                  - matchScore
+                additionalProperties: false
+          required:
+            - symbols
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  search_stocks:
+    method: POST
+    endpoint: /search-stocks
+    description: "Search stocks (alias of market symbols)"
+    input_schema:
+      type: object
+      properties:
+        term:
+          type: string
+          minLength: 1
+      required:
+        - term
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            symbols:
+              type: array
+              items:
+                type: object
+                properties:
+                  symbol:
+                    type: string
+                  name:
+                    type: string
+                  type:
+                    type: string
+                  region:
+                    type: string
+                  currency:
+                    type: string
+                  matchScore:
+                    type: number
+                required:
+                  - symbol
+                  - name
+                  - type
+                  - region
+                  - currency
+                  - matchScore
+                additionalProperties: false
+          required:
+            - symbols
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  search_crypto:
+    method: POST
+    endpoint: /search-crypto
+    description: "Search cryptocurrencies"
+    input_schema:
+      type: object
+      properties:
+        term:
+          type: string
+          minLength: 1
+      required:
+        - term
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            symbols:
+              type: array
+              items:
+                type: object
+                properties:
+                  symbol:
+                    type: string
+                  name:
+                    type: string
+                  type:
+                    type: string
+                  region:
+                    type: string
+                  currency:
+                    type: string
+                  matchScore:
+                    type: number
+                required:
+                  - symbol
+                  - name
+                  - type
+                  - region
+                  - currency
+                  - matchScore
+                additionalProperties: false
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  download_stock_image:
+    method: POST
+    endpoint: /download-stock-image
+    description: "Download a stock image"
+    input_schema:
+      type: object
+      properties:
+        id:
+          type: integer
+        size:
+          type: string
+          enum:
+            - small
+            - medium
+            - large
+            - xl
+      required:
+        - id
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            downloadUrl:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  download_stock_video:
+    method: POST
+    endpoint: /download-stock-video
+    description: "Download a stock video"
+    input_schema:
+      type: object
+      properties:
+        id:
+          type: integer
+      required:
+        - id
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            downloadUrl:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  convert_file:
+    method: POST
+    endpoint: /convert-file
+    description: "Convert a file by URL or base64"
+    input_schema:
+      type: object
+      properties:
+        input_format:
+          type: string
+          minLength: 1
+        output_format:
+          type: string
+          minLength: 1
+        file:
+          type: string
+        url:
+          type: string
+          format: uri
+      required:
+        - input_format
+        - output_format
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            url:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  extract_document_text:
+    method: POST
+    endpoint: /extract-document-text
+    description: "Extract text from a PDF or Word document (base64 input)"
+    input_schema:
+      type: object
+      properties:
+        file:
+          type: string
+          minLength: 1
+        filename:
+          type: string
+      required:
+        - file
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            text:
+              type: string
+            fileType:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  generate_tasks_from_document:
+    method: POST
+    endpoint: /generate-tasks-from-document
+    description: "Generate structured travel tasks from extracted document text"
+    input_schema:
+      type: object
+      properties:
+        text:
+          type: string
+          minLength: 1
+        availableCategories:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                minLength: 1
+              name:
+                type: string
+                minLength: 1
+            required:
+              - id
+              - name
+            additionalProperties: false
+      required:
+        - text
+        - availableCategories
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            tasks:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  categoryId:
+                    type: string
+                  dueDate:
+                    type: string
+                required:
+                  - id
+                  - name
+                  - description
+                  - categoryId
+                additionalProperties: false
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  usage:
+    method: GET
+    endpoint: /usage
+    description: "Get user integration spending summary"
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+        error:
+          type: string
+      required:
+        - success
+    output_description: "data contains: { totalSpent, currency, usageCount }"
+
+  geocode_city:
+    method: POST
+    endpoint: /geocode-city
+    description: "Geocode a city name"
+    input_schema:
+      type: object
+      properties:
+        query:
+          type: string
+          minLength: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+      required:
+        - query
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            locations:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  lat:
+                    type: number
+                  lon:
+                    type: number
+                  country:
+                    type: string
+                  state:
+                    type: string
+                required:
+                  - name
+                  - lat
+                  - lon
+                additionalProperties: false
+          required:
+            - locations
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  current_weather:
+    method: POST
+    endpoint: /current-weather
+    description: "Get current weather"
+    input_schema:
+      type: object
+      properties:
+        location:
+          type: string
+          minLength: 1
+        units:
+          type: string
+          enum:
+            - metric
+            - imperial
+            - kelvin
+      required:
+        - location
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            weather:
+              type: object
+              properties:
+                dt:
+                  type: number
+                  description: Unix timestamp of data calculation
+                temp:
+                  type: number
+                feels_like:
+                  type: number
+                humidity:
+                  type: number
+                pressure:
+                  type: number
+                  description: Atmospheric pressure in hPa
+                visibility:
+                  type: number
+                  description: Visibility in meters
+                description:
+                  type: string
+                icon:
+                  type: string
+                wind_speed:
+                  type: number
+                wind_deg:
+                  type: number
+                  description: Wind direction in degrees
+                sunrise:
+                  type: number
+                  description: Sunrise time as Unix timestamp
+                sunset:
+                  type: number
+                  description: Sunset time as Unix timestamp
+              required:
+                - dt
+                - temp
+                - sunrise
+                - sunset
+              additionalProperties: false
+          required:
+            - weather
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  weather_forecast:
+    method: POST
+    endpoint: /weather-forecast
+    description: "Get 5-day forecast"
+    input_schema:
+      type: object
+      properties:
+        location:
+          type: string
+          minLength: 1
+        units:
+          type: string
+          enum:
+            - metric
+            - imperial
+            - kelvin
+      required:
+        - location
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            forecast:
+              type: array
+              items:
+                type: object
+                properties:
+                  dt:
+                    type: number
+                  temp:
+                    type: number
+                  feels_like:
+                    type: number
+                  humidity:
+                    type: number
+                  description:
+                    type: string
+                  icon:
+                    type: string
+                required:
+                  - dt
+                  - temp
+                additionalProperties: true
+          required:
+            - forecast
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  nasa_apod:
+    method: POST
+    endpoint: /nasa-apod
+    description: "Get NASA Astronomy Picture of the Day. Supports single date, date range, or random count."
+    input_schema:
+      type: object
+      properties:
+        date:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+          description: "Specific date in YYYY-MM-DD format. Cannot be used with start_date/end_date or count."
+        start_date:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+          description: "Start date for date range in YYYY-MM-DD format. Cannot be used with date or count."
+        end_date:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+          description: "End date for date range in YYYY-MM-DD format. Used with start_date."
+        count:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Number of random APOD images to return. Cannot be used with date or start_date/end_date.
+        thumbs:
+          type: boolean
+          description: "Return video thumbnail URL if APOD is a video. Default: false."
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            apod:
+              anyOf:
+                - 
+                  type: object
+                  properties:
+                    copyright:
+                      type: string
+                    date:
+                      type: string
+                    explanation:
+                      type: string
+                    hdurl:
+                      type: string
+                    media_type:
+                      type: string
+                    title:
+                      type: string
+                    url:
+                      type: string
+                    thumbnail_url:
+                      type: string
+                  required:
+                    - date
+                    - explanation
+                    - media_type
+                    - title
+                    - url
+                  additionalProperties: false
+                - 
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      copyright:
+                        type: string
+                      date:
+                        type: string
+                      explanation:
+                        type: string
+                      hdurl:
+                        type: string
+                      media_type:
+                        type: string
+                      title:
+                        type: string
+                      url:
+                        type: string
+                      thumbnail_url:
+                        type: string
+                    required:
+                      - date
+                      - explanation
+                      - media_type
+                      - title
+                      - url
+                    additionalProperties: false
+          required:
+            - apod
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  nasa_donki_cme:
+    method: POST
+    endpoint: /nasa-donki-cme
+    description: "Get NASA DONKI Coronal Mass Ejection (CME) data. startDate defaults to 30 days prior, endDate defaults to current UTC date."
+    input_schema:
+      type: object
+      properties:
+        startDate:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+          description: "Start date in YYYY-MM-DD format. Defaults to 30 days prior to current UTC date."
+        endDate:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+          description: "End date in YYYY-MM-DD format. Defaults to current UTC date."
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            cme:
+              type: array
+              items:
+                type: object
+                properties: {}
+                additionalProperties: true
+          required:
+            - cme
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  nasa_donki_gst:
+    method: POST
+    endpoint: /nasa-donki-gst
+    description: "Get NASA DONKI Geomagnetic Storm (GST) data. startDate defaults to 30 days prior, endDate defaults to current UTC date."
+    input_schema:
+      type: object
+      properties:
+        startDate:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+          description: "Start date in YYYY-MM-DD format. Defaults to 30 days prior to current UTC date."
+        endDate:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+          description: "End date in YYYY-MM-DD format. Defaults to current UTC date."
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            gst:
+              type: array
+              items:
+                type: object
+                properties: {}
+                additionalProperties: true
+          required:
+            - gst
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  nasa_donki_flr:
+    method: POST
+    endpoint: /nasa-donki-flr
+    description: "Get NASA DONKI Solar Flare (FLR) data. startDate defaults to 30 days prior, endDate defaults to current UTC date."
+    input_schema:
+      type: object
+      properties:
+        startDate:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+          description: "Start date in YYYY-MM-DD format. Defaults to 30 days prior to current UTC date."
+        endDate:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+          description: "End date in YYYY-MM-DD format. Defaults to current UTC date."
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            flr:
+              type: array
+              items:
+                type: object
+                properties: {}
+                additionalProperties: true
+          required:
+            - flr
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  nasa_neows_feed:
+    method: POST
+    endpoint: /nasa-neows-feed
+    description: "Get NASA NeoWs (Near-Earth Objects) Feed. Retrieves asteroids based on closest approach date to Earth. endDate defaults to 7 days after startDate."
+    input_schema:
+      type: object
+      properties:
+        startDate:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+          description: "Start date in YYYY-MM-DD format. Defaults to today."
+        endDate:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+          description: "End date in YYYY-MM-DD format. Defaults to 7 days after startDate."
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            neos:
+              type: object
+              properties:
+                element_count:
+                  type: number
+                near_earth_objects:
+                  type: object
+                  additionalProperties:
+                    type: array
+                    items:
+                      type: object
+                      properties: {}
+                      additionalProperties: true
+              additionalProperties: true
+          required:
+            - neos
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  nasa_neows_lookup:
+    method: POST
+    endpoint: /nasa-neows-lookup
+    description: "Lookup a specific Near-Earth Object by its NASA JPL small body (SPK-ID) ID"
+    input_schema:
+      type: object
+      properties:
+        asteroidId:
+          type: string
+          minLength: 1
+          description: "Asteroid SPK-ID (NASA JPL small body ID)"
+      required:
+        - asteroidId
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+        error:
+          type: string
+      required:
+        - success
+    output_description: "data contains: { neo: Single asteroid object with detailed information }"
+
+  nasa_neows_browse:
+    method: POST
+    endpoint: /nasa-neows-browse
+    description: "Browse the overall Near-Earth Objects data-set"
+    input_schema:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 0
+          description: "Page number (0-indexed)"
+        size:
+          type: integer
+          minimum: 1
+          maximum: 20
+          description: "Page size (1-20)"
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+        error:
+          type: string
+      required:
+        - success
+    output_description: "data contains: { neos: NeoWs browse response with paginated asteroid data }"
+
+  news_top_headlines:
+    method: POST
+    endpoint: /news-top-headlines
+    description: "Get top headlines"
+    input_schema:
+      type: object
+      properties:
+        country:
+          type: string
+        category:
+          type: string
+          enum:
+            - business
+            - entertainment
+            - general
+            - health
+            - science
+            - sports
+            - technology
+        sources:
+          type: string
+        q:
+          type: string
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+        page:
+          type: integer
+          minimum: 1
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            headlines:
+              type: array
+              items:
+                type: string
+            articles:
+              type: array
+              items:
+                type: object
+                properties:
+                  source:
+                    type: object
+                    properties:
+                      id:
+                        type:
+                          - string
+                          - null
+                      name:
+                        type: string
+                    required:
+                      - id
+                      - name
+                    additionalProperties: false
+                  author:
+                    type:
+                      - string
+                      - null
+                  title:
+                    type: string
+                  description:
+                    type:
+                      - string
+                      - null
+                  url:
+                    type: string
+                  urlToImage:
+                    type:
+                      - string
+                      - null
+                  publishedAt:
+                    type: string
+                  content:
+                    type:
+                      - string
+                      - null
+                required:
+                  - source
+                  - author
+                  - title
+                  - description
+                  - url
+                  - urlToImage
+                  - publishedAt
+                  - content
+                additionalProperties: false
+            totalResults:
+              type: number
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  news_search:
+    method: POST
+    endpoint: /news-search
+    description: "Search news articles"
+    input_schema:
+      type: object
+      properties:
+        q:
+          type: string
+          minLength: 1
+        sources:
+          type: string
+        domains:
+          type: string
+        excludeDomains:
+          type: string
+        from:
+          type: string
+        to:
+          type: string
+        language:
+          type: string
+        sortBy:
+          type: string
+          enum:
+            - relevancy
+            - popularity
+            - publishedAt
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+        page:
+          type: integer
+          minimum: 1
+      required:
+        - q
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            headlines:
+              type: array
+              items:
+                type: string
+            articles:
+              type: array
+              items:
+                type: object
+                properties:
+                  source:
+                    type: object
+                    properties:
+                      id:
+                        type:
+                          - string
+                          - null
+                      name:
+                        type: string
+                    required:
+                      - id
+                      - name
+                    additionalProperties: false
+                  author:
+                    type:
+                      - string
+                      - null
+                  title:
+                    type: string
+                  description:
+                    type:
+                      - string
+                      - null
+                  url:
+                    type: string
+                  urlToImage:
+                    type:
+                      - string
+                      - null
+                  publishedAt:
+                    type: string
+                  content:
+                    type:
+                      - string
+                      - null
+                required:
+                  - source
+                  - author
+                  - title
+                  - description
+                  - url
+                  - urlToImage
+                  - publishedAt
+                  - content
+                additionalProperties: false
+            totalResults:
+              type: number
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  youtube_search:
+    method: POST
+    endpoint: /youtube-search
+    description: "Search YouTube videos"
+    input_schema:
+      type: object
+      properties:
+        q:
+          type: string
+          minLength: 1
+        maxResults:
+          type: integer
+          minimum: 1
+          maximum: 50
+        order:
+          type: string
+          enum:
+            - relevance
+            - date
+            - rating
+            - viewCount
+      required:
+        - q
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            videos:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: {}
+                  snippet:
+                    type: object
+                    properties:
+                      title:
+                        type: string
+                      description:
+                        type: string
+                      channelTitle:
+                        type: string
+                      publishedAt:
+                        type: string
+                    additionalProperties: true
+                  links:
+                    type: object
+                    properties:
+                      watch:
+                        type: string
+                      embed:
+                        type: string
+                      thumbnail:
+                        type: string
+                    required:
+                      - watch
+                      - embed
+                    additionalProperties: false
+                additionalProperties: true
+            totalResults:
+              type: number
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  youtube_video_details:
+    method: POST
+    endpoint: /youtube-video-details
+    description: "Get details for videos"
+    input_schema:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+      required:
+        - id
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            videos:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  snippet:
+                    type: object
+                    properties:
+                      title:
+                        type: string
+                      description:
+                        type: string
+                      channelTitle:
+                        type: string
+                    additionalProperties: true
+                  statistics:
+                    type: object
+                    properties:
+                      viewCount:
+                        type: string
+                      likeCount:
+                        type: string
+                    additionalProperties: true
+                  links:
+                    type: object
+                    properties:
+                      watch:
+                        type: string
+                      embed:
+                        type: string
+                    required:
+                      - watch
+                      - embed
+                    additionalProperties: false
+                required:
+                  - id
+                additionalProperties: true
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  youtube_trending:
+    method: POST
+    endpoint: /youtube-trending
+    description: "Get trending videos"
+    input_schema:
+      type: object
+      properties:
+        regionCode:
+          type: string
+        maxResults:
+          type: integer
+          minimum: 1
+          maximum: 50
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            videos:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  snippet:
+                    type: object
+                    properties:
+                      title:
+                        type: string
+                      description:
+                        type: string
+                      channelTitle:
+                        type: string
+                    additionalProperties: true
+                  statistics:
+                    type: object
+                    properties:
+                      viewCount:
+                        type: string
+                      likeCount:
+                        type: string
+                    additionalProperties: true
+                  links:
+                    type: object
+                    properties:
+                      watch:
+                        type: string
+                      embed:
+                        type: string
+                    required:
+                      - watch
+                      - embed
+                    additionalProperties: false
+                required:
+                  - id
+                additionalProperties: true
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  wikipedia_summary:
+    method: POST
+    endpoint: /wikipedia-summary
+    description: "Get Wikipedia page summary"
+    input_schema:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+      required:
+        - title
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            title:
+              type: string
+            description:
+              type: string
+            extract:
+              type: string
+            url:
+              type: string
+          required:
+            - title
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  wikipedia_content:
+    method: POST
+    endpoint: /wikipedia-content
+    description: "Get full page content (HTML)"
+    input_schema:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+      required:
+        - title
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            htmlContent:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  wikipedia_search:
+    method: POST
+    endpoint: /wikipedia-search
+    description: "Search Wikipedia articles"
+    input_schema:
+      type: object
+      properties:
+        query:
+          type: string
+          minLength: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+      required:
+        - query
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            pages:
+              type: array
+              items:
+                type: object
+                properties:
+                  title:
+                    type: string
+                  description:
+                    type: string
+                  extract:
+                    type: string
+                  url:
+                    type: string
+                required:
+                  - title
+                additionalProperties: false
+            total:
+              type: number
+          required:
+            - pages
+            - total
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  wikipedia_random:
+    method: POST
+    endpoint: /wikipedia-random
+    description: "Get a random page"
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            title:
+              type: string
+            description:
+              type: string
+            extract:
+              type: string
+            url:
+              type: string
+          required:
+            - title
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  github_get_user:
+    method: POST
+    endpoint: /github-get-user
+    description: "Get authenticated GitHub user"
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            user:
+              type: object
+              properties:
+                login:
+                  type: string
+                id:
+                  type: number
+                name:
+                  type:
+                    - string
+                    - null
+                email:
+                  type:
+                    - string
+                    - null
+                avatar_url:
+                  type: string
+                html_url:
+                  type: string
+                public_repos:
+                  type: number
+                followers:
+                  type: number
+                following:
+                  type: number
+              required:
+                - login
+                - id
+              additionalProperties: true
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  github_get_user_repos:
+    method: POST
+    endpoint: /github-get-user-repos
+    description: "Get authenticated user repositories"
+    input_schema:
+      type: object
+      properties:
+        visibility:
+          type: string
+          enum:
+            - all
+            - public
+            - private
+        affiliation:
+          type: string
+          enum:
+            - owner
+            - collaborator
+            - organization_member
+        type:
+          type: string
+          enum:
+            - all
+            - owner
+            - public
+            - private
+            - member
+        sort:
+          type: string
+          enum:
+            - created
+            - updated
+            - pushed
+            - full_name
+        direction:
+          type: string
+          enum:
+            - asc
+            - desc
+        per_page:
+          type: integer
+          minimum: 1
+          maximum: 100
+        page:
+          type: integer
+          minimum: 1
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            repositories:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: number
+                  name:
+                    type: string
+                  full_name:
+                    type: string
+                  private:
+                    type: boolean
+                  html_url:
+                    type: string
+                  description:
+                    type:
+                      - string
+                      - null
+                  language:
+                    type:
+                      - string
+                      - null
+                  stargazers_count:
+                    type: number
+                  forks_count:
+                    type: number
+                required:
+                  - id
+                  - name
+                  - full_name
+                  - private
+                additionalProperties: true
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  github_get_public_user:
+    method: POST
+    endpoint: /github-get-public-user
+    description: "Get public GitHub user"
+    input_schema:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+      required:
+        - username
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            user:
+              type: object
+              properties:
+                login:
+                  type: string
+                id:
+                  type: number
+                name:
+                  type:
+                    - string
+                    - null
+                email:
+                  type:
+                    - string
+                    - null
+                avatar_url:
+                  type: string
+                html_url:
+                  type: string
+                public_repos:
+                  type: number
+                followers:
+                  type: number
+                following:
+                  type: number
+              required:
+                - login
+                - id
+              additionalProperties: true
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  github_get_user_public_repos:
+    method: POST
+    endpoint: /github-get-user-public-repos
+    description: "Get public repos for a GitHub user"
+    input_schema:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          enum:
+            - all
+            - owner
+            - member
+        sort:
+          type: string
+          enum:
+            - created
+            - updated
+            - pushed
+            - full_name
+        direction:
+          type: string
+          enum:
+            - asc
+            - desc
+        per_page:
+          type: integer
+          minimum: 1
+          maximum: 100
+        page:
+          type: integer
+          minimum: 1
+      required:
+        - username
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            repositories:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: number
+                  name:
+                    type: string
+                  full_name:
+                    type: string
+                  private:
+                    type: boolean
+                  html_url:
+                    type: string
+                  description:
+                    type:
+                      - string
+                      - null
+                  language:
+                    type:
+                      - string
+                      - null
+                  stargazers_count:
+                    type: number
+                  forks_count:
+                    type: number
+                required:
+                  - id
+                  - name
+                  - full_name
+                  - private
+                additionalProperties: true
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  github_get_repository:
+    method: POST
+    endpoint: /github-get-repository
+    description: "Get repository information"
+    input_schema:
+      type: object
+      properties:
+        owner:
+          type: string
+          minLength: 1
+        repo:
+          type: string
+          minLength: 1
+      required:
+        - owner
+        - repo
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            repository:
+              type: object
+              properties:
+                id:
+                  type: number
+                name:
+                  type: string
+                full_name:
+                  type: string
+                private:
+                  type: boolean
+                html_url:
+                  type: string
+                description:
+                  type:
+                    - string
+                    - null
+                language:
+                  type:
+                    - string
+                    - null
+                stargazers_count:
+                  type: number
+                forks_count:
+                  type: number
+                open_issues_count:
+                  type: number
+              required:
+                - id
+                - name
+                - full_name
+                - private
+              additionalProperties: true
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  github_get_repository_commits:
+    method: POST
+    endpoint: /github-get-repository-commits
+    description: "Get repository commits"
+    input_schema:
+      type: object
+      properties:
+        owner:
+          type: string
+          minLength: 1
+        repo:
+          type: string
+          minLength: 1
+        author:
+          type: string
+        since:
+          type: string
+        until:
+          type: string
+        per_page:
+          type: integer
+          minimum: 1
+          maximum: 100
+        page:
+          type: integer
+          minimum: 1
+      required:
+        - owner
+        - repo
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            commits:
+              type: array
+              items:
+                type: object
+                properties:
+                  sha:
+                    type: string
+                  commit:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                      author:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                          email:
+                            type: string
+                          date:
+                            type: string
+                        additionalProperties: false
+                    required:
+                      - message
+                    additionalProperties: true
+                  html_url:
+                    type: string
+                required:
+                  - sha
+                additionalProperties: true
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  github_get_repository_issues:
+    method: POST
+    endpoint: /github-get-repository-issues
+    description: "Get repository issues"
+    input_schema:
+      type: object
+      properties:
+        owner:
+          type: string
+          minLength: 1
+        repo:
+          type: string
+          minLength: 1
+        state:
+          type: string
+          enum:
+            - open
+            - closed
+            - all
+        assignee:
+          type: string
+        creator:
+          type: string
+        labels:
+          type: string
+        sort:
+          type: string
+          enum:
+            - created
+            - updated
+            - comments
+        direction:
+          type: string
+          enum:
+            - asc
+            - desc
+        per_page:
+          type: integer
+          minimum: 1
+          maximum: 100
+        page:
+          type: integer
+          minimum: 1
+      required:
+        - owner
+        - repo
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            issues:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: number
+                  number:
+                    type: number
+                  title:
+                    type: string
+                  state:
+                    type: string
+                  html_url:
+                    type: string
+                  body:
+                    type:
+                      - string
+                      - null
+                  user:
+                    type: object
+                    properties:
+                      login:
+                        type: string
+                    required:
+                      - login
+                    additionalProperties: true
+                  created_at:
+                    type: string
+                  updated_at:
+                    type: string
+                required:
+                  - id
+                  - number
+                  - title
+                  - state
+                additionalProperties: true
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  github_search_repositories:
+    method: POST
+    endpoint: /github-search-repositories
+    description: "Search GitHub repositories"
+    input_schema:
+      type: object
+      properties:
+        q:
+          type: string
+          minLength: 1
+        sort:
+          type: string
+          enum:
+            - stars
+            - forks
+            - help-wanted-issues
+            - updated
+        order:
+          type: string
+          enum:
+            - asc
+            - desc
+        per_page:
+          type: integer
+          minimum: 1
+          maximum: 100
+        page:
+          type: integer
+          minimum: 1
+      required:
+        - q
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            repositories:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: number
+                  name:
+                    type: string
+                  full_name:
+                    type: string
+                  private:
+                    type: boolean
+                  html_url:
+                    type: string
+                  description:
+                    type:
+                      - string
+                      - null
+                  language:
+                    type:
+                      - string
+                      - null
+                  stargazers_count:
+                    type: number
+                  forks_count:
+                    type: number
+                required:
+                  - id
+                  - name
+                  - full_name
+                  - private
+                additionalProperties: true
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  gmail_onboarding:
+    method: POST
+    endpoint: /gmail-onboarding
+    description: "Get Gmail onboarding OAuth URL with all permissions"
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            authUrl:
+              type: string
+            provider:
+              type: string
+            scopes:
+              type: array
+              items:
+                type: string
+            message:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  gmail_reply:
+    method: POST
+    endpoint: /gmail-reply
+    description: "Reply to Gmail thread"
+    input_schema:
+      type: object
+      properties:
+        threadId:
+          type: string
+          minLength: 1
+        recipient:
+          type: string
+          format: email
+        subject:
+          type: string
+          minLength: 1
+        content:
+          type: string
+          minLength: 1
+        html:
+          type: string
+      required:
+        - threadId
+        - recipient
+        - subject
+        - content
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            requiresOAuth:
+              type: boolean
+            authUrl:
+              type: string
+            provider:
+              type: string
+            scopes:
+              type: array
+              items:
+                type: string
+            messageId:
+              type: string
+            threadId:
+              type: string
+            recipient:
+              type: string
+            subject:
+              type: string
+            sentAt:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  send_email:
+    method: POST
+    endpoint: /send-email
+    description: "Send email via Gmail"
+    input_schema:
+      type: object
+      properties:
+        recipient:
+          type: string
+          format: email
+        subject:
+          type: string
+          minLength: 1
+        content:
+          type: string
+          minLength: 1
+        html:
+          type: string
+      required:
+        - recipient
+        - subject
+        - content
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            requiresOAuth:
+              type: boolean
+            authUrl:
+              type: string
+            provider:
+              type: string
+            scopes:
+              type: array
+              items:
+                type: string
+            messageId:
+              type: string
+            threadId:
+              type: string
+            recipient:
+              type: string
+            subject:
+              type: string
+            sentAt:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  status:
+    method: GET
+    endpoint: /status
+    description: "Check connection status"
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            google:
+              type: object
+              properties:
+                connected:
+                  type: boolean
+                gmail:
+                  type: boolean
+                calendar:
+                  type: boolean
+                drive:
+                  type: boolean
+              required:
+                - connected
+                - gmail
+                - calendar
+                - drive
+              additionalProperties: false
+          required:
+            - google
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  google_auth_url:
+    method: GET
+    endpoint: /google-auth-url
+    description: "Get OAuth URL for Google"
+    input_schema:
+      type: object
+      properties:
+        service:
+          type: string
+          enum:
+            - gmail
+            - calendar
+            - drive
+            - contacts
+      required:
+        - service
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            authUrl:
+              type: string
+          required:
+            - authUrl
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  google_disconnect:
+    method: DELETE
+    endpoint: /google-disconnect
+    description: "Disconnect Google integration"
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+          required:
+            - message
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  google_contacts:
+    method: GET
+    endpoint: /google-contacts
+    description: "Fetch Google contacts"
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            requiresOAuth:
+              type: boolean
+            authUrl:
+              type: string
+            contacts:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  email:
+                    type: string
+                  phone:
+                    type: string
+                  company:
+                    type: string
+                  position:
+                    type: string
+                  notes:
+                    type: string
+                  status:
+                    type: string
+                required:
+                  - name
+                  - email
+                  - phone
+                  - company
+                  - position
+                  - notes
+                  - status
+                additionalProperties: false
+            count:
+              type: number
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  drive_upload:
+    method: POST
+    endpoint: /drive-upload
+    description: "Upload file to Google Drive"
+    input_schema:
+      type: object
+      properties:
+        filename:
+          type: string
+          minLength: 1
+        mimeType:
+          type: string
+          minLength: 1
+        fileData:
+          type: string
+          minLength: 1
+      required:
+        - filename
+        - mimeType
+        - fileData
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            requiresOAuth:
+              type: boolean
+            authUrl:
+              type: string
+            scopes:
+              type: array
+              items:
+                type: string
+            provider:
+              type: string
+            id:
+              type: string
+            name:
+              type: string
+            mimeType:
+              type: string
+            size:
+              type: string
+            createdTime:
+              type: string
+            modifiedTime:
+              type: string
+            webViewLink:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  drive_list:
+    method: GET
+    endpoint: /drive-list
+    description: "List files in Google Drive"
+    input_schema:
+      type: object
+      properties:
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+        pageToken:
+          type: string
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            requiresOAuth:
+              type: boolean
+            authUrl:
+              type: string
+            scopes:
+              type: array
+              items:
+                type: string
+            provider:
+              type: string
+            files:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  mimeType:
+                    type: string
+                  size:
+                    type: string
+                  createdTime:
+                    type: string
+                  modifiedTime:
+                    type: string
+                  webViewLink:
+                    type: string
+                required:
+                  - id
+                  - name
+                  - mimeType
+                additionalProperties: false
+            nextPageToken:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  drive_download:
+    method: GET
+    endpoint: /drive-download
+    description: "Download file from Google Drive"
+    input_schema:
+      type: object
+      properties:
+        fileId:
+          type: string
+          minLength: 1
+      required:
+        - fileId
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            requiresOAuth:
+              type: boolean
+            authUrl:
+              type: string
+            scopes:
+              type: array
+              items:
+                type: string
+            provider:
+              type: string
+            fileData:
+              type: string
+            mimeType:
+              type: string
+            filename:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  drive_delete:
+    method: DELETE
+    endpoint: /drive-delete
+    description: "Delete file from Google Drive"
+    input_schema:
+      type: object
+      properties:
+        fileId:
+          type: string
+          minLength: 1
+      required:
+        - fileId
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            requiresOAuth:
+              type: boolean
+            authUrl:
+              type: string
+            scopes:
+              type: array
+              items:
+                type: string
+            provider:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  get_canvas_users:
+    method: POST
+    endpoint: /get-canvas-users
+    description: "List users for a canvas room"
+    input_schema:
+      type: object
+      properties:
+        roomId:
+          type: string
+          minLength: 1
+      required:
+        - roomId
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+        error:
+          type: string
+      required:
+        - success
+    output_description: "data contains: { success, users: [...] }"
+
+  get_current_user:
+    method: POST
+    endpoint: /get-current-user
+    description: "Get current authenticated user"
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+        error:
+          type: string
+      required:
+        - success
+    output_description: "data contains: { success, user: {...} }"
+
+  text_to_speech:
+    method: POST
+    endpoint: /text-to-speech
+    description: "Convert text to speech audio"
+    input_schema:
+      type: object
+      properties:
+        text:
+          type: string
+          minLength: 1
+        model:
+          type: string
+        voice:
+          type: string
+        response_format:
+          type: string
+          enum:
+            - mp3
+            - opus
+            - aac
+            - flac
+        speed:
+          type: number
+          minimum: 0.25
+          maximum: 4
+      required:
+        - text
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            audioUrl:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  speech_to_text:
+    method: POST
+    endpoint: /speech-to-text
+    description: "Transcribe speech audio to text"
+    input_schema:
+      type: object
+      properties:
+        audio:
+          type: string
+          minLength: 1
+        model:
+          type: string
+        language:
+          type: string
+        prompt:
+          type: string
+        response_format:
+          type: string
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 1
+      required:
+        - audio
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            text:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  tiktok_post_video:
+    method: POST
+    endpoint: /tiktok-post-video
+    description: "Post a video to TikTok (sandbox)"
+    input_schema:
+      type: object
+      properties:
+        videoUrl:
+          type: string
+          format: uri
+        caption:
+          type: string
+          minLength: 1
+        hashtags:
+          type: string
+        scheduleTime:
+          type: string
+        privacyLevel:
+          type: string
+          enum:
+            - PUBLIC_TO_EVERYONE
+            - MUTUAL_FOLLOW_FRIEND
+            - SELF_ONLY
+      required:
+        - videoUrl
+        - caption
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            postId:
+              type: string
+            scheduled:
+              type: boolean
+            scheduledTime:
+              type: string
+            message:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  tiktok_user_info:
+    method: GET
+    endpoint: /tiktok-user-info
+    description: "Get TikTok user profile"
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            user: {}
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  tiktok_scheduled_posts:
+    method: GET
+    endpoint: /tiktok-scheduled-posts
+    description: "List scheduled TikTok posts"
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            posts:
+              type: array
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  tiktok_cancel_scheduled_postId:
+    method: POST
+    endpoint: /tiktok-cancel-scheduled/{postId}
+    description: "Cancel a scheduled TikTok post"
+    input_schema:
+      type: object
+      properties:
+        postId:
+          type: string
+          minLength: 1
+      required:
+        - postId
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  submagic_create_video:
+    method: POST
+    endpoint: /submagic-create-video
+    description: "Create SubMagic video (async)"
+    input_schema:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        language:
+          type: string
+          minLength: 1
+        videoUrl:
+          type: string
+          format: uri
+        templateName:
+          type: string
+        userThemeId:
+          type: string
+        dictionary:
+          type: array
+          items:
+            type: string
+        magicZooms:
+          type: boolean
+        magicBrolls:
+          type: boolean
+        magicBrollsPercentage:
+          type: number
+      required:
+        - title
+        - language
+        - videoUrl
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            projectId:
+              type: string
+            status:
+              type: string
+            message:
+              type: string
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  submagic_get_project_projectId:
+    method: POST
+    endpoint: /submagic-get-project/{projectId}
+    description: "Get SubMagic project status"
+    input_schema:
+      type: object
+      properties:
+        projectId:
+          type: string
+          minLength: 1
+      required:
+        - projectId
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            project: {}
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  submagic_wait_for_completion_projectId:
+    method: POST
+    endpoint: /submagic-wait-for-completion/{projectId}
+    description: "Poll SubMagic project until completion"
+    input_schema:
+      type: object
+      properties:
+        projectId:
+          type: string
+          minLength: 1
+        maxAttempts:
+          type: integer
+        pollInterval:
+          type: integer
+      required:
+        - projectId
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            data: {}
+            pollingMetadata: {}
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  amazon_search:
+    method: POST
+    endpoint: /amazon-search
+    description: "Search Amazon products"
+    input_schema:
+      type: object
+      properties:
+        query:
+          type: string
+          minLength: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 20
+      required:
+        - query
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            products:
+              type: array
+              items:
+                type: object
+                properties:
+                  title:
+                    type: string
+                  link:
+                    type: string
+                    format: uri
+                  price:
+                    type: string
+                  image:
+                    type: string
+                    format: uri
+                  rating:
+                    type: number
+                  boughtInPastMonth:
+                    type: string
+                  deliveryInfo:
+                    type: string
+                  snapEligible:
+                    type: boolean
+                required:
+                  - title
+                  - link
+                  - price
+                  - image
+                additionalProperties: true
+            usageId:
+              type: string
+            cost: {}
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  flights:
+    method: GET
+    endpoint: /flights
+    description: "Search flights via SerpAPI Google Flights. Supports round-trip and one-way searches."
+    input_schema:
+      type: object
+      properties:
+        from:
+          type: string
+          minLength: 1
+          description: Origin city or airport code
+        to:
+          type: string
+          minLength: 1
+          description: Destination city or airport code
+        date:
+          type: string
+          minLength: 1
+          description: "Outbound date in YYYY-MM-DD format"
+        returnDate:
+          type: string
+          description: "Return date in YYYY-MM-DD format (omit for one-way)"
+        adults:
+          type: integer
+          minimum: 1
+          maximum: 9
+          description: "Number of adult passengers (1-9)"
+        currency:
+          type: string
+          description: Currency code (e.g., USD, EUR)
+        locale:
+          type: string
+          description: Locale for results (e.g., en, es)
+      required:
+        - from
+        - to
+        - date
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  airline:
+                    type:
+                      - string
+                      - null
+                  flightNumber:
+                    type:
+                      - string
+                      - null
+                  depart:
+                    type: object
+                    properties:
+                      time:
+                        type:
+                          - string
+                          - null
+                      airport:
+                        type:
+                          - string
+                          - null
+                    required:
+                      - time
+                      - airport
+                    additionalProperties: false
+                  arrive:
+                    type: object
+                    properties:
+                      time:
+                        type:
+                          - string
+                          - null
+                      airport:
+                        type:
+                          - string
+                          - null
+                    required:
+                      - time
+                      - airport
+                    additionalProperties: false
+                  duration:
+                    type:
+                      - number
+                      - null
+                  stops:
+                    type: number
+                  price:
+                    anyOf:
+                      - 
+                        type:
+                          - string
+                          - number
+                      - 
+                        type: null
+                  url:
+                    type: string
+                  source:
+                    type: string
+                    const: serpapi
+                  segments:
+                    type: object
+                    properties:
+                      outbound:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            airline:
+                              type:
+                                - string
+                                - null
+                            flightNumber:
+                              type:
+                                - string
+                                - null
+                            depart:
+                              type: object
+                              properties:
+                                time:
+                                  type:
+                                    - string
+                                    - null
+                                airport:
+                                  type:
+                                    - string
+                                    - null
+                              required:
+                                - time
+                                - airport
+                              additionalProperties: false
+                            arrive:
+                              type: object
+                              properties:
+                                time:
+                                  type:
+                                    - string
+                                    - null
+                                airport:
+                                  type:
+                                    - string
+                                    - null
+                              required:
+                                - time
+                                - airport
+                              additionalProperties: false
+                          required:
+                            - airline
+                            - flightNumber
+                            - depart
+                            - arrive
+                          additionalProperties: false
+                      return:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            airline:
+                              type:
+                                - string
+                                - null
+                            flightNumber:
+                              type:
+                                - string
+                                - null
+                            depart:
+                              type: object
+                              properties:
+                                time:
+                                  type:
+                                    - string
+                                    - null
+                                airport:
+                                  type:
+                                    - string
+                                    - null
+                              required:
+                                - time
+                                - airport
+                              additionalProperties: false
+                            arrive:
+                              type: object
+                              properties:
+                                time:
+                                  type:
+                                    - string
+                                    - null
+                                airport:
+                                  type:
+                                    - string
+                                    - null
+                              required:
+                                - time
+                                - airport
+                              additionalProperties: false
+                          required:
+                            - airline
+                            - flightNumber
+                            - depart
+                            - arrive
+                          additionalProperties: false
+                    required:
+                      - outbound
+                      - return
+                    additionalProperties: false
+                required:
+                  - id
+                  - airline
+                  - flightNumber
+                  - depart
+                  - arrive
+                  - duration
+                  - stops
+                  - price
+                  - source
+                  - segments
+                additionalProperties: false
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  serp_places:
+    method: GET
+    endpoint: /serp-places
+    description: "Search places via SerpAPI Google Maps (attractions, restaurants, etc.)"
+    input_schema:
+      type: object
+      properties:
+        city:
+          type: string
+          minLength: 1
+          description: City name to search in
+        q:
+          type: string
+          description: Search query (e.g., "museums", "restaurants")
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: "Max number of results (1-100)"
+        locale:
+          type: string
+          description: Locale for results (e.g., en, es)
+      required:
+        - city
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  title:
+                    type: string
+                  rating:
+                    type:
+                      - number
+                      - null
+                  reviews:
+                    type:
+                      - number
+                      - null
+                  priceLevel:
+                    type:
+                      - string
+                      - null
+                  address:
+                    type:
+                      - string
+                      - null
+                  category:
+                    type:
+                      - string
+                      - null
+                  phone:
+                    type:
+                      - string
+                      - null
+                  url:
+                    type: string
+                  thumbnail:
+                    type: string
+                  reviewsLink:
+                    type: string
+                  dataId:
+                    type: string
+                  source:
+                    type: string
+                    const: serpapi
+                required:
+                  - id
+                  - title
+                  - rating
+                  - reviews
+                  - priceLevel
+                  - address
+                  - category
+                  - phone
+                  - source
+                additionalProperties: false
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  serp_places_reviews:
+    method: GET
+    endpoint: /serp-places-reviews
+    description: "Get reviews for a place via SerpAPI Google Maps"
+    input_schema:
+      type: object
+      properties:
+        data_id:
+          type: string
+          minLength: 1
+          description: SerpAPI data_id for the place
+        locale:
+          type: string
+          description: Locale for results (e.g., en, es)
+      required:
+        - data_id
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            reviews:
+              type: array
+              items:
+                type: object
+                properties: {}
+                additionalProperties: true
+            embedUrl:
+              type:
+                - string
+                - null
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  serp_hotels:
+    method: GET
+    endpoint: /serp-hotels
+    description: "Search hotels via SerpAPI Google Hotels"
+    input_schema:
+      type: object
+      properties:
+        city:
+          type: string
+          minLength: 1
+          description: City name to search hotels
+        check_in_date:
+          type: string
+          minLength: 1
+          description: "Check-in date in YYYY-MM-DD format"
+        check_out_date:
+          type: string
+          minLength: 1
+          description: "Check-out date in YYYY-MM-DD format"
+        adults:
+          type: integer
+          minimum: 1
+          maximum: 9
+          description: "Number of adult guests (1-9)"
+        locale:
+          type: string
+          description: Locale for results (e.g., en, es)
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: "Max number of results (1-100)"
+      required:
+        - city
+        - check_in_date
+        - check_out_date
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  title:
+                    type: string
+                  rating:
+                    type:
+                      - number
+                      - null
+                  reviews:
+                    type:
+                      - number
+                      - null
+                  address:
+                    type:
+                      - string
+                      - null
+                  price:
+                    type:
+                      - number
+                      - null
+                  currency:
+                    type: string
+                  thumbnail:
+                    type: string
+                  url:
+                    type: string
+                  place_id:
+                    type: string
+                  source:
+                    type: string
+                    const: serpapi
+                  amenities:
+                    type: array
+                    items:
+                      type: string
+                  hotel_class:
+                    type: number
+                  price_text:
+                    type: string
+                required:
+                  - id
+                  - title
+                  - rating
+                  - reviews
+                  - address
+                  - price
+                  - currency
+                  - source
+                additionalProperties: false
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  serp_events:
+    method: GET
+    endpoint: /serp-events
+    description: "Search events via SerpAPI Google Events"
+    input_schema:
+      type: object
+      properties:
+        city:
+          type: string
+          minLength: 1
+          description: City name to search events
+        from:
+          type: string
+          minLength: 1
+          description: "Start date in YYYY-MM-DD format"
+        to:
+          type: string
+          minLength: 1
+          description: "End date in YYYY-MM-DD format"
+        q:
+          type: string
+          description: Optional search query
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: "Max number of results (1-100)"
+        locale:
+          type: string
+          description: Locale for results (e.g., en, es)
+      required:
+        - city
+        - from
+        - to
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  title:
+                    type: string
+                  startTime:
+                    type: string
+                  endTime:
+                    type: string
+                  when:
+                    type: string
+                  venue:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      address:
+                        type: string
+                      lat:
+                        type: number
+                      lng:
+                        type: number
+                      rating:
+                        type: number
+                      reviews:
+                        type: number
+                      link:
+                        type: string
+                    additionalProperties: false
+                  url:
+                    type: string
+                  price:
+                    type:
+                      - string
+                      - null
+                  category:
+                    type:
+                      - string
+                      - null
+                  thumbnail:
+                    type: string
+                  tickets:
+                    type: array
+                    items:
+                      type: object
+                      properties: {}
+                      additionalProperties: true
+                  source:
+                    type: string
+                    const: serpapi
+                required:
+                  - id
+                  - title
+                  - price
+                  - category
+                  - tickets
+                  - source
+                additionalProperties: false
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  scholar_search_authors:
+    method: POST
+    endpoint: /scholar-search-authors
+    description: "Search Google Scholar authors"
+    input_schema:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        page:
+          type: integer
+      required:
+        - name
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            authors:
+              type: array
+              items:
+                type: object
+                properties:
+                  author_id:
+                    type: string
+                  name:
+                    type: string
+                  affiliations:
+                    type: string
+                  cited_by:
+                    type: number
+                  thumbnail:
+                    type: string
+                required:
+                  - name
+                additionalProperties: false
+          required:
+            - authors
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  scholar_search_papers:
+    method: POST
+    endpoint: /scholar-search-papers
+    description: "Search Google Scholar papers"
+    input_schema:
+      type: object
+      properties:
+        query:
+          type: string
+          minLength: 1
+        page:
+          type: integer
+      required:
+        - query
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            papers:
+              type: array
+              items:
+                type: object
+                properties:
+                  title:
+                    type: string
+                  link:
+                    type: string
+                  snippet:
+                    type: string
+                  publication_info:
+                    type: string
+                  cited_by:
+                    type: number
+                required:
+                  - title
+                additionalProperties: true
+          required:
+            - papers
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  scholar_get_author_papers:
+    method: POST
+    endpoint: /scholar-get-author-papers
+    description: "Get papers by Google Scholar author"
+    input_schema:
+      type: object
+      properties:
+        authorId:
+          type: string
+          minLength: 1
+        page:
+          type: integer
+        sort:
+          type: string
+      required:
+        - authorId
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            papers:
+              type: array
+              items:
+                type: object
+                properties:
+                  title:
+                    type: string
+                  link:
+                    type: string
+                  cited_by:
+                    type: number
+                  year:
+                    type: string
+                required:
+                  - title
+                additionalProperties: true
+          required:
+            - papers
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  scholar_get_citation_details:
+    method: POST
+    endpoint: /scholar-get-citation-details
+    description: "Get detailed citation information"
+    input_schema:
+      type: object
+      properties:
+        citationId:
+          type: string
+          minLength: 1
+      required:
+        - citationId
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            citation:
+              type: object
+              properties: {}
+              additionalProperties: true
+          required:
+            - citation
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  scholar_summarize_papers:
+    method: POST
+    endpoint: /scholar-summarize-papers
+    description: "Summarize selected papers using LLM"
+    input_schema:
+      type: object
+      properties:
+        authorName:
+          type: string
+          minLength: 1
+        papers:
+          type: array
+        citationDetails:
+          type: array
+      required:
+        - authorName
+        - papers
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            summary:
+              type: string
+          required:
+            - summary
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  scholar_draft_email:
+    method: POST
+    endpoint: /scholar-draft-email
+    description: "Draft outreach email using LLM"
+    input_schema:
+      type: object
+      properties:
+        authorName:
+          type: string
+          minLength: 1
+        papers:
+          type: array
+        citationDetails:
+          type: array
+      required:
+        - authorName
+        - papers
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            email:
+              type: object
+              properties:
+                subject:
+                  type: string
+                body:
+                  type: string
+              additionalProperties: true
+          required:
+            - email
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  scholar_get_author_details:
+    method: POST
+    endpoint: /scholar-get-author-details
+    description: "Get detailed author information"
+    input_schema:
+      type: object
+      properties:
+        authorId:
+          type: string
+          minLength: 1
+      required:
+        - authorId
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            author:
+              type: object
+              properties:
+                name:
+                  type: string
+                affiliations:
+                  type: string
+                email:
+                  type: string
+                interests:
+                  type: array
+                  items:
+                    type: string
+              required:
+                - name
+              additionalProperties: true
+          required:
+            - author
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  linkedin_search_profiles:
+    method: POST
+    endpoint: /linkedin-search-profiles
+    description: "Search LinkedIn profiles"
+    input_schema:
+      type: object
+      properties:
+        name:
+          type: string
+        company:
+          type: string
+        title:
+          type: string
+        education:
+          type: string
+        location:
+          type: string
+        page:
+          type: integer
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            profiles:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  headline:
+                    type: string
+                  location:
+                    type: string
+                  link:
+                    type: string
+                additionalProperties: true
+          required:
+            - profiles
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  linkedin_analyze_profiles:
+    method: POST
+    endpoint: /linkedin-analyze-profiles
+    description: "Analyze LinkedIn profiles for outreach"
+    input_schema:
+      type: object
+      properties:
+        profiles:
+          type: array
+      required:
+        - profiles
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            analysis:
+              type: object
+              properties: {}
+              additionalProperties: true
+          required:
+            - analysis
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  linkedin_generate_messages:
+    method: POST
+    endpoint: /linkedin-generate-messages
+    description: "Generate LinkedIn outreach messages"
+    input_schema:
+      type: object
+      properties:
+        profiles:
+          type: array
+        intention:
+          type: string
+          minLength: 1
+      required:
+        - profiles
+        - intention
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            messages:
+              type: array
+              items:
+                type: object
+                properties:
+                  profile:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - message
+                additionalProperties: true
+          required:
+            - messages
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  linkedin_analyze_profile_url:
+    method: POST
+    endpoint: /linkedin-analyze-profile-url
+    description: "Analyze LinkedIn profile from URL"
+    input_schema:
+      type: object
+      properties:
+        profileUrl:
+          type: string
+          format: uri
+      required:
+        - profileUrl
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            analysis:
+              type: object
+              properties: {}
+              additionalProperties: true
+          required:
+            - analysis
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  f1_season_schedule:
+    method: POST
+    endpoint: /f1-season-schedule
+    description: "Get complete F1 season schedule with all race dates, circuits, and session times for a given year"
+    input_schema:
+      type: object
+      properties:
+        season:
+          type: integer
+          minimum: 1950
+          maximum: 2100
+          description: Year of the F1 season (e.g., 2025, 2024)
+      required:
+        - season
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            schedule:
+              type: array
+              items:
+                type: object
+                properties:
+                  round:
+                    type: string
+                  raceName:
+                    type: string
+                  Circuit:
+                    type: object
+                    properties: {}
+                    additionalProperties: true
+                  date:
+                    type: string
+                  time:
+                    type: string
+                required:
+                  - round
+                  - raceName
+                  - Circuit
+                  - date
+                additionalProperties: true
+          required:
+            - schedule
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  f1_race_weekend:
+    method: POST
+    endpoint: /f1-race-weekend
+    description: "Get complete race weekend data including qualifying, sprint (if applicable), and race results for a specific Grand Prix"
+    input_schema:
+      type: object
+      properties:
+        season:
+          type: integer
+          minimum: 1950
+          maximum: 2100
+          description: Year of the F1 season
+        round:
+          type: integer
+          minimum: 1
+          maximum: 30
+          description: "Round number in the season (1-24 typically)"
+      required:
+        - season
+        - round
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            raceWeekend:
+              type: object
+              properties:
+                season:
+                  type: string
+                round:
+                  type: string
+                raceName:
+                  type: string
+                circuit:
+                  type: object
+                  properties: {}
+                  additionalProperties: true
+                date:
+                  type: string
+                results:
+                  type: array
+                  items:
+                    type: object
+                    properties: {}
+                    additionalProperties: true
+                qualifying:
+                  type: array
+                  items:
+                    type: object
+                    properties: {}
+                    additionalProperties: true
+                sprint:
+                  anyOf:
+                    - 
+                      type: array
+                      items:
+                        type: object
+                        properties: {}
+                        additionalProperties: true
+                    - 
+                      type: null
+              additionalProperties: true
+          required:
+            - raceWeekend
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  f1_latest_race:
+    method: POST
+    endpoint: /f1-latest-race
+    description: "Get the most recent completed F1 race with full results and race information"
+    input_schema:
+      type: object
+      properties:
+        season:
+          type: integer
+          minimum: 1950
+          maximum: 2100
+          description: "Optional: Year to get latest race from (defaults to current year)"
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            race:
+              type: object
+              properties:
+                season:
+                  type: string
+                round:
+                  type: string
+                raceName:
+                  type: string
+                Circuit:
+                  type: object
+                  properties: {}
+                  additionalProperties: true
+                date:
+                  type: string
+                Results:
+                  type: array
+                  items:
+                    type: object
+                    properties: {}
+                    additionalProperties: true
+              additionalProperties: true
+          required:
+            - race
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  f1_lap_times:
+    method: POST
+    endpoint: /f1-lap-times
+    description: "Get all lap-by-lap timing data for a race. Returns lap times organized by driver with position tracking throughout the race."
+    input_schema:
+      type: object
+      properties:
+        season:
+          type: integer
+          minimum: 1950
+          maximum: 2100
+          description: Year of the F1 season
+        round:
+          type: integer
+          minimum: 1
+          maximum: 30
+          description: Round number in the season
+        driverId:
+          type: string
+          description: "Optional: Filter lap times for specific driver"
+      required:
+        - season
+        - round
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            lapTimes:
+              type: object
+              properties:
+                laps:
+                  type: array
+                  items:
+                    type: object
+                    properties: {}
+                    additionalProperties: true
+                driverLaps:
+                  type: object
+                  additionalProperties:
+                    type: array
+                    items:
+                      type: object
+                      properties: {}
+                      additionalProperties: true
+                totalTimings:
+                  type: number
+              additionalProperties: true
+          required:
+            - lapTimes
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  f1_pit_stops:
+    method: POST
+    endpoint: /f1-pit-stops
+    description: "Get all pit stop data for a race including stop number, lap, duration, and timestamp for each driver"
+    input_schema:
+      type: object
+      properties:
+        season:
+          type: integer
+          minimum: 1950
+          maximum: 2100
+          description: Year of the F1 season
+        round:
+          type: integer
+          minimum: 1
+          maximum: 30
+          description: Round number in the season
+      required:
+        - season
+        - round
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            pitStops:
+              type: array
+              items:
+                type: object
+                properties:
+                  driverId:
+                    type: string
+                  lap:
+                    type: string
+                  stop:
+                    type: string
+                  time:
+                    type: string
+                  duration:
+                    type: string
+                required:
+                  - driverId
+                  - lap
+                  - stop
+                  - time
+                  - duration
+                additionalProperties: true
+          required:
+            - pitStops
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  f1_driver_standings:
+    method: POST
+    endpoint: /f1-driver-standings
+    description: "Get current driver championship standings with points, wins, and positions"
+    input_schema:
+      type: object
+      properties:
+        season:
+          type: integer
+          minimum: 1950
+          maximum: 2100
+          description: Year of the F1 season
+        round:
+          type: integer
+          minimum: 1
+          maximum: 30
+          description: "Optional: Get standings after specific round"
+      required:
+        - season
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            standings:
+              type: array
+              items:
+                type: object
+                properties:
+                  position:
+                    type: string
+                  points:
+                    type: string
+                  wins:
+                    type: string
+                  Driver:
+                    type: object
+                    properties: {}
+                    additionalProperties: true
+                  Constructors:
+                    type: array
+                    items:
+                      type: object
+                      properties: {}
+                      additionalProperties: true
+                required:
+                  - position
+                  - points
+                  - wins
+                  - Driver
+                additionalProperties: true
+          required:
+            - standings
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  f1_constructor_standings:
+    method: POST
+    endpoint: /f1-constructor-standings
+    description: "Get current constructor (team) championship standings with points and wins"
+    input_schema:
+      type: object
+      properties:
+        season:
+          type: integer
+          minimum: 1950
+          maximum: 2100
+          description: Year of the F1 season
+        round:
+          type: integer
+          minimum: 1
+          maximum: 30
+          description: "Optional: Get standings after specific round"
+      required:
+        - season
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            standings:
+              type: array
+              items:
+                type: object
+                properties:
+                  position:
+                    type: string
+                  points:
+                    type: string
+                  wins:
+                    type: string
+                  Constructor:
+                    type: object
+                    properties: {}
+                    additionalProperties: true
+                required:
+                  - position
+                  - points
+                  - wins
+                  - Constructor
+                additionalProperties: true
+          required:
+            - standings
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  f1_qualifying:
+    method: POST
+    endpoint: /f1-qualifying
+    description: "Get qualifying session results showing Q1, Q2, and Q3 times for all drivers"
+    input_schema:
+      type: object
+      properties:
+        season:
+          type: integer
+          minimum: 1950
+          maximum: 2100
+          description: Year of the F1 season
+        round:
+          type: integer
+          minimum: 1
+          maximum: 30
+          description: Round number in the season
+      required:
+        - season
+        - round
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            qualifying:
+              type: array
+              items:
+                type: object
+                properties:
+                  position:
+                    type: string
+                  Driver:
+                    type: object
+                    properties: {}
+                    additionalProperties: true
+                  Constructor:
+                    type: object
+                    properties: {}
+                    additionalProperties: true
+                  Q1:
+                    type: string
+                  Q2:
+                    type: string
+                  Q3:
+                    type: string
+                required:
+                  - position
+                  - Driver
+                  - Constructor
+                additionalProperties: true
+          required:
+            - qualifying
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  f1_sprint:
+    method: POST
+    endpoint: /f1-sprint
+    description: "Get sprint race results. Returns empty array if the race weekend did not include a sprint race."
+    input_schema:
+      type: object
+      properties:
+        season:
+          type: integer
+          minimum: 1950
+          maximum: 2100
+          description: Year of the F1 season
+        round:
+          type: integer
+          minimum: 1
+          maximum: 30
+          description: Round number in the season
+      required:
+        - season
+        - round
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            sprint:
+              type: array
+              items:
+                type: object
+                properties:
+                  position:
+                    type: string
+                  points:
+                    type: string
+                  Driver:
+                    type: object
+                    properties: {}
+                    additionalProperties: true
+                  Constructor:
+                    type: object
+                    properties: {}
+                    additionalProperties: true
+                required:
+                  - position
+                  - points
+                  - Driver
+                  - Constructor
+                additionalProperties: true
+          required:
+            - sprint
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  f1_race_results:
+    method: POST
+    endpoint: /f1-race-results
+    description: "Get final race classification with finishing positions, points, fastest laps, and status"
+    input_schema:
+      type: object
+      properties:
+        season:
+          type: integer
+          minimum: 1950
+          maximum: 2100
+          description: Year of the F1 season
+        round:
+          type: integer
+          minimum: 1
+          maximum: 30
+          description: Round number in the season
+      required:
+        - season
+        - round
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            results:
+              type: array
+              items:
+                type: object
+                properties:
+                  position:
+                    type: string
+                  points:
+                    type: string
+                  Driver:
+                    type: object
+                    properties: {}
+                    additionalProperties: true
+                  Constructor:
+                    type: object
+                    properties: {}
+                    additionalProperties: true
+                  grid:
+                    type: string
+                  laps:
+                    type: string
+                  status:
+                    type: string
+                required:
+                  - position
+                  - points
+                  - Driver
+                  - Constructor
+                additionalProperties: true
+          required:
+            - results
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  f1_all_drivers:
+    method: POST
+    endpoint: /f1-all-drivers
+    description: "Get complete list of all drivers who competed in a specific F1 season"
+    input_schema:
+      type: object
+      properties:
+        season:
+          type: integer
+          minimum: 1950
+          maximum: 2100
+          description: Year of the F1 season
+      required:
+        - season
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            drivers:
+              type: array
+              items:
+                type: object
+                properties:
+                  driverId:
+                    type: string
+                  code:
+                    type: string
+                  givenName:
+                    type: string
+                  familyName:
+                    type: string
+                  dateOfBirth:
+                    type: string
+                  nationality:
+                    type: string
+                required:
+                  - driverId
+                  - givenName
+                  - familyName
+                additionalProperties: true
+          required:
+            - drivers
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  f1_all_constructors:
+    method: POST
+    endpoint: /f1-all-constructors
+    description: "Get complete list of all constructor teams that competed in a specific F1 season"
+    input_schema:
+      type: object
+      properties:
+        season:
+          type: integer
+          minimum: 1950
+          maximum: 2100
+          description: Year of the F1 season
+      required:
+        - season
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            constructors:
+              type: array
+              items:
+                type: object
+                properties:
+                  constructorId:
+                    type: string
+                  name:
+                    type: string
+                  nationality:
+                    type: string
+                required:
+                  - constructorId
+                  - name
+                additionalProperties: true
+          required:
+            - constructors
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success
+
+  f1_circuit_info:
+    method: POST
+    endpoint: /f1-circuit-info
+    description: "Get detailed information about a specific F1 circuit including location, coordinates, and full name"
+    input_schema:
+      type: object
+      properties:
+        circuitId:
+          type: string
+          minLength: 1
+          description: Circuit identifier (e.g., "monaco", "monza", "silverstone", "interlagos")
+      required:
+        - circuitId
+    output:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            circuit:
+              type: object
+              properties:
+                circuitId:
+                  type: string
+                circuitName:
+                  type: string
+                Location:
+                  type: object
+                  properties:
+                    lat:
+                      type: string
+                    long:
+                      type: string
+                    locality:
+                      type: string
+                    country:
+                      type: string
+                  required:
+                    - lat
+                    - long
+                  additionalProperties: true
+              required:
+                - circuitId
+                - circuitName
+                - Location
+              additionalProperties: true
+          required:
+            - circuit
+          additionalProperties: false
+        error:
+          type: string
+      required:
+        - success

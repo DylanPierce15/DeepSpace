@@ -1,0 +1,21 @@
+{
+  "id": "linkedin-search",
+  "name": "LinkedIn Profile Search",
+  "description": "Search for LinkedIn profiles and save them for outreach planning",
+  "categories": [
+    "social",
+    "networking"
+  ],
+  "icon": {
+    "type": "react-icon",
+    "value": "Bs:BsLinkedin"
+  },
+  "inputs": [],
+  "version": 1,
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "isReactWidget": true,
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/linkedin-search-1765923030613.png"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "email-composer",
+  "name": "Email Composer",
+  "description": "Modern React-based email composer with enhanced UI/UX and Gmail OAuth integration",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiMail"
+  },
+  "showByDefault": true,
+  "category": "Productivity",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "isReactWidget": true,
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/email-composer-1765922984451.png"
+}

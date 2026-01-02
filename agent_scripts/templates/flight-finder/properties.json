@@ -1,0 +1,17 @@
+{
+  "id": "flight-finder",
+  "name": "Flight Finder",
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiCommercialAirplane"
+  },
+  "description": "Find and compare flights for your trip",
+  "showByDefault": true,
+  "category": "Travel",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "partSpace": true,
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/flight-finder-1765923006462.png"
+}

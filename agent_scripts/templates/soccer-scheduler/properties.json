@@ -1,0 +1,17 @@
+{
+  "id": "soccer-scheduler",
+  "name": "Soccer Game Scheduler",
+  "description": "Schedule your soccer pickup game with date and time selection",
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiSoccerBall"
+  },
+  "showByDefault": true,
+  "category": "Sports",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "partSpace": true,
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/soccer-scheduler-1765921419520.png"
+}

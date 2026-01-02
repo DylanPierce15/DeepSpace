@@ -1,0 +1,16 @@
+{
+  "id": "f1-results-react",
+  "name": "F1 Results (React)",
+  "description": "Live Formula 1 season results using Ergast via Jolpi. Select year, view podiums and race details.",
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiRaceCar"
+  },
+  "showByDefault": true,
+  "category": "Sports",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/f1-results-react-1765923001062.png"
+}

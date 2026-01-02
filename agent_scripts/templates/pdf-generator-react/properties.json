@@ -1,0 +1,14 @@
+{
+  "id": "pdf-generator-react",
+  "name": "PDF Generator",
+  "description": "Create 8.5x11 documents with HTML pages and export to PDF",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiFileText"
+  },
+  "category": "Productivity",
+  "defaultSize": {
+    "width": 1000,
+    "height": 750
+  }
+}

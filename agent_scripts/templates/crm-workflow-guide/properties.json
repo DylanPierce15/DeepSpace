@@ -1,0 +1,24 @@
+{
+  "id": "crm-workflow-guide",
+  "name": "CRM Workflow Guide",
+  "description": "Interactive visual guide showing your CRM automation journey from contacts to campaigns",
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiPath"
+  },
+  "showByDefault": true,
+  "category": "CRM",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "tags": [
+    "crm",
+    "workflow",
+    "guide",
+    "tutorial",
+    "automation",
+    "onboarding"
+  ],
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/crm-workflow-guide-1765922978798.png"
+}

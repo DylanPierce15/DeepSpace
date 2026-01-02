@@ -1,0 +1,63 @@
+{
+  "id": "nasa-donki-react",
+  "name": "NASA DONKI Space Weather",
+  "description": "Monitor space weather events from NASA's DONKI database. View Coronal Mass Ejections (CME), Geomagnetic Storms (GST), and Solar Flares (FLR) with detailed information and analysis.",
+  "category": "science",
+  "tags": [
+    "nasa",
+    "space",
+    "weather",
+    "donki",
+    "cme",
+    "gst",
+    "flr",
+    "solar",
+    "science"
+  ],
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiRocket"
+  },
+  "version": "1.0.0",
+  "author": "Miyagi Team",
+  "dependencies": [],
+  "inputs": [
+    {
+      "name": "startDate",
+      "type": "date",
+      "label": "Start Date",
+      "required": false,
+      "description": "Start date in YYYY-MM-DD format (defaults to 30 days ago)"
+    },
+    {
+      "name": "endDate",
+      "type": "date",
+      "label": "End Date",
+      "required": false,
+      "description": "End date in YYYY-MM-DD format (defaults to today)"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "cme",
+      "type": "object",
+      "description": "CME event data"
+    },
+    {
+      "name": "gst",
+      "type": "object",
+      "description": "GST event data"
+    },
+    {
+      "name": "flr",
+      "type": "object",
+      "description": "FLR event data"
+    }
+  ],
+  "storage": [],
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/nasa-donki-react-1765923043386.png",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  }
+}

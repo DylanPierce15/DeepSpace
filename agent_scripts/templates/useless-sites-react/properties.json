@@ -1,0 +1,16 @@
+{
+  "id": "useless-sites",
+  "name": "Useless Sites",
+  "description": "Navigate through classic useless and fun websites",
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiPerspectiveDiceSixFacesRandom"
+  },
+  "showByDefault": true,
+  "category": "Entertainment",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/useless-sites-1765923136766.png"
+}

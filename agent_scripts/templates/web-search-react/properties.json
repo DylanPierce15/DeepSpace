@@ -1,0 +1,91 @@
+{
+  "id": "web-search-react",
+  "name": "Web Search",
+  "description": "Search the web, images, videos, PDFs, academic papers, or all content types. Extract key info from sources and return a concise summary with citations.",
+  "category": "research",
+  "tags": [
+    "search",
+    "web",
+    "research",
+    "summary",
+    "citations",
+    "images",
+    "videos",
+    "pdfs",
+    "academic",
+    "papers"
+  ],
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiSearch"
+  },
+  "version": "1.0.0",
+  "author": "Miyagi Team",
+  "dependencies": [],
+  "inputs": [
+    {
+      "name": "query",
+      "type": "text",
+      "label": "Query",
+      "required": true,
+      "description": "What do you want to search?"
+    },
+    {
+      "name": "searchType",
+      "type": "select",
+      "label": "Search Type",
+      "required": false,
+      "description": "Type of content to search",
+      "options": [
+        {
+          "value": "web",
+          "label": "Web"
+        },
+        {
+          "value": "images",
+          "label": "Images"
+        },
+        {
+          "value": "videos",
+          "label": "Videos"
+        },
+        {
+          "value": "pdfs",
+          "label": "PDFs"
+        },
+        {
+          "value": "academic",
+          "label": "Academic"
+        },
+        {
+          "value": "all",
+          "label": "All"
+        }
+      ],
+      "default": "web"
+    },
+    {
+      "name": "count",
+      "type": "number",
+      "label": "Results",
+      "required": false,
+      "description": "How many results to consider (1-10)",
+      "min": 1,
+      "max": 10,
+      "default": 5
+    }
+  ],
+  "outputs": [
+    {
+      "name": "summary",
+      "type": "string",
+      "description": "Concise summary with inline citations"
+    }
+  ],
+  "storage": [],
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/web-search-react-1765923142566.png",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  }
+}

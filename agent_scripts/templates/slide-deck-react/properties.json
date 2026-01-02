@@ -1,0 +1,14 @@
+{
+  "id": "slide-deck-react",
+  "name": "Slide Deck",
+  "description": "Create and present HTML slide decks with multiple presentations support",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiMonitor"
+  },
+  "category": "Productivity",
+  "defaultSize": {
+    "width": 900,
+    "height": 700
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "id": "soccer-ball-tracker",
+  "name": "Soccer Ball Tracker",
+  "description": "Simple widget to track who brings the ball",
+  "category": "sports",
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiSoccerBall"
+  },
+  "tags": [
+    "soccer",
+    "football",
+    "ball",
+    "tracker",
+    "simple"
+  ],
+  "partSpace": true,
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/soccer-ball-tracker-1765923082634.png",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  }
+}

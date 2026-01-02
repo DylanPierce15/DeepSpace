@@ -1,0 +1,103 @@
+{
+  "id": "nasa-apod-react",
+  "name": "NASA Astronomy Picture of the Day",
+  "description": "Explore NASA's Astronomy Picture of the Day. View today's image, browse by date, search date ranges, or get random images. Displays high-quality images, videos, explanations, and metadata.",
+  "category": "science",
+  "tags": [
+    "nasa",
+    "astronomy",
+    "space",
+    "apod",
+    "images",
+    "science",
+    "cosmos",
+    "education"
+  ],
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiRocket"
+  },
+  "version": "1.0.0",
+  "author": "Miyagi Team",
+  "dependencies": [],
+  "inputs": [
+    {
+      "name": "mode",
+      "type": "select",
+      "label": "Query Mode",
+      "required": false,
+      "description": "How to fetch APOD images",
+      "options": [
+        {
+          "value": "today",
+          "label": "Today's APOD"
+        },
+        {
+          "value": "date",
+          "label": "Specific Date"
+        },
+        {
+          "value": "range",
+          "label": "Date Range"
+        },
+        {
+          "value": "random",
+          "label": "Random Images"
+        }
+      ],
+      "default": "today"
+    },
+    {
+      "name": "date",
+      "type": "date",
+      "label": "Date",
+      "required": false,
+      "description": "Specific date in YYYY-MM-DD format (for date mode)"
+    },
+    {
+      "name": "start_date",
+      "type": "date",
+      "label": "Start Date",
+      "required": false,
+      "description": "Start date for range (for range mode)"
+    },
+    {
+      "name": "end_date",
+      "type": "date",
+      "label": "End Date",
+      "required": false,
+      "description": "End date for range (for range mode)"
+    },
+    {
+      "name": "count",
+      "type": "number",
+      "label": "Count",
+      "required": false,
+      "description": "Number of random images (1-100, for random mode)",
+      "min": 1,
+      "max": 100,
+      "default": 5
+    },
+    {
+      "name": "thumbs",
+      "type": "boolean",
+      "label": "Include Video Thumbnails",
+      "required": false,
+      "description": "Return video thumbnail URLs for video APODs",
+      "default": false
+    }
+  ],
+  "outputs": [
+    {
+      "name": "apod",
+      "type": "object",
+      "description": "APOD data with image, title, explanation, and metadata"
+    }
+  ],
+  "storage": [],
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/nasa-apod-react-1765923040223.png",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  }
+}

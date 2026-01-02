@@ -1,0 +1,17 @@
+{
+  "id": "meal-recommendations",
+  "name": "AI Meal Recommendations",
+  "description": "Daily meal recommendations based on your workout plan and health data",
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiForkKnife"
+  },
+  "showByDefault": false,
+  "category": "Health",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "isReactWidget": true,
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/meal-recommendations-1765923037510.png"
+}

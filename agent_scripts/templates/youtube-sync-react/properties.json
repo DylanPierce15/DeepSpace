@@ -1,0 +1,16 @@
+{
+  "id": "youtube-sync",
+  "name": "YouTube Sync Player",
+  "description": "Watch YouTube videos together with synchronized playback across all users",
+  "icon": {
+    "type": "react-icon",
+    "value": "Bs:BsYoutube"
+  },
+  "showByDefault": true,
+  "category": "Media",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/youtube-sync-1765923148637.png"
+}

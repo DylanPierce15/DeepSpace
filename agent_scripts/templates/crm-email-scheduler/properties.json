@@ -1,0 +1,41 @@
+{
+  "id": "crm-email-scheduler",
+  "name": "Email Scheduler",
+  "description": "Schedule and send generated emails through Gmail with rate limiting and automation",
+  "category": "CRM",
+  "tags": [
+    "email",
+    "scheduler",
+    "crm",
+    "automation",
+    "gmail"
+  ],
+  "version": "1.0.0",
+  "author": "Miyagi",
+  "dependencies": [
+    "crm-email-campaign"
+  ],
+  "features": [
+    "Reads generated emails from Email Campaign Generator",
+    "Gmail OAuth integration",
+    "Rate limiting (emails per day)",
+    "Time-based scheduling",
+    "Day of week selection",
+    "Timezone support",
+    "Email status tracking"
+  ],
+  "settings": {
+    "requiresEmailCampaign": true,
+    "requiresGmailIntegration": true,
+    "supportsScheduling": true
+  },
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiCalendar"
+  },
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/crm-email-scheduler-1765922969656.png",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  }
+}

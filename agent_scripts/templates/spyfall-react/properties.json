@@ -1,0 +1,16 @@
+{
+  "id": "spyfall",
+  "name": "Spyfall",
+  "description": "Social deduction party game where players describe words while undercover players try to blend in",
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiSpyglass"
+  },
+  "showByDefault": true,
+  "category": "Games",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/spyfall-1765923103568.png"
+}

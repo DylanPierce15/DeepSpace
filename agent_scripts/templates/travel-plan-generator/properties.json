@@ -1,0 +1,17 @@
+{
+  "id": "travel-plan-generator",
+  "name": "Travel Plan Generator",
+  "description": "Auto buckets activities into days/blocks and supports manual reordering",
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiWorld"
+  },
+  "showByDefault": true,
+  "category": "Travel",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "partSpace": true,
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/travel-plan-generator-1765923124633.png"
+}

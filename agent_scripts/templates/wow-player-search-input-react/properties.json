@@ -1,0 +1,13 @@
+{
+  "id": "wow-player-search-input-react",
+  "name": "wow-player-search-input-react",
+  "description": "Saved from widget on 12/19/2025",
+  "icon": "💾",
+  "showByDefault": true,
+  "category": "Saved Templates",
+  "defaultSize": {
+    "width": 821.3639987138563,
+    "height": 649.1529185595828
+  },
+  "isReactWidget": true
+}

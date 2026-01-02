@@ -1,0 +1,17 @@
+{
+  "id": "attraction-finder",
+  "name": "Attraction Finder",
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiTicket"
+  },
+  "description": "Find amazing attractions and events for your trip",
+  "showByDefault": true,
+  "category": "Travel",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "partSpace": true,
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/attraction-finder-1765922948283.png"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "housing-finder",
+  "name": "Housing Finder",
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiHouse"
+  },
+  "description": "Find great places to stay for your trip",
+  "showByDefault": true,
+  "category": "Travel",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "partSpace": true,
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/housing-finder-1765923012452.png"
+}

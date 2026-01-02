@@ -1,0 +1,17 @@
+{
+  "id": "sports-master",
+  "name": "Sports Master Selector",
+  "description": "Choose a sport (soccer, football, tennis, baseball, basketball) and auto-adapt other widgets.",
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiTrophy"
+  },
+  "showByDefault": true,
+  "category": "Sports",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "partSpace": true,
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/sports-master-1765923097501.png"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "crm-contact-enricher",
+  "name": "CRM Contact Enricher",
+  "description": "Automatically enrich contact data with social profiles, company information, and additional details.",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiUserPlus"
+  },
+  "showByDefault": true,
+  "category": "CRM",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/crm-contact-enricher-1765922963500.png"
+}

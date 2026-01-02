@@ -1,0 +1,24 @@
+{
+  "id": "crm-lead-pipeline",
+  "name": "Lead Pipeline",
+  "description": "Visual drag-and-drop sales pipeline with lead stages and progress tracking",
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiStairsGoal"
+  },
+  "showByDefault": true,
+  "category": "CRM",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "tags": [
+    "pipeline",
+    "leads",
+    "sales",
+    "crm",
+    "drag-drop"
+  ],
+  "partSpace": true,
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/crm-lead-pipeline-1765922975746.png"
+}

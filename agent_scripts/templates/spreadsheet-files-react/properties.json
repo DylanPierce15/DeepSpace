@@ -1,0 +1,14 @@
+{
+  "id": "spreadsheet-files-react",
+  "name": "Spreadsheet Files React",
+  "description": "CSV-based spreadsheet with JavaScript scripting support",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiGrid"
+  },
+  "category": "Productivity",
+  "defaultSize": {
+    "width": 900,
+    "height": 600
+  }
+}

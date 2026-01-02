@@ -1,0 +1,16 @@
+{
+  "id": "project-manager",
+  "name": "Project Manager",
+  "description": "Strategic project planning with objectives, milestones, and task coordination",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiFolder"
+  },
+  "showByDefault": true,
+  "category": "Productivity",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/project-manager-1765923067508.png"
+}

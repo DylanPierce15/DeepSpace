@@ -1,0 +1,16 @@
+{
+  "id": "2048-game",
+  "name": "2048 Game",
+  "description": "Classic 2048 sliding tile puzzle game with community high scores",
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiPerspectiveDiceSixFacesRandom"
+  },
+  "showByDefault": true,
+  "category": "Games",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/2048-game-1765922945509.png"
+}

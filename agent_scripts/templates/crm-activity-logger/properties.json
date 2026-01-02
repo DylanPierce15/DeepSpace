@@ -1,0 +1,25 @@
+{
+  "id": "crm-activity-logger",
+  "name": "Activity Logger",
+  "description": "Track all customer interactions including calls, emails, meetings, and notes",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiActivity"
+  },
+  "showByDefault": true,
+  "category": "CRM",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "tags": [
+    "activities",
+    "interactions",
+    "calls",
+    "emails",
+    "meetings",
+    "crm"
+  ],
+  "partSpace": true,
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/crm-activity-logger-1765922957443.png"
+}

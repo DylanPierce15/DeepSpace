@@ -1,0 +1,13 @@
+{
+  "id": "wow-player-display-react",
+  "name": "wow-player-display-react",
+  "description": "Saved from widget on 12/19/2025",
+  "icon": "💾",
+  "showByDefault": true,
+  "category": "Saved Templates",
+  "defaultSize": {
+    "width": 708.0884916897235,
+    "height": 749.2204276107304
+  },
+  "isReactWidget": true
+}

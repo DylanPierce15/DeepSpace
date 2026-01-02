@@ -1,0 +1,53 @@
+{
+  "id": "nasa-neows-react",
+  "name": "NASA Near-Earth Objects In The Coming Week",
+  "description": "Monitor near-Earth asteroids approaching Earth. View closest approaches, largest objects, fastest speeds, and detailed asteroid information.",
+  "category": "science",
+  "tags": [
+    "nasa",
+    "neows",
+    "asteroids",
+    "near-earth",
+    "space",
+    "astronomy",
+    "science",
+    "cosmos",
+    "education"
+  ],
+  "icon": {
+    "type": "react-icon",
+    "value": "Gi:GiRocket"
+  },
+  "version": "1.0.0",
+  "author": "Miyagi Team",
+  "dependencies": [],
+  "inputs": [
+    {
+      "name": "startDate",
+      "type": "date",
+      "label": "Start Date",
+      "required": false,
+      "description": "Start date for fetching near-Earth objects (YYYY-MM-DD). Defaults to today."
+    },
+    {
+      "name": "endDate",
+      "type": "date",
+      "label": "End Date",
+      "required": false,
+      "description": "End date for fetching near-Earth objects (YYYY-MM-DD). Defaults to 7 days after start date."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "neos",
+      "type": "object",
+      "description": "Near-Earth Objects feed data"
+    }
+  ],
+  "storage": [],
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/nasa-neows-react-1765923046506.png",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  }
+}

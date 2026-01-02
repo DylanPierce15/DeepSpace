@@ -1,0 +1,13 @@
+{
+  "id": "wow-guides-react",
+  "name": "wow-guides-react",
+  "description": "Saved from widget on 12/19/2025",
+  "icon": "💾",
+  "showByDefault": true,
+  "category": "Saved Templates",
+  "defaultSize": {
+    "width": 672.1484149156246,
+    "height": 723.1069084553596
+  },
+  "isReactWidget": true
+}

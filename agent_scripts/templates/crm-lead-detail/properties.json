@@ -1,0 +1,26 @@
+{
+  "id": "crm-lead-detail",
+  "name": "Lead Detail Viewer",
+  "description": "Displays selected lead details with documents, notes, and activity tracking",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiUser"
+  },
+  "showByDefault": true,
+  "category": "CRM",
+  "defaultSize": {
+    "width": 700,
+    "height": 600
+  },
+  "tags": [
+    "crm",
+    "lead",
+    "detail",
+    "viewer",
+    "documents",
+    "notes",
+    "activities"
+  ],
+  "partSpace": true,
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/crm-lead-detail-1765922972700.png"
+}

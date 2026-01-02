@@ -1,0 +1,16 @@
+{
+  "id": "text-summarizer-react",
+  "name": "Text Summarizer",
+  "description": "Classic Tetris with falling blocks and community high scores",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiFileText"
+  },
+  "showByDefault": true,
+  "category": "Games",
+  "defaultSize": {
+    "width": 500,
+    "height": 400
+  },
+  "screenshotUrl": "https://bucket-production-e0b5.up.railway.app/miyagi-images/widget-screenshots/system-pregenerated/text-summarizer-react-1765923115689.png"
+}
