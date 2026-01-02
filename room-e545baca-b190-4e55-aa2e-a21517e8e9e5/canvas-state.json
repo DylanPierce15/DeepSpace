@@ -81,35 +81,6 @@
     },
     {
       "state": {
-        "id": "shape:0FbakEWU9otdhvNA",
-        "typeName": "shape",
-        "type": "canvas-link",
-        "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
-        "index": "a27UCZ6G",
-        "x": 1764.0546875,
-        "y": 786.1640625,
-        "rotation": 0,
-        "isLocked": false,
-        "opacity": 1,
-        "meta": {
-          "justCreated": false,
-          "createdAt": 1767382412338,
-          "dockOrder": 1,
-          "showDefaultHandles": false
-        },
-        "props": {
-          "w": 400,
-          "h": 400,
-          "targetCanvasId": "room-197b7884-d81d-4905-8d15-4163f50fa258",
-          "label": "App Tracker",
-          "linkType": "realfile",
-          "targetSpaceType": "freeform"
-        }
-      },
-      "lastChangedClock": 15
-    },
-    {
-      "state": {
         "widgets": {},
         "global": {
           "user_scoped_storage": {
@@ -142,7 +113,36 @@
         "id": "canvas_storage:main",
         "typeName": "canvas_storage"
       },
-      "lastChangedClock": 4
+      "lastChangedClock": 5
+    },
+    {
+      "state": {
+        "id": "shape:0FbakEWU9otdhvNA",
+        "typeName": "shape",
+        "type": "canvas-link",
+        "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
+        "index": "a27UCZ6G",
+        "x": 1764.0546875,
+        "y": 786.1640625,
+        "rotation": 0,
+        "isLocked": false,
+        "opacity": 1,
+        "meta": {
+          "justCreated": false,
+          "createdAt": 1767382412338,
+          "dockOrder": 1,
+          "showDefaultHandles": false
+        },
+        "props": {
+          "w": 400,
+          "h": 400,
+          "targetCanvasId": "room-197b7884-d81d-4905-8d15-4163f50fa258",
+          "label": "App Tracker",
+          "linkType": "realfile",
+          "targetSpaceType": "freeform"
+        }
+      },
+      "lastChangedClock": 15
     },
     {
       "state": {

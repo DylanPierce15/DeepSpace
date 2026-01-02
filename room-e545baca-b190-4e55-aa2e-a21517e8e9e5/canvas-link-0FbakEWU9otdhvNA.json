@@ -1,0 +1,27 @@
+{
+  "shapeId": "shape:0FbakEWU9otdhvNA",
+  "targetCanvasId": "room-197b7884-d81d-4905-8d15-4163f50fa258",
+  "label": "App Tracker",
+  "linkType": "realfile",
+  "position": {
+    "x": 1764.0546875,
+    "y": 786.1640625
+  },
+  "size": {
+    "w": 400,
+    "h": 400
+  },
+  "rotation": 0,
+  "opacity": 1,
+  "isLocked": false,
+  "meta": {
+    "justCreated": false,
+    "createdAt": 1767382412338,
+    "dockOrder": 1,
+    "showDefaultHandles": false
+  },
+  "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
+  "index": "a27UCZ6G",
+  "lastChangedClock": 15,
+  "generatedAt": "2026-01-02T19:34:17.504Z"
+}

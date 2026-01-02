@@ -1,0 +1,27 @@
+{
+  "shapeId": "shape:1gglhDinNlSuoCyq",
+  "targetCanvasId": "room-6ef4368f-8b10-481b-b9f2-7faf4e6598f6",
+  "label": "Out Reach Space (Google Scholar & LinkedIn)",
+  "linkType": "realfile",
+  "position": {
+    "x": 1170,
+    "y": 798
+  },
+  "size": {
+    "w": 400,
+    "h": 400
+  },
+  "rotation": 0,
+  "opacity": 1,
+  "isLocked": false,
+  "meta": {
+    "justCreated": true,
+    "createdAt": 1767382409550,
+    "dockOrder": 0,
+    "showDefaultHandles": false
+  },
+  "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
+  "index": "a14ECmPV",
+  "lastChangedClock": 7,
+  "generatedAt": "2026-01-02T19:34:17.505Z"
+}
