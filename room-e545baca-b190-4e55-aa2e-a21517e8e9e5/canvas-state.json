@@ -1,6 +1,6 @@
 {
-  "clock": 443,
-  "documentClock": 443,
+  "clock": 445,
+  "documentClock": 444,
   "tombstones": {
     "shape:2048-game-uf24a0ji2-9f5dNHlgZZu": 122,
     "shape:google-drive--KhPqF7Zvsmiis2jEmQPG": 173
@@ -70,7 +70,7 @@
         "id": "document:document",
         "typeName": "document"
       },
-      "lastChangedClock": 443
+      "lastChangedClock": 444
     },
     {
       "state": {
@@ -82,7 +82,36 @@
         "index": "a1",
         "typeName": "page"
       },
-      "lastChangedClock": 443
+      "lastChangedClock": 444
+    },
+    {
+      "state": {
+        "id": "shape:0FbakEWU9otdhvNA",
+        "typeName": "shape",
+        "type": "canvas-link",
+        "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
+        "index": "a8bzd2zO",
+        "x": 1440.78125,
+        "y": 577.46875,
+        "rotation": 0,
+        "isLocked": false,
+        "opacity": 1,
+        "meta": {
+          "justCreated": false,
+          "createdAt": 1767382412338,
+          "dockOrder": 1,
+          "showDefaultHandles": false
+        },
+        "props": {
+          "w": 400,
+          "h": 400,
+          "targetCanvasId": "room-197b7884-d81d-4905-8d15-4163f50fa258",
+          "label": "App Tracker",
+          "linkType": "realfile",
+          "targetSpaceType": "freeform"
+        }
+      },
+      "lastChangedClock": 444
     },
     {
       "state": {
@@ -122,36 +151,7 @@
         "id": "canvas_storage:main",
         "typeName": "canvas_storage"
       },
-      "lastChangedClock": 6
-    },
-    {
-      "state": {
-        "id": "shape:0FbakEWU9otdhvNA",
-        "typeName": "shape",
-        "type": "canvas-link",
-        "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
-        "index": "a8bzd2zO",
-        "x": 1440.78125,
-        "y": 577.46875,
-        "rotation": 0,
-        "isLocked": false,
-        "opacity": 1,
-        "meta": {
-          "justCreated": false,
-          "createdAt": 1767382412338,
-          "dockOrder": 1,
-          "showDefaultHandles": false
-        },
-        "props": {
-          "w": 400,
-          "h": 400,
-          "targetCanvasId": "room-197b7884-d81d-4905-8d15-4163f50fa258",
-          "label": "App Tracker",
-          "linkType": "realfile",
-          "targetSpaceType": "freeform"
-        }
-      },
-      "lastChangedClock": 441
+      "lastChangedClock": 444
     },
     {
       "state": {
@@ -180,7 +180,7 @@
           "targetSpaceType": "freeform"
         }
       },
-      "lastChangedClock": 250
+      "lastChangedClock": 444
     },
     {
       "state": {
@@ -209,7 +209,7 @@
           "targetSpaceType": "freeform"
         }
       },
-      "lastChangedClock": 327
+      "lastChangedClock": 444
     }
   ]
 }
