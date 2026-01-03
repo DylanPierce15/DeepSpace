@@ -1,0 +1,27 @@
+{
+  "shapeId": "shape:journal-canvas-link",
+  "targetCanvasId": "room-journal-8f3c4a29-b1d5-4e2a-9c7f-2d8b5e1a6f3c",
+  "label": "Journal Space",
+  "linkType": "realfile",
+  "position": {
+    "x": 2000,
+    "y": 600
+  },
+  "size": {
+    "w": 400,
+    "h": 400
+  },
+  "rotation": 0,
+  "opacity": 1,
+  "isLocked": false,
+  "meta": {
+    "justCreated": true,
+    "createdAt": 1735940000000,
+    "dockOrder": 4,
+    "showDefaultHandles": false
+  },
+  "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
+  "index": "a9",
+  "lastChangedClock": 500,
+  "generatedAt": "2026-01-03T21:45:00.000Z"
+}

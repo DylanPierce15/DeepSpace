@@ -28,7 +28,7 @@
       "name": "Page 1",
       "index": "a1",
       "typeName": "page",
-      "lastChangedClock": 443
+      "lastChangedClock": 444
     }
   ],
   "schema": {
@@ -73,9 +73,9 @@
       "com.tldraw.binding.arrow": 1
     }
   },
-  "generatedAt": "2026-01-03T21:40:13.145Z",
-  "clock": 443,
-  "documentClock": 443,
+  "generatedAt": "2026-01-03T21:41:27.646Z",
+  "clock": 445,
+  "documentClock": 444,
   "tombstones": {
     "shape:2048-game-uf24a0ji2-9f5dNHlgZZu": 122,
     "shape:google-drive--KhPqF7Zvsmiis2jEmQPG": 173

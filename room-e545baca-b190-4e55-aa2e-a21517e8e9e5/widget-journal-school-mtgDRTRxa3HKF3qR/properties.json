@@ -1,0 +1,25 @@
+{
+  "shapeId": "shape:journal-school-mtgDRTRxa3HKF3qR",
+  "widgetId": "journal-school_1767476559341",
+  "templateHandle": "journal-school",
+  "position": {
+    "x": 1850,
+    "y": 1050
+  },
+  "size": {
+    "w": 700,
+    "h": 600
+  },
+  "rotation": 0,
+  "opacity": 1,
+  "isLocked": false,
+  "color": "black",
+  "zoomScale": 1,
+  "savedJsxContentHash": "initial",
+  "meta": {
+    "initializationState": "ready"
+  },
+  "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
+  "index": "a1",
+  "lastChangedClock": 1676
+}

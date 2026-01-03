@@ -1,0 +1,25 @@
+{
+  "shapeId": "shape:journal-mental-health-zZs0ya50NX4ze8Io",
+  "widgetId": "journal-mental-health_1767476555405",
+  "templateHandle": "journal-mental-health",
+  "position": {
+    "x": 1200,
+    "y": 400
+  },
+  "size": {
+    "w": 700,
+    "h": 600
+  },
+  "rotation": 0,
+  "opacity": 1,
+  "isLocked": false,
+  "color": "black",
+  "zoomScale": 1,
+  "savedJsxContentHash": "initial",
+  "meta": {
+    "initializationState": "ready"
+  },
+  "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
+  "index": "a0",
+  "lastChangedClock": 1676
+}
