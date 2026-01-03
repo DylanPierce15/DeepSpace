@@ -2,8 +2,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
-const http = require('http');
 
 /**
  * Fetch image from main API and save to .chat-attachments for agent vision
@@ -77,10 +75,10 @@ async function inspectImage(assetId) {
 
   // Get canvas-sync URL and secret from environment
   const apiUrl = process.env.DOCKER_CANVAS_SYNC_URL;
-  const agentSecret = process.env.WORKER_SHARED_SECRET;
+  const internalSecret = process.env.INTERNAL_STORAGE_HMAC_SECRET;
   
-  if (!agentSecret) {
-    console.error('❌ Error: WORKER_SHARED_SECRET not set');
+  if (!internalSecret) {
+    console.error('❌ Error: INTERNAL_STORAGE_HMAC_SECRET not set');
     process.exit(1);
   }
 
@@ -90,7 +88,7 @@ async function inspectImage(assetId) {
 
   try {
     // Fetch image from main API (with authorization)
-    const response = await fetchImage(apiUrl, uploadId, agentSecret, userId, currentRoom);
+    const response = await fetchImage(apiUrl, uploadId, userId, currentRoom);
     
     if (!response.success) {
       console.error(`❌ Error fetching image: ${response.error}`);
@@ -150,62 +148,44 @@ function findAssetJson(roomPath, assetId) {
   }
 }
 
-function fetchImage(apiUrl, uploadId, secret, userId, roomId) {
-  return new Promise((resolve, reject) => {
-    const url = new URL(`${apiUrl}/api/agent/fetch-image`);
-    const isHttps = url.protocol === 'https:';
-    const transport = isHttps ? https : http;
+async function fetchImage(apiUrl, uploadId, userId, roomId) {
+  const { signInternalRequestBody } = require('/app/src/internal-auth');
+  const url = `${apiUrl}/api/agent/fetch-image`;
+  const body = { uploadId, userId, roomId };
+  const { payload, headers } = await signInternalRequestBody(body);
 
-    // Include userId and roomId for authorization
-    const postData = JSON.stringify({ uploadId, userId, roomId });
+  console.log(`📡 Request: ${url}`);
+  console.log(`📡 User ID: ${userId || 'NOT SET'}`);
+  console.log(`📡 Room ID: ${roomId || 'NOT SET'}`);
 
-    const options = {
-      hostname: url.hostname,
-      port: url.port || (isHttps ? 443 : 80),
-      path: url.pathname,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(postData),
-        'x-agent-secret': secret,
-      },
-    };
-
-    console.log(`📡 Request: ${url.href}`);
-    console.log(`📡 User ID: ${userId || 'NOT SET'}`);
-    console.log(`📡 Room ID: ${roomId || 'NOT SET'}`);
-
-    const req = transport.request(options, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        console.log(`📡 Response status: ${res.statusCode}`);
-        try {
-          const json = JSON.parse(data);
-          if (res.statusCode !== 200) {
-            console.log(`📡 Error response: ${JSON.stringify(json)}`);
-            resolve({ success: false, error: json.error || `HTTP ${res.statusCode}` });
-          } else {
-            resolve({
-              success: true,
-              base64: json.base64,
-              contentType: json.contentType,
-            });
-          }
-        } catch (e) {
-          console.log(`📡 Parse error. Raw response (first 200 chars): ${data.substring(0, 200)}`);
-          resolve({ success: false, error: `Invalid response: ${e.message}` });
-        }
-      });
-    });
-
-    req.on('error', (e) => {
-      console.log(`📡 Request error: ${e.message}`);
-      reject(e);
-    });
-    req.write(postData);
-    req.end();
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-internal-worker': 'agentapi',
+      ...headers,
+    },
+    body: payload,
   });
+
+  const data = await response.text();
+  console.log(`📡 Response status: ${response.status}`);
+
+  try {
+    const json = JSON.parse(data);
+    if (!response.ok) {
+      console.log(`📡 Error response: ${JSON.stringify(json)}`);
+      return { success: false, error: json.error || `HTTP ${response.status}` };
+    }
+    return {
+      success: true,
+      base64: json.base64,
+      contentType: json.contentType,
+    };
+  } catch (e) {
+    console.log(`📡 Parse error. Raw response (first 200 chars): ${data.substring(0, 200)}`);
+    return { success: false, error: `Invalid response: ${e.message}` };
+  }
 }
 
 function getExtensionFromMime(mimeType) {
@@ -223,4 +203,3 @@ function getExtensionFromMime(mimeType) {
 // Run
 const args = process.argv.slice(2);
 inspectImage(args[0]);
-

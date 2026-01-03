@@ -240,6 +240,11 @@ function ${toComponentName(templateHandle)}() {
   //   return () => { document.body.style.background = ''; document.documentElement.style.minHeight = ''; };
   // }, []);
 
+  // ⚠️ FORM ELEMENTS: For dropdown/select functionality, always build custom
+  // dropdown components rather than native <select> elements. Native selects
+  // render differently across Safari, Chrome, and Firefox. Use buttons/divs
+  // with state management and click-outside handling for full styling control.
+
   if (!tailwindLoaded) {
     return <div style={{ padding: '20px', textAlign: 'center' }}>Loading...</div>;
   }

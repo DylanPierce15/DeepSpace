@@ -61,6 +61,8 @@ Your task is to:
 
 ## Styling
 - Use Tailwind CSS for styling. Make sure you import it from CDN from tailwindScript.src = 'https://cdn.tailwindcss.com';
+- Form Elements (Cross-Browser Consistency): For dropdown/select functionality, always build custom dropdown components rather than native `<select>` elements. Manage open/close state, handle click-outside to close the dropdown, and ensure full styling control across Safari, Chrome, and Firefox.
+
 Something like:
 
 ```javascript

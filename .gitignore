@@ -101,3 +101,6 @@ Thumbs.db
 
 # Fetched canvas images for agent vision
 .canvas-images/
+
+# Cursor local data
+.cursor/

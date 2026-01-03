@@ -13,6 +13,11 @@
 - **Keep functionality encapsulated and modular**: Use multiple helper files
 - **Use explicit HTTP methods with endpoints**: `miyagiAPI.post('/generate-text', data)` — always use the `endpoint` from McAPI.yaml (with leading `/`)
 
+### ⚠️ Date Handling:
+- **NEVER** use `new Date("2025-12-26")` — parses as UTC, shifts dates backward in US timezones
+- **ALWAYS** use numeric constructor: `new Date(2025, 11, 26)` — month is 0-indexed (Jan=0, Dec=11)
+- When parsing date strings: `const [y,m,d] = "2025-12-26".split('-').map(Number); new Date(y, m-1, d);`
+
 ### ❌ DON'T:
 - **Break iframe isolation**: Widgets can't directly access each other
 - **Remove essential hooks**: Keep `useState`, `useEffect`, `useMemo`, etc.
