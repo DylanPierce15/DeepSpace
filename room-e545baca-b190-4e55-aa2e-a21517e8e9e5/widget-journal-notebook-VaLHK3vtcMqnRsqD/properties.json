@@ -1,10 +1,10 @@
 {
-  "shapeId": "shape:journal-mental-health-zZs0ya50NX4ze8Io",
-  "widgetId": "journal-mental-health_1767476555405",
-  "templateHandle": "journal-mental-health",
+  "shapeId": "shape:journal-notebook-VaLHK3vtcMqnRsqD",
+  "widgetId": "journal-notebook_1767476850725",
+  "templateHandle": "journal-notebook",
   "position": {
-    "x": 1200,
-    "y": 400
+    "x": 1821.05078125,
+    "y": 974.203125
   },
   "size": {
     "w": 700,
@@ -20,6 +20,6 @@
     "initializationState": "ready"
   },
   "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
-  "index": "a0",
+  "index": "aF",
   "lastChangedClock": 1676
 }
