@@ -13,7 +13,7 @@
           "name": "Dock Space",
           "description": "Dock mode with macOS-style dock bar for widgets (zoom locked at 50% via DOCK_MODE_ZOOM constant)"
         },
-        "lastUpdated": 1767382434329
+        "lastUpdated": 1767476370069
       }
     },
     "id": "document:document",
@@ -21,12 +21,14 @@
   },
   "pages": [
     {
-      "meta": {},
+      "meta": {
+        "isPlaygroundMode": false
+      },
       "id": "page:YgYpHG-EIx5izyxJ-Cj_3",
       "name": "Page 1",
       "index": "a1",
       "typeName": "page",
-      "lastChangedClock": 0
+      "lastChangedClock": 443
     }
   ],
   "schema": {
@@ -71,9 +73,12 @@
       "com.tldraw.binding.arrow": 1
     }
   },
-  "generatedAt": "2026-01-02T19:34:17.506Z",
-  "clock": 17,
-  "documentClock": 17,
-  "tombstones": {},
+  "generatedAt": "2026-01-03T21:40:13.145Z",
+  "clock": 443,
+  "documentClock": 443,
+  "tombstones": {
+    "shape:2048-game-uf24a0ji2-9f5dNHlgZZu": 122,
+    "shape:google-drive--KhPqF7Zvsmiis2jEmQPG": 173
+  },
   "tombstoneHistoryStartsAtClock": 1
 }

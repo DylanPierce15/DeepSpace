@@ -70,7 +70,7 @@
         "id": "document:document",
         "typeName": "document"
       },
-      "lastChangedClock": 209
+      "lastChangedClock": 443
     },
     {
       "state": {
@@ -86,43 +86,7 @@
     },
     {
       "state": {
-        "id": "shape:0FbakEWU9otdhvNA",
-        "typeName": "shape",
-        "type": "canvas-link",
-        "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
-        "index": "a8bzd2zO",
-        "x": 1440.78125,
-        "y": 577.46875,
-        "rotation": 0,
-        "isLocked": false,
-        "opacity": 1,
-        "meta": {
-          "justCreated": false,
-          "createdAt": 1767382412338,
-          "dockOrder": 1,
-          "showDefaultHandles": false
-        },
-        "props": {
-          "w": 400,
-          "h": 400,
-          "targetCanvasId": "room-197b7884-d81d-4905-8d15-4163f50fa258",
-          "label": "App Tracker",
-          "linkType": "realfile",
-          "targetSpaceType": "freeform"
-        }
-      },
-      "lastChangedClock": 441
-    },
-    {
-      "state": {
-        "widgets": {
-          "shape:2048-game-uf24a0ji2-9f5dNHlgZZu": {
-            "__widget_config": "{\"roomId\":\"room-e545baca-b190-4e55-aa2e-a21517e8e9e5\",\"pageId\":\"page:YgYpHG-EIx5izyxJ-Cj_3\",\"shapeId\":\"shape:2048-game-uf24a0ji2-9f5dNHlgZZu\",\"templateHandle\":\"2048-game\"}"
-          },
-          "shape:google-drive--KhPqF7Zvsmiis2jEmQPG": {
-            "__widget_config": "{\"roomId\":\"room-e545baca-b190-4e55-aa2e-a21517e8e9e5\",\"pageId\":\"page:YgYpHG-EIx5izyxJ-Cj_3\",\"shapeId\":\"shape:google-drive--KhPqF7Zvsmiis2jEmQPG\",\"templateHandle\":\"google-drive\"}"
-          }
-        },
+        "widgets": {},
         "global": {
           "user_scoped_storage": {
             "user_37iOKJastKy0nTKJSH1YIC50yFp": {
@@ -158,7 +122,36 @@
         "id": "canvas_storage:main",
         "typeName": "canvas_storage"
       },
-      "lastChangedClock": 126
+      "lastChangedClock": 6
+    },
+    {
+      "state": {
+        "id": "shape:0FbakEWU9otdhvNA",
+        "typeName": "shape",
+        "type": "canvas-link",
+        "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
+        "index": "a8bzd2zO",
+        "x": 1440.78125,
+        "y": 577.46875,
+        "rotation": 0,
+        "isLocked": false,
+        "opacity": 1,
+        "meta": {
+          "justCreated": false,
+          "createdAt": 1767382412338,
+          "dockOrder": 1,
+          "showDefaultHandles": false
+        },
+        "props": {
+          "w": 400,
+          "h": 400,
+          "targetCanvasId": "room-197b7884-d81d-4905-8d15-4163f50fa258",
+          "label": "App Tracker",
+          "linkType": "realfile",
+          "targetSpaceType": "freeform"
+        }
+      },
+      "lastChangedClock": 441
     },
     {
       "state": {

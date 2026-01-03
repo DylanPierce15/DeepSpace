@@ -4,8 +4,8 @@
   "label": "Out Reach Space (Google Scholar & LinkedIn)",
   "linkType": "realfile",
   "position": {
-    "x": 1170,
-    "y": 798
+    "x": 966.2265625,
+    "y": 100
   },
   "size": {
     "w": 400,
@@ -15,13 +15,13 @@
   "opacity": 1,
   "isLocked": false,
   "meta": {
-    "justCreated": true,
+    "justCreated": false,
     "createdAt": 1767382409550,
     "dockOrder": 0,
     "showDefaultHandles": false
   },
   "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
-  "index": "a14ECmPV",
-  "lastChangedClock": 7,
-  "generatedAt": "2026-01-02T19:34:17.505Z"
+  "index": "a60nAhFV",
+  "lastChangedClock": 250,
+  "generatedAt": "2026-01-03T21:40:13.144Z"
 }
