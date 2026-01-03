@@ -1,7 +1,10 @@
 {
-  "clock": 17,
-  "documentClock": 17,
-  "tombstones": {},
+  "clock": 443,
+  "documentClock": 443,
+  "tombstones": {
+    "shape:2048-game-uf24a0ji2-9f5dNHlgZZu": 122,
+    "shape:google-drive--KhPqF7Zvsmiis2jEmQPG": 173
+  },
   "tombstoneHistoryStartsAtClock": 1,
   "schema": {
     "schemaVersion": 2,
@@ -61,27 +64,65 @@
               "name": "Dock Space",
               "description": "Dock mode with macOS-style dock bar for widgets (zoom locked at 50% via DOCK_MODE_ZOOM constant)"
             },
-            "lastUpdated": 1767382434329
+            "lastUpdated": 1767476370069
           }
         },
         "id": "document:document",
         "typeName": "document"
       },
-      "lastChangedClock": 17
+      "lastChangedClock": 209
     },
     {
       "state": {
-        "meta": {},
+        "meta": {
+          "isPlaygroundMode": false
+        },
         "id": "page:YgYpHG-EIx5izyxJ-Cj_3",
         "name": "Page 1",
         "index": "a1",
         "typeName": "page"
       },
-      "lastChangedClock": 0
+      "lastChangedClock": 443
     },
     {
       "state": {
-        "widgets": {},
+        "id": "shape:0FbakEWU9otdhvNA",
+        "typeName": "shape",
+        "type": "canvas-link",
+        "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
+        "index": "a8bzd2zO",
+        "x": 1440.78125,
+        "y": 577.46875,
+        "rotation": 0,
+        "isLocked": false,
+        "opacity": 1,
+        "meta": {
+          "justCreated": false,
+          "createdAt": 1767382412338,
+          "dockOrder": 1,
+          "showDefaultHandles": false
+        },
+        "props": {
+          "w": 400,
+          "h": 400,
+          "targetCanvasId": "room-197b7884-d81d-4905-8d15-4163f50fa258",
+          "label": "App Tracker",
+          "linkType": "realfile",
+          "targetSpaceType": "freeform"
+        }
+      },
+      "lastChangedClock": 441
+    },
+    {
+      "state": {
+        "widgets": {
+          "shape:2048-game-uf24a0ji2-9f5dNHlgZZu": {
+            "__widget_config": "{\"roomId\":\"room-e545baca-b190-4e55-aa2e-a21517e8e9e5\",\"pageId\":\"page:YgYpHG-EIx5izyxJ-Cj_3\",\"shapeId\":\"shape:2048-game-uf24a0ji2-9f5dNHlgZZu\",\"templateHandle\":\"2048-game\"}"
+          },
+          "shape:google-drive--KhPqF7Zvsmiis2jEmQPG": {
+            "__widget_config": "{\"roomId\":\"room-e545baca-b190-4e55-aa2e-a21517e8e9e5\",\"pageId\":\"page:YgYpHG-EIx5izyxJ-Cj_3\",\"shapeId\":\"shape:google-drive--KhPqF7Zvsmiis2jEmQPG\",\"templateHandle\":\"google-drive\"}"
+          }
+        },
         "global": {
           "user_scoped_storage": {
             "user_37iOKJastKy0nTKJSH1YIC50yFp": {
@@ -108,41 +149,16 @@
                 "spacing": 14
               }
             }
-          }
+          },
+          "__widget_io_configs": "{\"shape:google-drive--KhPqF7Zvsmiis2jEmQPG\":{\"inputs\":[],\"outputs\":[]}}",
+          "2048-game-data": "{\"board\":[[0,0,0,0],[0,0,0,2],[0,0,0,4],[2,0,2,16]],\"score\":44,\"bestTile\":16,\"gameWon\":false,\"gameOver\":false,\"isActive\":true}",
+          "2048-best-tile-ever": "16",
+          "__widget_connections": "[]"
         },
         "id": "canvas_storage:main",
         "typeName": "canvas_storage"
       },
-      "lastChangedClock": 5
-    },
-    {
-      "state": {
-        "id": "shape:0FbakEWU9otdhvNA",
-        "typeName": "shape",
-        "type": "canvas-link",
-        "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
-        "index": "a27UCZ6G",
-        "x": 1764.0546875,
-        "y": 786.1640625,
-        "rotation": 0,
-        "isLocked": false,
-        "opacity": 1,
-        "meta": {
-          "justCreated": false,
-          "createdAt": 1767382412338,
-          "dockOrder": 1,
-          "showDefaultHandles": false
-        },
-        "props": {
-          "w": 400,
-          "h": 400,
-          "targetCanvasId": "room-197b7884-d81d-4905-8d15-4163f50fa258",
-          "label": "App Tracker",
-          "linkType": "realfile",
-          "targetSpaceType": "freeform"
-        }
-      },
-      "lastChangedClock": 15
+      "lastChangedClock": 126
     },
     {
       "state": {
@@ -150,14 +166,14 @@
         "typeName": "shape",
         "type": "canvas-link",
         "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
-        "index": "a14ECmPV",
-        "x": 1170,
-        "y": 798,
+        "index": "a60nAhFV",
+        "x": 966.2265625,
+        "y": 100,
         "rotation": 0,
         "isLocked": false,
         "opacity": 1,
         "meta": {
-          "justCreated": true,
+          "justCreated": false,
           "createdAt": 1767382409550,
           "dockOrder": 0,
           "showDefaultHandles": false
@@ -171,7 +187,36 @@
           "targetSpaceType": "freeform"
         }
       },
-      "lastChangedClock": 7
+      "lastChangedClock": 250
+    },
+    {
+      "state": {
+        "id": "shape:68VUPQtbzn7tYNJq",
+        "typeName": "shape",
+        "type": "canvas-link",
+        "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
+        "index": "a7iVE7AV",
+        "x": 984.625,
+        "y": 580.7734375,
+        "rotation": 0,
+        "isLocked": false,
+        "opacity": 1,
+        "meta": {
+          "justCreated": false,
+          "createdAt": 1767382720440,
+          "dockOrder": 2,
+          "showDefaultHandles": false
+        },
+        "props": {
+          "w": 400,
+          "h": 400,
+          "targetCanvasId": "room-3115c2e5-ad38-4e29-bdef-3e85f9ad53f0",
+          "label": "Prepare Your Interview",
+          "linkType": "realfile",
+          "targetSpaceType": "freeform"
+        }
+      },
+      "lastChangedClock": 327
     }
   ]
 }
