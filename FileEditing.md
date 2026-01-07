@@ -1,5 +1,7 @@
 # Editing Widget Files (useFiles)
 
+---
+
 ## Overview
 
 Some widgets use file-based storage via the `useFiles` hook. These files are stored in a `files/` directory at the room level (not inside widget directories).
@@ -26,6 +28,8 @@ room-xxx/
 | Slide Deck | `slides/` | `files/slides/my-deck/slide-1.html` |
 | PDF Generator | `documents/` | `files/documents/report/page-1.html` |
 | Spreadsheet | `sheets/` | `files/sheets/data.csv` |
+
+---
 
 ## How to Edit Files
 
@@ -68,6 +72,8 @@ When adding items, update the relevant config:
 - `files/documents/config.json` — `{ currentDoc, docOrder }`
 - `files/documents/<doc>/meta.json` — `{ title, pageOrder }`
 - `files/sheets/config.json` — `{ currentFile }`
+
+---
 
 ## Example File Formats
 

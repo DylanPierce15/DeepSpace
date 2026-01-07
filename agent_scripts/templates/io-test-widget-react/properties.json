@@ -2,7 +2,7 @@
   "id": "io-test-widget-react",
   "name": "IO Test Widget (2×2)",
   "description": "Test widget with 2 inputs and 2 outputs for testing IO system auto-detection",
-  "category": "IO System",
+  "category": "productivity",
   "icon": {
     "type": "react-icon",
     "value": "Fi:FiCode"

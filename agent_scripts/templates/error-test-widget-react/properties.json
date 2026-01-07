@@ -4,7 +4,7 @@
   "description": "Test widget to verify error boundary behavior - caught vs uncaught errors",
   "icon": "🧪",
   "showByDefault": false,
-  "category": "Development",
+  "category": "productivity",
   "defaultSize": {
     "width": 700,
     "height": 600

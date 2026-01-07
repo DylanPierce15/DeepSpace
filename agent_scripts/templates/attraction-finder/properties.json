@@ -7,7 +7,7 @@
   },
   "description": "Find amazing attractions and events for your trip",
   "showByDefault": true,
-  "category": "Travel",
+  "category": "travel",
   "defaultSize": {
     "width": 700,
     "height": 600

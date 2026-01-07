@@ -47,30 +47,6 @@ if ! node agent_scripts/setup-hooks.js; then
 fi
 echo ""
 
-echo "🔧 Unpacking canvas state..."
-if ! node agent_scripts/unpack-canvas-state.js; then
-  echo "❌ Error: Failed to unpack canvas state"
-  exit 1
-fi
-echo ""
-
-echo "🔧 Pushing canvas state to DeepSpace..."
-if ! git add .; then
-  echo "❌ Error: Failed to stage changes for commit"
-  exit 1
-fi
-
-if ! git commit -m "chore(setup): push unpacked canvas state"; then
-  echo "ℹ️  No changes to commit, proceeding to push (or prior error)"
-fi
-
-if ! git push --force; then
-  echo "❌ Error: Failed to push to remote repository"
-  exit 1
-fi
-
-echo ""
-
 echo "🎉 Setup complete! Your Miyagi canvas repository is ready for local development."
 echo ""
 echo "What the setup did:"

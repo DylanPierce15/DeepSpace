@@ -7,7 +7,7 @@
   },
   "description": "Find great restaurants for your trip",
   "showByDefault": true,
-  "category": "Travel",
+  "category": "travel",
   "defaultSize": {
     "width": 700,
     "height": 600

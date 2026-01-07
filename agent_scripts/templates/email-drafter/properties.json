@@ -2,10 +2,7 @@
   "id": "email-drafter",
   "name": "Email Drafter",
   "description": "Draft professional emails expressing interest in research work",
-  "categories": [
-    "communication",
-    "research"
-  ],
+  "category": "productivity",
   "icon": {
     "type": "react-icon",
     "value": "Fi:FiMail"

@@ -1,4 +1,7 @@
-**Widget Input/Output System** (`useInput` and `useOutput` hooks)
+# Widget Input/Output System
+
+`useInput` and `useOutput` hooks
+
 - **Scope**: Direct widget-to-widget data connections
 - **Purpose**: Create data flow pipelines between widgets without using shared global keys
 - **Use Cases**: Modular widget compositions, data transformations, widget pipelines
@@ -11,11 +14,15 @@
     - `slotId` (string): Unique identifier for this output slot (e.g., 'output-slot-1', 'output-slot-2')
     - Returns: Function `sendValue(data)` that pushes data through all connections
 
+---
+
 **Slot ID Naming Rules:**
 - Input slots: Use `'input-slot-1'`, `'input-slot-2'`, etc. for predictable, index-based naming
 - Output slots: Use `'output-slot-1'`, `'output-slot-2'`, etc. for predictable, index-based naming
 - Convention: Number slots from 1 for each widget (first input is 1, second is 2, etc.)
 - Custom IDs: Not allowed -- stick to the above convention.
+
+---
 
 **How Connections Work:**
 1. **Widget Connection**: Two widgets must be connected on the canvas (output slot → input slot)
@@ -24,6 +31,8 @@
 4. **No Connection**: If an input has no connection, it returns the `defaultValue` provided
 5. **Multiple Connections**: One output can send to multiple inputs; one input receives from the most recent connected output
 6. **React Updates**: Both hooks trigger React re-renders when values change
+
+---
 
 ### Example
 **Input/Output Pattern:**

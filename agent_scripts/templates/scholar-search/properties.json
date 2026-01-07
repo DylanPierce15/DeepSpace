@@ -2,10 +2,7 @@
   "id": "scholar-search",
   "name": "Google Scholar Search",
   "description": "Research professors on Google Scholar and explore their publications",
-  "categories": [
-    "research",
-    "education"
-  ],
+  "category": "lifestyle",
   "icon": {
     "type": "react-icon",
     "value": "Gi:GiBookshelf"

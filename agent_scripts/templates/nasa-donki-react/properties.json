@@ -2,7 +2,7 @@
   "id": "nasa-donki-react",
   "name": "NASA DONKI Space Weather",
   "description": "Monitor space weather events from NASA's DONKI database. View Coronal Mass Ejections (CME), Geomagnetic Storms (GST), and Solar Flares (FLR) with detailed information and analysis.",
-  "category": "science",
+  "category": "lifestyle",
   "tags": [
     "nasa",
     "space",

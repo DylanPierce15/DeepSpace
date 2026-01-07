@@ -7,7 +7,7 @@
     "value": "Gi:GiSoccerField"
   },
   "showByDefault": true,
-  "category": "Sports",
+  "category": "sports",
   "defaultSize": {
     "width": 700,
     "height": 600

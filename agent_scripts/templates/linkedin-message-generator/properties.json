@@ -2,10 +2,7 @@
   "id": "linkedin-message-generator",
   "name": "LinkedIn Message Generator",
   "description": "Generate personalized outreach messages and connection requests for LinkedIn profiles",
-  "categories": [
-    "social",
-    "networking"
-  ],
+  "category": "business",
   "icon": {
     "type": "react-icon",
     "value": "Bs:BsLinkedin"

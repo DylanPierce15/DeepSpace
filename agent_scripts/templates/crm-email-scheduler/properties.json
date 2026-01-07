@@ -2,7 +2,7 @@
   "id": "crm-email-scheduler",
   "name": "Email Scheduler",
   "description": "Schedule and send generated emails through Gmail with rate limiting and automation",
-  "category": "CRM",
+  "category": "business",
   "tags": [
     "email",
     "scheduler",

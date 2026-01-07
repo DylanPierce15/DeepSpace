@@ -4,7 +4,7 @@
   "description": "Task management widget with Gmail integration for travel planning",
   "icon": "📋",
   "showByDefault": true,
-  "category": "Travel",
+  "category": "travel",
   "defaultSize": {
     "width": 700,
     "height": 600

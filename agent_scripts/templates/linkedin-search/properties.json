@@ -2,10 +2,7 @@
   "id": "linkedin-search",
   "name": "LinkedIn Profile Search",
   "description": "Search for LinkedIn profiles and save them for outreach planning",
-  "categories": [
-    "social",
-    "networking"
-  ],
+  "category": "business",
   "icon": {
     "type": "react-icon",
     "value": "Bs:BsLinkedin"

@@ -2,7 +2,7 @@
   "id": "nasa-apod-react",
   "name": "NASA Astronomy Picture of the Day",
   "description": "Explore NASA's Astronomy Picture of the Day. View today's image, browse by date, search date ranges, or get random images. Displays high-quality images, videos, explanations, and metadata.",
-  "category": "science",
+  "category": "lifestyle",
   "tags": [
     "nasa",
     "astronomy",

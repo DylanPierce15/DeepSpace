@@ -2,7 +2,7 @@
   "id": "crm-email-campaign",
   "name": "Email Campaign Generator",
   "description": "Generate personalized email campaigns using contact directory data and AI",
-  "category": "CRM",
+  "category": "business",
   "tags": [
     "email",
     "campaign",

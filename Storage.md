@@ -1,9 +1,15 @@
+# Storage System
+
+---
+
 #### 1. **Global Storage** (`useGlobalStorage` hook)
 - **Scope**: Canvas-wide shared data
 - **Purpose**: Data shared between ALL widgets on the canvas
 - **Examples**: Shared task lists, calendar events, user preferences
 - **Usage**: `const [data, setData] = useGlobalStorage('key', defaultValue)`
 - **Real-time**: Changes propagate instantly to all widgets using the same key
+
+---
 
 #### 2. **File Storage** (`useFiles` hook)
 - **Scope**: Canvas-wide, file-like data stored hierarchically
@@ -17,6 +23,8 @@
   - `files.list(path)` — list items in folder (folders end with `/`)
   - `files.ready` — boolean, true once storage is loaded
 - **Key insight**: `useFiles` is a file-system API over global storage. Files are unpacked to `files/` in the repo for direct editing.
+
+---
 
 #### 3. **Local Storage** (`useStorage` hook)
 - **Scope**: Widget-specific data
@@ -41,6 +49,8 @@
   - Make a copy before sorting: `const base = filter === 'all' ? [...plants] : plants.filter(...); return base.sort(...);`
   - Never call `plants.sort(...)` directly; it mutates the stored array and can desync storage.
 
+---
+
 ### Storage Patterns
 
 Use these patterns to keep data durable, fast, and predictable across widgets and users in the same canvas.
@@ -62,6 +72,8 @@ Use these patterns to keep data durable, fast, and predictable across widgets an
 #### Clear and migrate keys safely
 - To clear a key: `setX(defaultValue)` or set to `{}`/`[]` as appropriate.
 - For breaking changes, introduce a versioned key (e.g., `tasks.v2`) and migrate once on widget mount.
+
+---
 
 ### Examples
 
@@ -160,6 +172,8 @@ const noteContent = files.read(selectedNotePath) || '';
 files.write('projects/.folder', '');  // Create folder placeholder
 files.write('projects/todo.md', '# My Todo');
 ```
+
+---
 
 ### Widget Communication Patterns
 Widgets can collaborate using either global storage (broadcast) or I/O connections (point-to-point):

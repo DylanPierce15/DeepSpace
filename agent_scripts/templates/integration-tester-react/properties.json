@@ -2,7 +2,7 @@
   "id": "integration-tester-react",
   "name": "Integration Tester",
   "description": "Test Miyagi API integrations with expected inputs and outputs",
-  "category": "Developer Tools",
+  "category": "productivity",
   "icon": {
     "type": "react-icon",
     "value": "Fi:FiTerminal"

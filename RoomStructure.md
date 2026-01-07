@@ -1,5 +1,7 @@
 # File Structure of the Room
 
+---
+
 ```
 room-9ee0cdde-865f-47e8-b0a6-753dcf9108f6/      # Root canvas (your main workspace)
 ├── canvas-metadata.json                        # Canvas info, pages list, tldraw schema

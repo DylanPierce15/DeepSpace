@@ -1,6 +1,9 @@
-# McAPI integration
+# McAPI Integration
+
 - Refer to McAPI.yaml for the full catalogue of integrations
 - McAPI is short for miyagiAPI
+
+---
 
 ## Response Format (all integrations)
 All responses follow this structure:
@@ -8,6 +11,8 @@ All responses follow this structure:
 // Success: { success: true, data: { ...payload } }
 // Error:   { success: false, error: "message" }
 ```
+
+---
 
 ## API Usage Pattern:
 ```javascript
@@ -20,6 +25,8 @@ if (response.success) {
 // GET requests (fetching data)
 const response = await miyagiAPI.get('/flights', { from: 'NYC', to: 'LAX', date: '2025-06-15' });
 ```
+
+---
 
 ## Example API Calls:
 ```javascript
@@ -41,12 +48,16 @@ const response = await miyagiAPI.post('/current-weather', { location: 'New York'
 const weather = response.data.weather;
 ```
 
+---
+
 ## Critical Rules:
 - **Always access payload via `response.data`** (not `response.text`, `response.products`, etc.)
 - **Use the `endpoint` field from McAPI.yaml** with leading `/` (e.g., `/generate-text`)
 - Use `miyagiAPI.post()` for most integrations
 - Use `miyagiAPI.get()` for simple data fetches
 - Check `output.data` schema in McAPI.yaml for available fields
+
+---
 
 ## ⚠️ CRITICAL: Trust the Schema
 

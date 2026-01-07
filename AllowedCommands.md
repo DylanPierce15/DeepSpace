@@ -2,6 +2,8 @@
 
 This repository enforces strict agent constraints. Read this document together with AGENTS.md and McAPI.yaml.
 
+---
+
 ## Agent Constraints (Important)
 - Allowed commands only: `create`
   - Do not use raw shell (e.g., `node`, `npm`, etc.).
@@ -14,6 +16,8 @@ This repository enforces strict agent constraints. Read this document together w
   - Do not attempt to run bundlers; `template.html` is generated automatically on commit.
   - Do not attempt to run any git commands; this is handled for you automatically when you complete the request
 
+---
+
 ## Widget Creation (Recommended path)
 - Primary action: `create widget <template-id>`
   - Example: `create widget notepad`
@@ -21,6 +25,8 @@ This repository enforces strict agent constraints. Read this document together w
 - After creation:
   - Edit `template.jsx` and other .jsx files under the widget folder to implement behavior and UI.
 - If the template exists in the library, the system scaffolds it; otherwise it creates a stub for you to modify.
+
+---
 
 ## Prohibited Actions
 - No shell/OS commands of any kind.

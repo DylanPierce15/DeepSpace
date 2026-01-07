@@ -4,7 +4,7 @@
   "description": "Uses web search + AI to find cool activities and experiences for your trip with real-time data",
   "icon": "🌟",
   "showByDefault": true,
-  "category": "Travel",
+  "category": "travel",
   "defaultSize": {
     "width": 700,
     "height": 600
