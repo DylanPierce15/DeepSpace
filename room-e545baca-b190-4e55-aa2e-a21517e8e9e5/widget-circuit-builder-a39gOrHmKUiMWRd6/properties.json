@@ -1,0 +1,25 @@
+{
+  "shapeId": "shape:circuit-builder-a39gOrHmKUiMWRd6",
+  "widgetId": "circuit-builder_1768453949139",
+  "templateHandle": "circuit-builder",
+  "position": {
+    "x": -24521.7252195734,
+    "y": -24823.87527446675
+  },
+  "size": {
+    "w": 700,
+    "h": 600
+  },
+  "rotation": 0,
+  "opacity": 1,
+  "isLocked": false,
+  "color": "black",
+  "zoomScale": 1,
+  "savedJsxContentHash": "initial",
+  "meta": {
+    "initializationState": "ready"
+  },
+  "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
+  "index": "aZ",
+  "lastChangedClock": 1676
+}

@@ -10,6 +10,10 @@ const QuantumSimulator = () => {
   const blochCanvasRef = useRef(null);
   const waveCanvasRef = useRef(null);
   const animationRef = useRef(null);
+  
+  // Receive circuit from Circuit Builder widget
+  const incomingCircuit = useInput('input-slot-1', null);
+  const lastExecutedRef = useRef(null);
 
   // Load Tailwind CSS
   useEffect(() => {
@@ -446,6 +450,32 @@ const QuantumSimulator = () => {
     return `${real.toFixed(3)}${sign}${imag.toFixed(3)}i`;
   };
 
+  // Execute incoming circuit from Circuit Builder
+  useEffect(() => {
+    if (!incomingCircuit || !Array.isArray(incomingCircuit) || incomingCircuit.length === 0) return;
+    
+    // Check if this is a new circuit (different from last executed)
+    const circuitKey = JSON.stringify(incomingCircuit);
+    if (circuitKey === lastExecutedRef.current) return;
+    lastExecutedRef.current = circuitKey;
+    
+    // Reset to |0⟩ before executing
+    const newQubits = [...qubits];
+    newQubits[selectedQubit] = { alpha: { real: 1, imag: 0 }, beta: { real: 0, imag: 0 }, id: selectedQubit };
+    setQubits(newQubits);
+    setCircuit([]);
+    
+    // Execute gates with delay for animation
+    incomingCircuit.forEach((item, index) => {
+      setTimeout(() => {
+        const gateName = typeof item === 'string' ? item : item.gate;
+        if (gateName && gates[gateName]) {
+          applyGate(gateName);
+        }
+      }, index * 400); // 400ms delay between gates for smooth animation
+    });
+  }, [incomingCircuit]);
+
   if (!tailwindLoaded) {
     return <div style={{ padding: '20px', textAlign: 'center', fontFamily: 'Inter, sans-serif', color: '#fff' }}>Loading...</div>;
   }
@@ -467,10 +497,23 @@ const QuantumSimulator = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2" style={{ textShadow: '0 0 30px rgba(99, 102, 241, 0.5)' }}>
-            Quantum Computing Simulator
-          </h1>
-          <p className="text-lg text-purple-300 font-light">Visualize quantum states and gate operations in real-time</p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-4xl font-bold text-white mb-2" style={{ textShadow: '0 0 30px rgba(99, 102, 241, 0.5)' }}>
+                Quantum Computing Simulator
+              </h1>
+              <p className="text-lg text-purple-300 font-light">Visualize quantum states and gate operations in real-time</p>
+            </div>
+            
+            {/* Connection Status */}
+            {incomingCircuit && incomingCircuit.length > 0 && (
+              <div className="px-4 py-2 rounded-lg border border-green-500/30 flex items-center gap-2"
+                   style={{ background: 'rgba(16, 185, 129, 0.1)' }}>
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-sm text-green-300 font-light">Circuit Connected</span>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
