@@ -10,10 +10,10 @@ const QuantumSimulator = () => {
   const blochCanvasRef = useRef(null);
   const waveCanvasRef = useRef(null);
   const animationRef = useRef(null);
-  
-  // Receive circuit from Circuit Builder widget
-  const incomingCircuit = useInput('input-slot-1', null);
   const lastExecutedRef = useRef(null);
+  
+  // Receive circuit from Circuit Builder via global storage
+  const [sharedCircuit] = useGlobalStorage('quantum-circuit', null);
 
   // Load Tailwind CSS
   useEffect(() => {
@@ -452,10 +452,10 @@ const QuantumSimulator = () => {
 
   // Execute incoming circuit from Circuit Builder
   useEffect(() => {
-    if (!incomingCircuit || !Array.isArray(incomingCircuit) || incomingCircuit.length === 0) return;
+    if (!sharedCircuit || !sharedCircuit.circuit || !Array.isArray(sharedCircuit.circuit)) return;
     
     // Check if this is a new circuit (different from last executed)
-    const circuitKey = JSON.stringify(incomingCircuit);
+    const circuitKey = sharedCircuit.timestamp;
     if (circuitKey === lastExecutedRef.current) return;
     lastExecutedRef.current = circuitKey;
     
@@ -466,7 +466,7 @@ const QuantumSimulator = () => {
     setCircuit([]);
     
     // Execute gates with delay for animation
-    incomingCircuit.forEach((item, index) => {
+    sharedCircuit.circuit.forEach((item, index) => {
       setTimeout(() => {
         const gateName = typeof item === 'string' ? item : item.gate;
         if (gateName && gates[gateName]) {
@@ -474,7 +474,7 @@ const QuantumSimulator = () => {
         }
       }, index * 400); // 400ms delay between gates for smooth animation
     });
-  }, [incomingCircuit]);
+  }, [sharedCircuit]);
 
   if (!tailwindLoaded) {
     return <div style={{ padding: '20px', textAlign: 'center', fontFamily: 'Inter, sans-serif', color: '#fff' }}>Loading...</div>;
@@ -506,11 +506,13 @@ const QuantumSimulator = () => {
             </div>
             
             {/* Connection Status */}
-            {incomingCircuit && incomingCircuit.length > 0 && (
+            {sharedCircuit && sharedCircuit.circuit && sharedCircuit.circuit.length > 0 && (
               <div className="px-4 py-2 rounded-lg border border-green-500/30 flex items-center gap-2"
                    style={{ background: 'rgba(16, 185, 129, 0.1)' }}>
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-sm text-green-300 font-light">Circuit Connected</span>
+                <span className="text-sm text-green-300 font-light">
+                  Circuit: {sharedCircuit.circuit.length} gate{sharedCircuit.circuit.length !== 1 ? 's' : ''}
+                </span>
               </div>
             )}
           </div>

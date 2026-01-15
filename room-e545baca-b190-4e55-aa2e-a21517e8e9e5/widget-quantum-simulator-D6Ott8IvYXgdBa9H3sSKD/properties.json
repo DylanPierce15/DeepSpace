@@ -5,12 +5,12 @@
   "templateName": "Quantum Simulator",
   "icon": "💾",
   "position": {
-    "x": 50,
-    "y": 100.51913425345043
+    "x": 1134.918444165621,
+    "y": 80.47345514429108
   },
   "size": {
-    "w": 1606.5495608531994,
-    "h": 851.7303168130486
+    "w": 807.051442910916,
+    "h": 792.106728356336
   },
   "rotation": 0,
   "opacity": 1,
@@ -26,6 +26,6 @@
     "showDefaultHandles": false
   },
   "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
-  "index": "aYFcgzSG",
-  "lastChangedClock": 1740
+  "index": "ailHFUJG",
+  "lastChangedClock": 1797
 }

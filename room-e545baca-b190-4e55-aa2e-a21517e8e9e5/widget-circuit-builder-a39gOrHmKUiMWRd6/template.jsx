@@ -4,7 +4,7 @@ const QuantumCircuitBuilder = () => {
   const [tailwindLoaded, setTailwindLoaded] = useState(false);
   const [circuit, setCircuit] = useState([]);
   const [autoExecute, setAutoExecute] = useState(true);
-  const sendCircuit = useOutput('output-slot-1');
+  const [sharedCircuit, setSharedCircuit] = useGlobalStorage('quantum-circuit', null);
 
   // Load Tailwind CSS
   useEffect(() => {
@@ -34,7 +34,7 @@ const QuantumCircuitBuilder = () => {
   // Auto-execute circuit when it changes
   useEffect(() => {
     if (autoExecute && circuit.length > 0) {
-      sendCircuit(circuit);
+      setSharedCircuit({ circuit, timestamp: Date.now() });
     }
   }, [circuit, autoExecute]);
 
@@ -58,11 +58,11 @@ const QuantumCircuitBuilder = () => {
 
   const clearCircuit = () => {
     setCircuit([]);
-    sendCircuit([]);
+    setSharedCircuit(null);
   };
 
   const executeCircuit = () => {
-    sendCircuit(circuit);
+    setSharedCircuit({ circuit, timestamp: Date.now() });
   };
 
   const moveGate = (index, direction) => {
@@ -289,10 +289,10 @@ const QuantumCircuitBuilder = () => {
           <div className="mt-6 pt-6 border-t" style={{ borderColor: '#f0f0f0' }}>
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-              <span className="font-light">Connected to output slot</span>
+              <span className="font-light">Broadcasting to quantum simulator</span>
             </div>
             <p className="text-xs text-gray-400 font-light mt-2">
-              Connect this widget's output to the quantum simulator's input to see gates execute in real-time
+              Circuits are automatically shared with all quantum simulator widgets on this canvas
             </p>
           </div>
         </div>

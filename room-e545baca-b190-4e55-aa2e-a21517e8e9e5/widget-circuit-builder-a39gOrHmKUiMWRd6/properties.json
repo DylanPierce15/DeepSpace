@@ -3,12 +3,12 @@
   "widgetId": "circuit-builder_1768453949139",
   "templateHandle": "circuit-builder",
   "position": {
-    "x": -24521.7252195734,
-    "y": -24823.87527446675
+    "x": 50,
+    "y": 50
   },
   "size": {
-    "w": 700,
-    "h": 600
+    "w": 1006.2484316185695,
+    "h": 839.849435382685
   },
   "rotation": 0,
   "opacity": 1,
@@ -17,9 +17,13 @@
   "zoomScale": 1,
   "savedJsxContentHash": "initial",
   "meta": {
-    "initializationState": "ready"
+    "initializationState": "ready",
+    "justCreated": false,
+    "createdAt": 1768454072431,
+    "dockOrder": 7,
+    "showDefaultHandles": false
   },
   "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
-  "index": "aZ",
-  "lastChangedClock": 1676
+  "index": "ahoHyQpV",
+  "lastChangedClock": 1791
 }
