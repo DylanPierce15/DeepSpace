@@ -131,20 +131,34 @@ const QuantumSimulator = () => {
       const qubit = qubits[selectedQubit];
       const { alpha, beta } = qubit;
       
-      const alphaMag = Math.sqrt((alpha.real || alpha) ** 2 + (alpha.imag || 0) ** 2);
-      const betaMag = Math.sqrt((beta.real || beta) ** 2 + (beta.imag || 0) ** 2);
+      // Safely extract real and imaginary parts
+      const alphaReal = typeof alpha === 'object' ? (alpha.real || 0) : (alpha || 0);
+      const alphaImag = typeof alpha === 'object' ? (alpha.imag || 0) : 0;
+      const betaReal = typeof beta === 'object' ? (beta.real || 0) : (beta || 0);
+      const betaImag = typeof beta === 'object' ? (beta.imag || 0) : 0;
       
-      const theta = 2 * Math.acos(Math.min(1, alphaMag));
-      const phiAlpha = Math.atan2(alpha.imag || 0, alpha.real || alpha);
-      const phiBeta = Math.atan2(beta.imag || 0, beta.real || beta);
+      const alphaMag = Math.sqrt(alphaReal ** 2 + alphaImag ** 2);
+      const betaMag = Math.sqrt(betaReal ** 2 + betaImag ** 2);
+      
+      // Normalize to prevent errors
+      const total = Math.sqrt(alphaMag ** 2 + betaMag ** 2);
+      const normalizedAlphaMag = total > 0 ? alphaMag / total : 1;
+      
+      const theta = 2 * Math.acos(Math.min(1, Math.max(0, normalizedAlphaMag)));
+      const phiAlpha = Math.atan2(alphaImag, alphaReal);
+      const phiBeta = Math.atan2(betaImag, betaReal);
       const phi = phiBeta - phiAlpha;
 
       const x = Math.sin(theta) * Math.cos(phi);
       const y = Math.sin(theta) * Math.sin(phi);
       const z = Math.cos(theta);
 
-      const screenX = centerX + x * radius;
-      const screenY = centerY - z * radius;
+      let screenX = centerX + x * radius;
+      let screenY = centerY - z * radius;
+      
+      // Ensure coordinates are finite numbers
+      if (!isFinite(screenX)) screenX = centerX;
+      if (!isFinite(screenY)) screenY = centerY - radius;
 
       // Draw state vector with gradient and glow
       const vectorGradient = ctx.createLinearGradient(centerX, centerY, screenX, screenY);
@@ -160,42 +174,46 @@ const QuantumSimulator = () => {
       ctx.stroke();
 
       // Animated particles along vector
-      if (animatingGate) {
+      if (animatingGate && isFinite(screenX) && isFinite(screenY)) {
         for (let i = 0; i < 3; i++) {
           const t = ((animationFrame * 0.05 + i * 0.3) % 1);
           const px = centerX + (screenX - centerX) * t;
           const py = centerY + (screenY - centerY) * t;
           
-          ctx.fillStyle = `rgba(99, 102, 241, ${1 - t})`;
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = 'rgba(99, 102, 241, 0.8)';
-          ctx.beginPath();
-          ctx.arc(px, py, 3, 0, 2 * Math.PI);
-          ctx.fill();
+          if (isFinite(px) && isFinite(py)) {
+            ctx.fillStyle = `rgba(99, 102, 241, ${1 - t})`;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = 'rgba(99, 102, 241, 0.8)';
+            ctx.beginPath();
+            ctx.arc(px, py, 3, 0, 2 * Math.PI);
+            ctx.fill();
+          }
         }
       }
 
       // State point with pulse
-      const pulse = Math.sin(animationFrame * 0.1) * 2 + 8;
-      const pointGradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, pulse);
-      pointGradient.addColorStop(0, '#6366f1');
-      pointGradient.addColorStop(0.5, 'rgba(99, 102, 241, 0.8)');
-      pointGradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
-      
-      ctx.fillStyle = pointGradient;
-      ctx.shadowBlur = 20;
-      ctx.shadowColor = 'rgba(99, 102, 241, 0.8)';
-      ctx.beginPath();
-      ctx.arc(screenX, screenY, pulse, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      ctx.fillStyle = '#ffffff';
-      ctx.shadowBlur = 10;
-      ctx.beginPath();
-      ctx.arc(screenX, screenY, 4, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      ctx.shadowBlur = 0;
+      if (isFinite(screenX) && isFinite(screenY)) {
+        const pulse = Math.sin(animationFrame * 0.1) * 2 + 8;
+        const pointGradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, pulse);
+        pointGradient.addColorStop(0, '#6366f1');
+        pointGradient.addColorStop(0.5, 'rgba(99, 102, 241, 0.8)');
+        pointGradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
+        
+        ctx.fillStyle = pointGradient;
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = 'rgba(99, 102, 241, 0.8)';
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, pulse, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        ctx.shadowBlur = 0;
+      }
 
       animationRef.current = requestAnimationFrame(animate);
     };
@@ -221,21 +239,36 @@ const QuantumSimulator = () => {
     ctx.clearRect(0, 0, width, height);
 
     const qubit = qubits[selectedQubit];
-    const alphaReal = typeof qubit.alpha === 'number' ? qubit.alpha : (qubit.alpha.real || 0);
-    const alphaImag = typeof qubit.alpha === 'number' ? 0 : (qubit.alpha.imag || 0);
-    const betaReal = typeof qubit.beta === 'number' ? qubit.beta : (qubit.beta.real || 0);
-    const betaImag = typeof qubit.beta === 'number' ? 0 : (qubit.beta.imag || 0);
+    const alphaReal = typeof qubit.alpha === 'object' ? (qubit.alpha.real || 0) : (qubit.alpha || 0);
+    const alphaImag = typeof qubit.alpha === 'object' ? (qubit.alpha.imag || 0) : 0;
+    const betaReal = typeof qubit.beta === 'object' ? (qubit.beta.real || 0) : (qubit.beta || 0);
+    const betaImag = typeof qubit.beta === 'object' ? (qubit.beta.imag || 0) : 0;
     
-    const prob0 = alphaReal ** 2 + alphaImag ** 2;
-    const prob1 = betaReal ** 2 + betaImag ** 2;
+    let prob0 = alphaReal ** 2 + alphaImag ** 2;
+    let prob1 = betaReal ** 2 + betaImag ** 2;
+    
+    // Ensure probabilities are valid
+    if (!isFinite(prob0)) prob0 = 0;
+    if (!isFinite(prob1)) prob1 = 0;
+    
+    // Normalize probabilities
+    const totalProb = prob0 + prob1;
+    if (totalProb > 0) {
+      prob0 = prob0 / totalProb;
+      prob1 = prob1 / totalProb;
+    }
 
     // Draw |0⟩ waveform
     const barWidth = (width / 2) - 30;
     const maxHeight = height - 40;
 
     // |0⟩ bar
-    const height0 = prob0 * maxHeight;
-    const gradient0 = ctx.createLinearGradient(0, height - height0, 0, height);
+    let height0 = prob0 * maxHeight;
+    if (!isFinite(height0) || height0 < 0) height0 = 0;
+    if (height0 > maxHeight) height0 = maxHeight;
+    
+    const y0Start = Math.max(0, height - height0);
+    const gradient0 = ctx.createLinearGradient(0, y0Start, 0, height);
     gradient0.addColorStop(0, '#6366f1');
     gradient0.addColorStop(1, 'rgba(99, 102, 241, 0.6)');
     
@@ -246,8 +279,12 @@ const QuantumSimulator = () => {
     ctx.shadowBlur = 0;
 
     // |1⟩ bar
-    const height1 = prob1 * maxHeight;
-    const gradient1 = ctx.createLinearGradient(0, height - height1, 0, height);
+    let height1 = prob1 * maxHeight;
+    if (!isFinite(height1) || height1 < 0) height1 = 0;
+    if (height1 > maxHeight) height1 = maxHeight;
+    
+    const y1Start = Math.max(0, height - height1);
+    const gradient1 = ctx.createLinearGradient(0, y1Start, 0, height);
     gradient1.addColorStop(0, '#ec4899');
     gradient1.addColorStop(1, 'rgba(236, 72, 153, 0.6)');
     
@@ -320,27 +357,33 @@ const QuantumSimulator = () => {
 
   // Complex number multiplication
   const complexMult = (a, b) => {
-    const aReal = typeof a === 'number' ? a : (a.real || 0);
-    const aImag = typeof a === 'number' ? 0 : (a.imag || 0);
-    const bReal = typeof b === 'number' ? b : (b.real || 0);
-    const bImag = typeof b === 'number' ? 0 : (b.imag || 0);
+    const aReal = typeof a === 'number' ? a : (a?.real || 0);
+    const aImag = typeof a === 'number' ? 0 : (a?.imag || 0);
+    const bReal = typeof b === 'number' ? b : (b?.real || 0);
+    const bImag = typeof b === 'number' ? 0 : (b?.imag || 0);
+    
+    const real = aReal * bReal - aImag * bImag;
+    const imag = aReal * bImag + aImag * bReal;
     
     return {
-      real: aReal * bReal - aImag * bImag,
-      imag: aReal * bImag + aImag * bReal
+      real: isFinite(real) ? real : 0,
+      imag: isFinite(imag) ? imag : 0
     };
   };
 
   // Complex number addition
   const complexAdd = (a, b) => {
-    const aReal = typeof a === 'number' ? a : (a.real || 0);
-    const aImag = typeof a === 'number' ? 0 : (a.imag || 0);
-    const bReal = typeof b === 'number' ? b : (b.real || 0);
-    const bImag = typeof b === 'number' ? 0 : (b.imag || 0);
+    const aReal = typeof a === 'number' ? a : (a?.real || 0);
+    const aImag = typeof a === 'number' ? 0 : (a?.imag || 0);
+    const bReal = typeof b === 'number' ? b : (b?.real || 0);
+    const bImag = typeof b === 'number' ? 0 : (b?.imag || 0);
+    
+    const real = aReal + bReal;
+    const imag = aImag + bImag;
     
     return {
-      real: aReal + bReal,
-      imag: aImag + bImag
+      real: isFinite(real) ? real : 0,
+      imag: isFinite(imag) ? imag : 0
     };
   };
 
@@ -388,8 +431,12 @@ const QuantumSimulator = () => {
 
   // Format complex number
   const formatComplex = (c) => {
-    const real = typeof c === 'number' ? c : (c.real || 0);
-    const imag = typeof c === 'number' ? 0 : (c.imag || 0);
+    const real = typeof c === 'object' ? (c?.real || 0) : (c || 0);
+    const imag = typeof c === 'object' ? (c?.imag || 0) : 0;
+    
+    if (!isFinite(real) || !isFinite(imag)) {
+      return '0.000';
+    }
     
     if (Math.abs(imag) < 0.0001) {
       return real.toFixed(3);
@@ -399,27 +446,21 @@ const QuantumSimulator = () => {
     return `${real.toFixed(3)}${sign}${imag.toFixed(3)}i`;
   };
 
-  // Calculate probabilities
-  const getProbabilities = () => {
-    const qubit = qubits[selectedQubit];
-    const alphaReal = typeof qubit.alpha === 'number' ? qubit.alpha : (qubit.alpha.real || 0);
-    const alphaImag = typeof qubit.alpha === 'number' ? 0 : (qubit.alpha.imag || 0);
-    const betaReal = typeof qubit.beta === 'number' ? qubit.beta : (qubit.beta.real || 0);
-    const betaImag = typeof qubit.beta === 'number' ? 0 : (qubit.beta.imag || 0);
-    
-    const prob0 = alphaReal ** 2 + alphaImag ** 2;
-    const prob1 = betaReal ** 2 + betaImag ** 2;
-    
-    return { prob0, prob1 };
-  };
-
   if (!tailwindLoaded) {
     return <div style={{ padding: '20px', textAlign: 'center', fontFamily: 'Inter, sans-serif', color: '#fff' }}>Loading...</div>;
   }
 
   const qubit = qubits[selectedQubit];
-  const alphaPhase = Math.atan2(qubit.alpha.imag || 0, qubit.alpha.real || qubit.alpha) * 180 / Math.PI;
-  const betaPhase = Math.atan2(qubit.beta.imag || 0, qubit.beta.real || qubit.beta) * 180 / Math.PI;
+  const alphaReal = typeof qubit.alpha === 'object' ? (qubit.alpha?.real || 0) : (qubit.alpha || 0);
+  const alphaImag = typeof qubit.alpha === 'object' ? (qubit.alpha?.imag || 0) : 0;
+  const betaReal = typeof qubit.beta === 'object' ? (qubit.beta?.real || 0) : (qubit.beta || 0);
+  const betaImag = typeof qubit.beta === 'object' ? (qubit.beta?.imag || 0) : 0;
+  
+  const alphaPhase = Math.atan2(alphaImag, alphaReal) * 180 / Math.PI;
+  const betaPhase = Math.atan2(betaImag, betaReal) * 180 / Math.PI;
+  
+  const prob0 = Math.max(0, Math.min(1, alphaReal ** 2 + alphaImag ** 2));
+  const prob1 = Math.max(0, Math.min(1, betaReal ** 2 + betaImag ** 2));
 
   return (
     <div style={{ fontFamily: 'Inter, -apple-system, sans-serif' }} className="min-h-screen p-8">
@@ -473,8 +514,8 @@ const QuantumSimulator = () => {
                   >
                     <div className="text-sm font-medium text-purple-300 mb-2">Phase Angles</div>
                     <div className="space-y-1 text-sm text-gray-300">
-                      <div>α phase: {alphaPhase.toFixed(1)}°</div>
-                      <div>β phase: {betaPhase.toFixed(1)}°</div>
+                      <div>α phase: {isFinite(alphaPhase) ? alphaPhase.toFixed(1) : '0.0'}°</div>
+                      <div>β phase: {isFinite(betaPhase) ? betaPhase.toFixed(1) : '0.0'}°</div>
                     </div>
                   </div>
                 )}
@@ -634,7 +675,7 @@ const QuantumSimulator = () => {
                 >
                   <div className="text-sm font-medium text-blue-300 mb-2">Collapse to |0⟩</div>
                   <div className="text-2xl font-bold text-white">
-                    {(Math.sqrt((qubit.alpha.real || qubit.alpha) ** 2 + (qubit.alpha.imag || 0) ** 2) ** 2 * 100).toFixed(1)}%
+                    {(prob0 * 100).toFixed(1)}%
                   </div>
                   <div className="text-xs text-gray-400 mt-1">Amplitude: {formatComplex(qubit.alpha)}</div>
                 </div>
@@ -645,7 +686,7 @@ const QuantumSimulator = () => {
                 >
                   <div className="text-sm font-medium text-pink-300 mb-2">Collapse to |1⟩</div>
                   <div className="text-2xl font-bold text-white">
-                    {(Math.sqrt((qubit.beta.real || qubit.beta) ** 2 + (qubit.beta.imag || 0) ** 2) ** 2 * 100).toFixed(1)}%
+                    {(prob1 * 100).toFixed(1)}%
                   </div>
                   <div className="text-xs text-gray-400 mt-1">Amplitude: {formatComplex(qubit.beta)}</div>
                 </div>
