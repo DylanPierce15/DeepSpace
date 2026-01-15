@@ -13,7 +13,7 @@
           "name": "Dock Space",
           "description": "Dock mode with macOS-style dock bar for widgets (zoom locked at 50% via DOCK_MODE_ZOOM constant)"
         },
-        "lastUpdated": 1767476370069
+        "lastUpdated": 1768452598470
       }
     },
     "id": "document:document",
@@ -22,13 +22,14 @@
   "pages": [
     {
       "meta": {
-        "isPlaygroundMode": false
+        "isPlaygroundMode": false,
+        "canvasTheme": "purple-twilight"
       },
       "id": "page:YgYpHG-EIx5izyxJ-Cj_3",
       "name": "Page 1",
       "index": "a1",
       "typeName": "page",
-      "lastChangedClock": 446
+      "lastChangedClock": 730
     }
   ],
   "schema": {
@@ -73,12 +74,17 @@
       "com.tldraw.binding.arrow": 1
     }
   },
-  "generatedAt": "2026-01-03T21:47:14.949Z",
-  "clock": 655,
-  "documentClock": 655,
+  "generatedAt": "2026-01-15T04:50:29.046Z",
+  "clock": 879,
+  "documentClock": 879,
   "tombstones": {
     "shape:2048-game-uf24a0ji2-9f5dNHlgZZu": 122,
-    "shape:google-drive--KhPqF7Zvsmiis2jEmQPG": 173
+    "shape:google-drive--KhPqF7Zvsmiis2jEmQPG": 173,
+    "shape:journal-mental-health-zZs0ya50NX4ze8Io": 656,
+    "shape:journal-personal-gE8XY8ZJdf1J4o6H": 656,
+    "shape:journal-school-mtgDRTRxa3HKF3qR": 656,
+    "shape:wFfcqv2M5Zf8Sa4c": 721,
+    "shape:MoxIKEpgXx3el3cY": 728
   },
   "tombstoneHistoryStartsAtClock": 1
 }
