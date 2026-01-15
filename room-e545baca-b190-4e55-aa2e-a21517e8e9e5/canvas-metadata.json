@@ -29,7 +29,7 @@
       "name": "Page 1",
       "index": "a1",
       "typeName": "page",
-      "lastChangedClock": 1670
+      "lastChangedClock": 1694
     }
   ],
   "schema": {
@@ -74,10 +74,11 @@
       "com.tldraw.binding.arrow": 1
     }
   },
-  "generatedAt": "2026-01-15T05:02:57.286Z",
-  "clock": 1671,
-  "documentClock": 1670,
+  "generatedAt": "2026-01-15T05:10:16.591Z",
+  "clock": 1737,
+  "documentClock": 1737,
   "tombstones": {
+    "shape:Mc763fzC5WkvmnejB1phG": 1693,
     "shape:journal-mental-health-zZs0ya50NX4ze8Io": 656,
     "shape:google-drive--KhPqF7Zvsmiis2jEmQPG": 173,
     "shape:MoxIKEpgXx3el3cY": 728,
@@ -88,6 +89,8 @@
     "shape:journal-school-mtgDRTRxa3HKF3qR": 656,
     "shape:wFfcqv2M5Zf8Sa4c": 721,
     "shape:black-hole-simulation-yvX9u_Qm5NuH_MbSnWbfw": 1252,
+    "shape:IFdNLR8gFBmimLrgiXo6S": 1675,
+    "shape:aGhouoFuhCiv3Z4RhTS2C": 1697,
     "shape:may_the_force_be_with_you-8DMxPEqYXrO8vXbnpN5NY": 1300,
     "shape:quantum-simulator-qkf8wbQjcc9IbLkL": 1250,
     "shape:2048-game-uf24a0ji2-9f5dNHlgZZu": 122
