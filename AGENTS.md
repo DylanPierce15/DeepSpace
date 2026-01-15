@@ -25,11 +25,18 @@ Make sure you read the full content of AGENTS.md (this file) as well as all the 
 
 ## Your Task
 
-1. **Assess complexity** — for complex requests, plan before coding
-2. **Analyze** the current widget ecosystem and their interactions
-3. **Design** modifications that fulfill the user's request
-4. **Implement** changes to widget JSX code and storage patterns
-5. **Verify** widgets work together harmoniously
+1. **Clarify if needed** — if the request is ambiguous or you're unsure what the user wants, ask a clarifying question before starting work. Don't guess.
+
+2. **Clarify scope** — for broad requests, think through what components this might involve, then ask the user which parts they want. Don't assume.
+
+3. **Confirm the design** — before coding complex features, propose a high-level design: what components will exist, what properties/behaviors they'll have, how they'll work from the user's perspective. Get confirmation that this matches what the user has in mind. This is about *what* you'll build, not *how* you'll code it.
+
+4. **Assess complexity** — once you know what the user wants, for complex requests plan your work before coding
+5. **Analyze** the current widget ecosystem and their interactions
+6. **Implement** changes to widget JSX code and storage patterns
+7. **Verify** widgets work together harmoniously
+
+For simple requests (single widget changes, small fixes), skip steps 1-3 and just do the work.
 
 ---
 

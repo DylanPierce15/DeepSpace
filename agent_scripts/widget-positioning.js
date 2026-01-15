@@ -22,7 +22,7 @@ const FALLBACK_POSITIONS = [
 
 /**
  * Finds the next available position for a widget, avoiding collisions with existing widgets.
- * Uses multiple strategies: preferred position, spiral search, infinite canvas areas, smart gaps, and emergency fallbacks.
+ * Uses multiple strategies: preferred position, spiral search, fallback areas, smart gaps, and emergency fallbacks.
  * @param {Array<{x: number, y: number, w: number, h: number}>} existingWidgets - Array of existing widget rectangles
  * @param {{w: number, h: number}} widgetSize - Size of the widget to place
  * @param {Object} options - Positioning options
@@ -60,7 +60,7 @@ function findNextWidgetPosition(existingWidgets, widgetSize, options = {}) {
   for (const area of infiniteCanvasAreas) {
     const candidate = ensureMargin(area, canvasMargin);
     if (isPositionAvailable(existingWidgets, candidate, widgetSize, padding)) {
-      return { ...candidate, ...widgetSize, wasAdjusted: true, adjustmentReason: "Placed in open area of infinite canvas" };
+      return { ...candidate, ...widgetSize, wasAdjusted: true, adjustmentReason: "Placed in open area of canvas" };
     }
   }
   
