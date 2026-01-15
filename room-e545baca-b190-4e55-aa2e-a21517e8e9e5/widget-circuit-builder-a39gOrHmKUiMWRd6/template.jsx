@@ -21,9 +21,9 @@ const QuantumCircuitBuilder = () => {
     }
   }, []);
 
-  // Set body background
+  // Set body background to dark
   useEffect(() => {
-    document.body.style.background = '#ffffff';
+    document.body.style.background = 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)';
     document.documentElement.style.minHeight = '100%';
     return () => {
       document.body.style.background = '';
@@ -79,46 +79,55 @@ const QuantumCircuitBuilder = () => {
   };
 
   if (!tailwindLoaded) {
-    return <div style={{ padding: '20px', textAlign: 'center', fontFamily: 'Inter, sans-serif' }}>Loading...</div>;
+    return <div style={{ padding: '20px', textAlign: 'center', fontFamily: 'Inter, sans-serif', color: '#fff' }}>Loading...</div>;
   }
 
   return (
-    <div style={{ fontFamily: 'Inter, -apple-system, sans-serif' }} className="min-h-screen bg-white p-8">
+    <div style={{ fontFamily: 'Inter, -apple-system, sans-serif' }} className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-light text-gray-900 mb-2">Quantum Circuit Builder</h1>
-          <p className="text-sm text-gray-500 font-light">Design quantum circuits and send them to the simulator</p>
+          <h1 className="text-4xl font-bold text-white mb-2" style={{ textShadow: '0 0 30px rgba(99, 102, 241, 0.5)' }}>
+            Quantum Circuit Builder
+          </h1>
+          <p className="text-lg text-purple-300 font-light">Design quantum circuits and send them to the simulator</p>
         </div>
 
         {/* Gate Palette */}
-        <div className="bg-white rounded-2xl p-8 mb-6" style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.03)' }}>
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Gate Palette</h2>
-          <p className="text-xs text-gray-500 mb-6 font-light">Click a gate to add it to your circuit</p>
+        <div 
+          className="rounded-3xl p-8 mb-6 backdrop-blur-sm border border-purple-500/20"
+          style={{ 
+            background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%)',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), inset 0 0 60px rgba(139, 92, 246, 0.05)'
+          }}
+        >
+          <h2 className="text-xl font-bold text-white mb-4">Gate Palette</h2>
+          <p className="text-sm text-purple-300 mb-6 font-light">Click a gate to add it to your circuit</p>
           
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {gates.map(gate => (
               <button
                 key={gate.name}
                 onClick={() => addGate(gate.name)}
-                className="px-6 py-4 rounded-xl text-white font-medium transition-all hover:scale-105 active:scale-95"
+                className="px-6 py-4 rounded-xl text-white font-bold transition-all hover:scale-105 active:scale-95"
                 style={{ 
-                  backgroundColor: gate.color,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                  background: `linear-gradient(135deg, ${gate.color} 0%, ${gate.color}dd 100%)`,
+                  boxShadow: `0 10px 30px rgba(0,0,0,0.3), inset 0 0 20px rgba(255, 255, 255, 0.1)`,
+                  border: `1px solid ${gate.color}44`
                 }}
               >
                 <div className="text-2xl mb-1">{gate.name}</div>
-                <div className="text-xs font-light opacity-90">{gate.label}</div>
+                <div className="text-xs font-normal opacity-90">{gate.label}</div>
               </button>
             ))}
           </div>
 
           {/* Gate Descriptions */}
-          <div className="mt-6 pt-6 border-t" style={{ borderColor: '#f0f0f0' }}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-gray-600">
+          <div className="mt-6 pt-6 border-t border-purple-500/20">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-gray-400">
               {gates.map(gate => (
                 <div key={gate.name} className="flex items-start gap-2">
-                  <span className="font-medium" style={{ color: gate.color }}>{gate.name}:</span>
+                  <span className="font-bold" style={{ color: gate.color }}>{gate.name}:</span>
                   <span className="font-light">{gate.description}</span>
                 </div>
               ))}
@@ -127,18 +136,25 @@ const QuantumCircuitBuilder = () => {
         </div>
 
         {/* Circuit Display */}
-        <div className="bg-white rounded-2xl p-8 mb-6" style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.03)' }}>
+        <div 
+          className="rounded-3xl p-8 mb-6 backdrop-blur-sm border border-purple-500/20"
+          style={{ 
+            background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%)',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), inset 0 0 60px rgba(139, 92, 246, 0.05)'
+          }}
+        >
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg font-medium text-gray-900">Circuit</h2>
-              <p className="text-xs text-gray-500 font-light mt-1">
+              <h2 className="text-xl font-bold text-white">Circuit</h2>
+              <p className="text-sm text-purple-300 font-light mt-1">
                 {circuit.length} gate{circuit.length !== 1 ? 's' : ''} in sequence
               </p>
             </div>
             {circuit.length > 0 && (
               <button
                 onClick={clearCircuit}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 font-light"
+                className="px-4 py-2 text-sm text-purple-400 hover:text-purple-300 font-medium rounded-lg"
+                style={{ background: 'rgba(139, 92, 246, 0.2)' }}
               >
                 Clear All
               </button>
@@ -146,16 +162,16 @@ const QuantumCircuitBuilder = () => {
           </div>
 
           {circuit.length === 0 ? (
-            <div className="text-center py-12 text-gray-400 font-light">
+            <div className="text-center py-12 text-gray-500 font-light">
               <div className="text-4xl mb-3">⚛️</div>
-              <div className="text-sm">No gates added yet</div>
-              <div className="text-xs mt-1">Click a gate above to start building</div>
+              <div className="text-sm text-gray-400">No gates added yet</div>
+              <div className="text-xs mt-1 text-gray-500">Click a gate above to start building</div>
             </div>
           ) : (
             <div className="space-y-3">
               {/* Circuit Visualization Line */}
               <div className="flex items-center gap-2 overflow-x-auto pb-4">
-                <div className="text-xs text-gray-500 font-medium whitespace-nowrap mr-2">|ψ⟩ →</div>
+                <div className="text-xs text-purple-400 font-bold whitespace-nowrap mr-2">|ψ⟩ →</div>
                 {circuit.map((item, index) => {
                   const gateInfo = getGateInfo(item.gate);
                   return (
@@ -163,19 +179,19 @@ const QuantumCircuitBuilder = () => {
                       <div 
                         className="flex-shrink-0 w-16 h-16 rounded-lg flex items-center justify-center text-white font-bold text-xl"
                         style={{ 
-                          backgroundColor: gateInfo.color,
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                          background: `linear-gradient(135deg, ${gateInfo.color} 0%, ${gateInfo.color}dd 100%)`,
+                          boxShadow: `0 4px 12px rgba(0,0,0,0.3), inset 0 0 10px rgba(255, 255, 255, 0.1)`
                         }}
                       >
                         {item.gate}
                       </div>
                       {index < circuit.length - 1 && (
-                        <div className="flex-shrink-0 w-8 h-0.5 bg-gray-200"></div>
+                        <div className="flex-shrink-0 w-8 h-0.5 bg-purple-500/30"></div>
                       )}
                     </React.Fragment>
                   );
                 })}
-                <div className="text-xs text-gray-500 font-medium whitespace-nowrap ml-2">→ |ψ'⟩</div>
+                <div className="text-xs text-purple-400 font-bold whitespace-nowrap ml-2">→ |ψ'⟩</div>
               </div>
 
               {/* Gate List with Controls */}
@@ -185,22 +201,25 @@ const QuantumCircuitBuilder = () => {
                   return (
                     <div
                       key={item.id}
-                      className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 border"
-                      style={{ borderColor: '#f0f0f0' }}
+                      className="flex items-center gap-3 p-4 rounded-xl border border-purple-500/20"
+                      style={{ background: 'rgba(0, 0, 0, 0.3)' }}
                     >
                       <div className="flex items-center gap-3 flex-1">
-                        <div className="text-xs text-gray-400 font-medium w-8">#{index + 1}</div>
+                        <div className="text-xs text-gray-500 font-medium w-8">#{index + 1}</div>
                         <div 
                           className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold"
-                          style={{ backgroundColor: gateInfo.color }}
+                          style={{ 
+                            background: `linear-gradient(135deg, ${gateInfo.color} 0%, ${gateInfo.color}dd 100%)`,
+                            boxShadow: `0 2px 8px rgba(0,0,0,0.3)`
+                          }}
                         >
                           {item.gate}
                         </div>
                         <div className="flex-1">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-white">
                             {gates.find(g => g.name === item.gate)?.label}
                           </div>
-                          <div className="text-xs text-gray-500 font-light">
+                          <div className="text-xs text-gray-400 font-light">
                             {gates.find(g => g.name === item.gate)?.description}
                           </div>
                         </div>
@@ -211,7 +230,7 @@ const QuantumCircuitBuilder = () => {
                         <button
                           onClick={() => moveGate(index, -1)}
                           disabled={index === 0}
-                          className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="p-2 text-purple-400 hover:text-purple-300 disabled:opacity-30 disabled:cursor-not-allowed"
                           title="Move earlier"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -221,7 +240,7 @@ const QuantumCircuitBuilder = () => {
                         <button
                           onClick={() => moveGate(index, 1)}
                           disabled={index === circuit.length - 1}
-                          className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="p-2 text-purple-400 hover:text-purple-300 disabled:opacity-30 disabled:cursor-not-allowed"
                           title="Move later"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -230,7 +249,7 @@ const QuantumCircuitBuilder = () => {
                         </button>
                         <button
                           onClick={() => removeGate(item.id)}
-                          className="p-2 text-red-400 hover:text-red-600 ml-2"
+                          className="p-2 text-red-400 hover:text-red-300 ml-2"
                           title="Remove gate"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -247,15 +266,21 @@ const QuantumCircuitBuilder = () => {
         </div>
 
         {/* Controls */}
-        <div className="bg-white rounded-2xl p-8" style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.03)' }}>
+        <div 
+          className="rounded-3xl p-8 backdrop-blur-sm border border-purple-500/20"
+          style={{ 
+            background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%)',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), inset 0 0 60px rgba(139, 92, 246, 0.05)'
+          }}
+        >
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-lg font-medium text-gray-900">Execution</h2>
-              <p className="text-xs text-gray-500 font-light mt-1">Send circuit to quantum simulator</p>
+              <h2 className="text-xl font-bold text-white">Execution</h2>
+              <p className="text-sm text-purple-300 font-light mt-1">Send circuit to quantum simulator</p>
             </div>
             
             <label className="flex items-center gap-3 cursor-pointer">
-              <span className="text-sm text-gray-600 font-light">Auto-execute</span>
+              <span className="text-sm text-purple-300 font-light">Auto-execute</span>
               <div className="relative">
                 <input
                   type="checkbox"
@@ -263,7 +288,7 @@ const QuantumCircuitBuilder = () => {
                   onChange={(e) => setAutoExecute(e.target.checked)}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-indigo-500 transition-colors"></div>
+                <div className="w-11 h-6 bg-purple-900/50 rounded-full peer peer-checked:bg-indigo-500 transition-colors"></div>
                 <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
               </div>
             </label>
@@ -272,23 +297,26 @@ const QuantumCircuitBuilder = () => {
           {!autoExecute && circuit.length > 0 && (
             <button
               onClick={executeCircuit}
-              className="w-full px-6 py-4 bg-indigo-500 text-white rounded-xl font-medium hover:bg-indigo-600 transition-colors"
-              style={{ boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)' }}
+              className="w-full px-6 py-4 text-white rounded-xl font-medium hover:scale-105 active:scale-95 transition-all"
+              style={{ 
+                background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                boxShadow: '0 10px 30px rgba(99, 102, 241, 0.3)'
+              }}
             >
               Execute Circuit
             </button>
           )}
 
           {autoExecute && (
-            <div className="text-center py-3 text-sm text-gray-500 font-light">
+            <div className="text-center py-3 text-sm text-purple-300 font-light">
               Circuit automatically sends to simulator as you build
             </div>
           )}
 
           {/* Connection Status */}
-          <div className="mt-6 pt-6 border-t" style={{ borderColor: '#f0f0f0' }}>
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+          <div className="mt-6 pt-6 border-t border-purple-500/20">
+            <div className="flex items-center gap-2 text-xs text-purple-300">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
               <span className="font-light">Broadcasting to quantum simulator</span>
             </div>
             <p className="text-xs text-gray-400 font-light mt-2">
@@ -298,29 +326,35 @@ const QuantumCircuitBuilder = () => {
         </div>
 
         {/* Famous Quantum Circuits */}
-        <div className="mt-6 bg-white rounded-2xl p-8" style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.03)' }}>
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Quick Start Circuits</h2>
+        <div 
+          className="mt-6 rounded-3xl p-8 backdrop-blur-sm border border-purple-500/20"
+          style={{ 
+            background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%)',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), inset 0 0 60px rgba(139, 92, 246, 0.05)'
+          }}
+        >
+          <h2 className="text-xl font-bold text-white mb-4">Quick Start Circuits</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <button
               onClick={() => setCircuit([
                 { id: Date.now(), gate: 'H' }
               ])}
-              className="text-left px-4 py-3 rounded-xl border hover:bg-gray-50 transition-colors"
-              style={{ borderColor: '#f0f0f0' }}
+              className="text-left px-4 py-3 rounded-xl border border-purple-500/20 hover:bg-purple-500/10 transition-all"
+              style={{ background: 'rgba(0, 0, 0, 0.3)' }}
             >
-              <div className="text-sm font-medium text-gray-900">Equal Superposition</div>
-              <div className="text-xs text-gray-500 font-light mt-1">H → Creates 50/50 state</div>
+              <div className="text-sm font-medium text-white">Equal Superposition</div>
+              <div className="text-xs text-purple-300 font-light mt-1">H → Creates 50/50 state</div>
             </button>
             
             <button
               onClick={() => setCircuit([
                 { id: Date.now(), gate: 'X' }
               ])}
-              className="text-left px-4 py-3 rounded-xl border hover:bg-gray-50 transition-colors"
-              style={{ borderColor: '#f0f0f0' }}
+              className="text-left px-4 py-3 rounded-xl border border-purple-500/20 hover:bg-purple-500/10 transition-all"
+              style={{ background: 'rgba(0, 0, 0, 0.3)' }}
             >
-              <div className="text-sm font-medium text-gray-900">Bit Flip</div>
-              <div className="text-xs text-gray-500 font-light mt-1">X → Flips |0⟩ to |1⟩</div>
+              <div className="text-sm font-medium text-white">Bit Flip</div>
+              <div className="text-xs text-purple-300 font-light mt-1">X → Flips |0⟩ to |1⟩</div>
             </button>
             
             <button
@@ -329,11 +363,11 @@ const QuantumCircuitBuilder = () => {
                 { id: Date.now() + 1, gate: 'T' },
                 { id: Date.now() + 2, gate: 'H' }
               ])}
-              className="text-left px-4 py-3 rounded-xl border hover:bg-gray-50 transition-colors"
-              style={{ borderColor: '#f0f0f0' }}
+              className="text-left px-4 py-3 rounded-xl border border-purple-500/20 hover:bg-purple-500/10 transition-all"
+              style={{ background: 'rgba(0, 0, 0, 0.3)' }}
             >
-              <div className="text-sm font-medium text-gray-900">Phase Rotation</div>
-              <div className="text-xs text-gray-500 font-light mt-1">H → T → H</div>
+              <div className="text-sm font-medium text-white">Phase Rotation</div>
+              <div className="text-xs text-purple-300 font-light mt-1">H → T → H</div>
             </button>
             
             <button
@@ -342,11 +376,11 @@ const QuantumCircuitBuilder = () => {
                 { id: Date.now() + 1, gate: 'S' },
                 { id: Date.now() + 2, gate: 'H' }
               ])}
-              className="text-left px-4 py-3 rounded-xl border hover:bg-gray-50 transition-colors"
-              style={{ borderColor: '#f0f0f0' }}
+              className="text-left px-4 py-3 rounded-xl border border-purple-500/20 hover:bg-purple-500/10 transition-all"
+              style={{ background: 'rgba(0, 0, 0, 0.3)' }}
             >
-              <div className="text-sm font-medium text-gray-900">S Gate Demo</div>
-              <div className="text-xs text-gray-500 font-light mt-1">H → S → H</div>
+              <div className="text-sm font-medium text-white">S Gate Demo</div>
+              <div className="text-xs text-purple-300 font-light mt-1">H → S → H</div>
             </button>
           </div>
         </div>
