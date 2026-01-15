@@ -1,0 +1,38 @@
+{
+  "shapeId": "shape:ml-network-architect-B_rCK71klSWc-h-L3C4Bc",
+  "widgetId": "shape:ml-network-architect-B_rCK71klSWc-h-L3C4Bc",
+  "templateHandle": "ml-network-architect-dylanreidpierce",
+  "templateName": "Visualize Machine Learning",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiPackage"
+  },
+  "position": {
+    "x": 320.87194165621077,
+    "y": 149.02321204516932
+  },
+  "size": {
+    "w": 1096.0000000000002,
+    "h": 546
+  },
+  "rotation": 0,
+  "opacity": 1,
+  "isLocked": false,
+  "color": "black",
+  "zoomScale": 1,
+  "isFullscreen": false,
+  "savedJsxContentHash": "13wxn2o",
+  "meta": {
+    "justCreated": false,
+    "createdAt": 1768452693810,
+    "dockOrder": 4,
+    "showDefaultHandles": false,
+    "isDockedHidden": false,
+    "hiddenAt": null,
+    "originalX": 320.87194165621077,
+    "originalY": 149.02321204516932
+  },
+  "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
+  "index": "aKWKwoOV",
+  "lastChangedClock": 906
+}
