@@ -8,8 +8,8 @@
     "value": "Fi:FiPackage"
   },
   "position": {
-    "x": 474.98494353826845,
-    "y": 200.9999999999999
+    "x": -50000,
+    "y": -50000
   },
   "size": {
     "w": 1235.7766624843161,
@@ -26,9 +26,13 @@
     "justCreated": false,
     "createdAt": 1768452992831,
     "showDefaultHandles": false,
-    "dockOrder": 5
+    "dockOrder": 5,
+    "isDockedHidden": true,
+    "hiddenAt": 1768453106652,
+    "originalX": 107.5566969887077,
+    "originalY": 200.9999999999999
   },
   "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
   "index": "aQG77B1V",
-  "lastChangedClock": 1387
+  "lastChangedClock": 1654
 }

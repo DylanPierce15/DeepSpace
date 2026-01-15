@@ -36,105 +36,6 @@ const QuantumSimulator = () => {
     };
   }, []);
 
-  // Quantum gates with enhanced visual properties
-  const gates = {
-    X: {
-      matrix: [[0, 1], [1, 0]],
-      description: 'Bit flip',
-      color: '#3b82f6',
-      glow: 'rgba(59, 130, 246, 0.5)',
-      icon: '↕️'
-    },
-    H: {
-      matrix: [[1/Math.sqrt(2), 1/Math.sqrt(2)], [1/Math.sqrt(2), -1/Math.sqrt(2)]],
-      description: 'Superposition',
-      color: '#10b981',
-      glow: 'rgba(16, 185, 129, 0.5)',
-      icon: '⚡'
-    },
-    Y: {
-      matrix: [[0, { real: 0, imag: -1 }], [{ real: 0, imag: 1 }, 0]],
-      description: 'Y rotation',
-      color: '#8b5cf6',
-      glow: 'rgba(139, 92, 246, 0.5)',
-      icon: '🔄'
-    },
-    Z: {
-      matrix: [[1, 0], [0, -1]],
-      description: 'Phase flip',
-      color: '#ec4899',
-      glow: 'rgba(236, 72, 153, 0.5)',
-      icon: '⭮'
-    },
-    S: {
-      matrix: [[1, 0], [0, { real: 0, imag: 1 }]],
-      description: 'Phase +90°',
-      color: '#f59e0b',
-      glow: 'rgba(245, 158, 11, 0.5)',
-      icon: '↻'
-    },
-    T: {
-      matrix: [[1, 0], [0, { real: Math.cos(Math.PI/4), imag: Math.sin(Math.PI/4) }]],
-      description: 'Phase +45°',
-      color: '#ef4444',
-      glow: 'rgba(239, 68, 68, 0.5)',
-      icon: '↺'
-    }
-  };
-
-  // Complex number operations
-  const complexMult = (a, b) => {
-    const aReal = typeof a === 'number' ? a : (a.real || 0);
-    const aImag = typeof a === 'number' ? 0 : (a.imag || 0);
-    const bReal = typeof b === 'number' ? b : (b.real || 0);
-    const bImag = typeof b === 'number' ? 0 : (b.imag || 0);
-    
-    return {
-      real: aReal * bReal - aImag * bImag,
-      imag: aReal * bImag + aImag * bReal
-    };
-  };
-
-  const complexAdd = (a, b) => {
-    const aReal = typeof a === 'number' ? a : (a.real || 0);
-    const aImag = typeof a === 'number' ? 0 : (a.imag || 0);
-    const bReal = typeof b === 'number' ? b : (b.real || 0);
-    const bImag = typeof b === 'number' ? 0 : (b.imag || 0);
-    
-    return {
-      real: aReal + bReal,
-      imag: aImag + bImag
-    };
-  };
-
-  // Apply gate with animation
-  const applyGate = (gateName) => {
-    const gate = gates[gateName];
-    const qubit = qubits[selectedQubit];
-    
-    setAnimatingGate(gateName);
-    setTimeout(() => setAnimatingGate(null), 500);
-    
-    const newAlpha = complexAdd(
-      complexMult(gate.matrix[0][0], qubit.alpha),
-      complexMult(gate.matrix[0][1], qubit.beta)
-    );
-    
-    const newBeta = complexAdd(
-      complexMult(gate.matrix[1][0], qubit.alpha),
-      complexMult(gate.matrix[1][1], qubit.beta)
-    );
-
-    const newQubits = [...qubits];
-    newQubits[selectedQubit] = {
-      ...qubit,
-      alpha: newAlpha,
-      beta: newBeta
-    };
-    setQubits(newQubits);
-    setCircuit(prev => [...prev, { gate: gateName, qubit: selectedQubit, time: Date.now() }]);
-  };
-
   // Draw enhanced Bloch sphere with animation
   useEffect(() => {
     if (!blochCanvasRef.current || !tailwindLoaded) return;
@@ -371,18 +272,121 @@ const QuantumSimulator = () => {
 
   }, [qubits, selectedQubit, tailwindLoaded]);
 
+  // Quantum gates with enhanced visual properties
+  const gates = {
+    X: {
+      matrix: [[0, 1], [1, 0]],
+      description: 'Bit flip',
+      color: '#3b82f6',
+      glow: 'rgba(59, 130, 246, 0.5)',
+      icon: '↕️'
+    },
+    H: {
+      matrix: [[1/Math.sqrt(2), 1/Math.sqrt(2)], [1/Math.sqrt(2), -1/Math.sqrt(2)]],
+      description: 'Superposition',
+      color: '#10b981',
+      glow: 'rgba(16, 185, 129, 0.5)',
+      icon: '⚡'
+    },
+    Y: {
+      matrix: [[0, { real: 0, imag: -1 }], [{ real: 0, imag: 1 }, 0]],
+      description: 'Y rotation',
+      color: '#8b5cf6',
+      glow: 'rgba(139, 92, 246, 0.5)',
+      icon: '🔄'
+    },
+    Z: {
+      matrix: [[1, 0], [0, -1]],
+      description: 'Phase flip',
+      color: '#ec4899',
+      glow: 'rgba(236, 72, 153, 0.5)',
+      icon: '⭮'
+    },
+    S: {
+      matrix: [[1, 0], [0, { real: 0, imag: 1 }]],
+      description: 'Phase +90°',
+      color: '#f59e0b',
+      glow: 'rgba(245, 158, 11, 0.5)',
+      icon: '↻'
+    },
+    T: {
+      matrix: [[1, 0], [0, { real: Math.cos(Math.PI/4), imag: Math.sin(Math.PI/4) }]],
+      description: 'Phase +45°',
+      color: '#ef4444',
+      glow: 'rgba(239, 68, 68, 0.5)',
+      icon: '↺'
+    }
+  };
+
+  // Complex number multiplication
+  const complexMult = (a, b) => {
+    const aReal = typeof a === 'number' ? a : (a.real || 0);
+    const aImag = typeof a === 'number' ? 0 : (a.imag || 0);
+    const bReal = typeof b === 'number' ? b : (b.real || 0);
+    const bImag = typeof b === 'number' ? 0 : (b.imag || 0);
+    
+    return {
+      real: aReal * bReal - aImag * bImag,
+      imag: aReal * bImag + aImag * bReal
+    };
+  };
+
+  // Complex number addition
+  const complexAdd = (a, b) => {
+    const aReal = typeof a === 'number' ? a : (a.real || 0);
+    const aImag = typeof a === 'number' ? 0 : (a.imag || 0);
+    const bReal = typeof b === 'number' ? b : (b.real || 0);
+    const bImag = typeof b === 'number' ? 0 : (b.imag || 0);
+    
+    return {
+      real: aReal + bReal,
+      imag: aImag + bImag
+    };
+  };
+
+  // Apply gate with animation
+  const applyGate = (gateName) => {
+    const gate = gates[gateName];
+    const qubit = qubits[selectedQubit];
+    
+    setAnimatingGate(gateName);
+    setTimeout(() => setAnimatingGate(null), 500);
+    
+    const newAlpha = complexAdd(
+      complexMult(gate.matrix[0][0], qubit.alpha),
+      complexMult(gate.matrix[0][1], qubit.beta)
+    );
+    
+    const newBeta = complexAdd(
+      complexMult(gate.matrix[1][0], qubit.alpha),
+      complexMult(gate.matrix[1][1], qubit.beta)
+    );
+
+    const newQubits = [...qubits];
+    newQubits[selectedQubit] = {
+      ...qubit,
+      alpha: newAlpha,
+      beta: newBeta
+    };
+    setQubits(newQubits);
+    setCircuit(prev => [...prev, { gate: gateName, qubit: selectedQubit, time: Date.now() }]);
+  };
+
+  // Reset qubit to |0⟩
   const resetQubit = () => {
     const newQubits = [...qubits];
     newQubits[selectedQubit] = { alpha: { real: 1, imag: 0 }, beta: { real: 0, imag: 0 }, id: selectedQubit };
     setQubits(newQubits);
   };
 
+  // Set qubit to |1⟩
   const setToOne = () => {
     const newQubits = [...qubits];
     newQubits[selectedQubit] = { alpha: { real: 0, imag: 0 }, beta: { real: 1, imag: 0 }, id: selectedQubit };
     setQubits(newQubits);
   };
 
+  // Format complex number
   const formatComplex = (c) => {
     const real = typeof c === 'number' ? c : (c.real || 0);
     const imag = typeof c === 'number' ? 0 : (c.imag || 0);
@@ -393,6 +397,20 @@ const QuantumSimulator = () => {
     
     const sign = imag >= 0 ? '+' : '';
     return `${real.toFixed(3)}${sign}${imag.toFixed(3)}i`;
+  };
+
+  // Calculate probabilities
+  const getProbabilities = () => {
+    const qubit = qubits[selectedQubit];
+    const alphaReal = typeof qubit.alpha === 'number' ? qubit.alpha : (qubit.alpha.real || 0);
+    const alphaImag = typeof qubit.alpha === 'number' ? 0 : (qubit.alpha.imag || 0);
+    const betaReal = typeof qubit.beta === 'number' ? qubit.beta : (qubit.beta.real || 0);
+    const betaImag = typeof qubit.beta === 'number' ? 0 : (qubit.beta.imag || 0);
+    
+    const prob0 = alphaReal ** 2 + alphaImag ** 2;
+    const prob1 = betaReal ** 2 + betaImag ** 2;
+    
+    return { prob0, prob1 };
   };
 
   if (!tailwindLoaded) {

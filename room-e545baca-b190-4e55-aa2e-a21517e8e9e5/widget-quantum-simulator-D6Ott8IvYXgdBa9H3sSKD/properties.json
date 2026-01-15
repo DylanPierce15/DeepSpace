@@ -1,0 +1,31 @@
+{
+  "shapeId": "shape:quantum-simulator-D6Ott8IvYXgdBa9H3sSKD",
+  "widgetId": "shape:quantum-simulator-D6Ott8IvYXgdBa9H3sSKD",
+  "templateHandle": "quantum-simulator",
+  "templateName": "Quantum Simulator",
+  "icon": "💾",
+  "position": {
+    "x": 645.9849435382685,
+    "y": 239.9999999999999
+  },
+  "size": {
+    "w": 700,
+    "h": 600
+  },
+  "rotation": 0,
+  "opacity": 1,
+  "isLocked": false,
+  "color": "black",
+  "zoomScale": 1,
+  "isFullscreen": false,
+  "savedJsxContentHash": "19ood1x",
+  "meta": {
+    "justCreated": false,
+    "createdAt": 1768453178701,
+    "dockOrder": 6,
+    "showDefaultHandles": false
+  },
+  "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
+  "index": "aWIlfy5V",
+  "lastChangedClock": 1659
+}
