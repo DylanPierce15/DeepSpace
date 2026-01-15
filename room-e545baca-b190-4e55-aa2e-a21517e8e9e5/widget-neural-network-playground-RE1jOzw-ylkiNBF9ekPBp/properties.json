@@ -1,0 +1,34 @@
+{
+  "shapeId": "shape:neural-network-playground-RE1jOzw-ylkiNBF9ekPBp",
+  "widgetId": "shape:neural-network-playground-RE1jOzw-ylkiNBF9ekPBp",
+  "templateHandle": "neural-network-playground-dylanreidpierce",
+  "templateName": "Neural Network Playground",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiPackage"
+  },
+  "position": {
+    "x": 474.98494353826845,
+    "y": 200.9999999999999
+  },
+  "size": {
+    "w": 1235.7766624843161,
+    "h": 829.0000000000001
+  },
+  "rotation": 0,
+  "opacity": 1,
+  "isLocked": false,
+  "color": "black",
+  "zoomScale": 1,
+  "isFullscreen": false,
+  "savedJsxContentHash": "7ddvl0",
+  "meta": {
+    "justCreated": false,
+    "createdAt": 1768452992831,
+    "showDefaultHandles": false,
+    "dockOrder": 5
+  },
+  "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
+  "index": "aQG77B1V",
+  "lastChangedClock": 1387
+}
