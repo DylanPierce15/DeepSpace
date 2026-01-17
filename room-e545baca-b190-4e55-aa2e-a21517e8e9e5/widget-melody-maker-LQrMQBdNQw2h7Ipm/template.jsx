@@ -668,9 +668,9 @@ function MelodyMaker() {
   const canGenerate = userSequence.length >= 4 && !isGenerating;
   const canPlay = allSequence.length > 0 && !isPlaying;
   
-  // Count total notes
-  const userNoteCount = userSequence.reduce((sum, item) => sum + item.notes.length, 0);
-  const aiNoteCount = aiSequence.reduce((sum, item) => sum + item.notes.length, 0);
+  // Count total notes (handle both piano notes and drum hits)
+  const userNoteCount = userSequence.reduce((sum, item) => sum + (item.notes?.length || 1), 0);
+  const aiNoteCount = aiSequence.reduce((sum, item) => sum + (item.notes?.length || 1), 0);
 
   return (
     <div className="min-h-screen bg-white p-8">
