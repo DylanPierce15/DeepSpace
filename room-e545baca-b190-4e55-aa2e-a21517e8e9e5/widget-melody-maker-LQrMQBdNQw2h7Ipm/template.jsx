@@ -558,14 +558,18 @@ function MelodyMaker() {
     
     setIsPlaying(true);
     
+    // Calculate total melody duration
+    let totalMelodyDuration = 0;
+    allMelody.forEach(item => {
+      totalMelodyDuration += item.duration || 0.5;
+    });
+    
     // Play melody notes with actual durations
     let cumulativeTime = 0;
-    let maxTime = 0;
     
     allMelody.forEach((item, index) => {
       if (item.notes) {
         const duration = item.duration || 0.5;
-        maxTime = cumulativeTime + duration;
         
         const timeout = setTimeout(() => {
           playChord(item.notes, duration);
@@ -578,26 +582,62 @@ function MelodyMaker() {
       }
     });
     
-    // Play drum accompaniment if available
-    if (aiDrums.length > 0) {
+    // Play drum accompaniment - loop or extend to match melody duration
+    if (aiDrums.length > 0 && drumSynthRef.current) {
+      // Calculate drum pattern duration
+      let drumPatternDuration = 0;
       aiDrums.forEach(drum => {
         const relativeTime = (drum.time - Date.now()) / 1000;
-        if (relativeTime < maxTime) {
-          const timeout = setTimeout(() => {
-            drumSynthRef.current?.playDrumHit(drum.drumType);
-            setActiveDrums(new Set([drum.drumType]));
-            setTimeout(() => setActiveDrums(new Set()), 100);
-          }, Math.max(0, relativeTime * 1000));
-          
-          playbackTimeoutRef.current.push(timeout);
+        if (relativeTime > drumPatternDuration) {
+          drumPatternDuration = relativeTime;
         }
       });
+      
+      // If drums are shorter than melody, loop them
+      if (drumPatternDuration < totalMelodyDuration) {
+        const loops = Math.ceil(totalMelodyDuration / Math.max(drumPatternDuration, 1));
+        
+        for (let loop = 0; loop < loops; loop++) {
+          const loopOffset = loop * drumPatternDuration;
+          
+          aiDrums.forEach(drum => {
+            const relativeTime = (drum.time - Date.now()) / 1000;
+            const playTime = relativeTime + loopOffset;
+            
+            // Only play if within melody duration
+            if (playTime < totalMelodyDuration) {
+              const timeout = setTimeout(() => {
+                drumSynthRef.current?.playDrumHit(drum.drumType);
+                setActiveDrums(new Set([drum.drumType]));
+                setTimeout(() => setActiveDrums(new Set()), 100);
+              }, Math.max(0, playTime * 1000));
+              
+              playbackTimeoutRef.current.push(timeout);
+            }
+          });
+        }
+      } else {
+        // Drums are longer, just play them up to melody duration
+        aiDrums.forEach(drum => {
+          const relativeTime = (drum.time - Date.now()) / 1000;
+          
+          if (relativeTime < totalMelodyDuration) {
+            const timeout = setTimeout(() => {
+              drumSynthRef.current?.playDrumHit(drum.drumType);
+              setActiveDrums(new Set([drum.drumType]));
+              setTimeout(() => setActiveDrums(new Set()), 100);
+            }, Math.max(0, relativeTime * 1000));
+            
+            playbackTimeoutRef.current.push(timeout);
+          }
+        });
+      }
     }
     
     // Stop playing after all notes finish
     const stopTimeout = setTimeout(() => {
       setIsPlaying(false);
-    }, maxTime * 1000 + 500);
+    }, totalMelodyDuration * 1000 + 500);
     
     playbackTimeoutRef.current.push(stopTimeout);
   }, [userSequence, aiMelody, aiDrums, playChord, isPlaying]);
