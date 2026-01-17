@@ -63,11 +63,13 @@ function MelodyMaker() {
   const [aiMelody, setAiMelody] = useStorage('aiMelody', []);
   const [aiDrums, setAiDrums] = useStorage('aiDrums', []);
   const [tempo, setTempo] = useStorage('tempo', 120);
+  const [prePolishBackup, setPrePolishBackup] = useStorage('prePolishBackup', null);
   
   // UI state
   const [isPlaying, setIsPlaying] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingDrums, setIsGeneratingDrums] = useState(false);
+  const [isPolishing, setIsPolishing] = useState(false);
   const [pressedKeys, setPressedKeys] = useState(new Set());
   const [activeNotes, setActiveNotes] = useState(new Set());
   const [currentChord, setCurrentChord] = useState([]);
@@ -596,6 +598,7 @@ function MelodyMaker() {
     setUserSequence([]);
     setAiMelody([]);
     setAiDrums([]);
+    setPrePolishBackup(null);
   }, [stopPlayback]);
 
   // Regenerate AI melody
@@ -608,6 +611,152 @@ function MelodyMaker() {
   const clearDrums = useCallback(() => {
     setAiDrums([]);
   }, []);
+
+  // Polish with AI - refine the entire melody for better flow
+  const polishMelody = useCallback(async () => {
+    const allMelody = [...userSequence, ...aiMelody];
+    if (allMelody.length < 4) {
+      alert('Need at least 4 notes to polish');
+      return;
+    }
+
+    setIsPolishing(true);
+    console.log('Starting polish with', allMelody.length, 'notes');
+
+    // Backup current state
+    setPrePolishBackup({
+      userSequence: [...userSequence],
+      aiMelody: [...aiMelody]
+    });
+
+    try {
+      if (musicRNNRef.current) {
+        console.log('Polishing with MusicRNN...');
+
+        // Convert entire sequence to quantized format
+        const stepsPerQuarter = 4;
+        const qpm = 120;
+        const inputSequence = {
+          notes: [],
+          totalQuantizedSteps: 0,
+          quantizationInfo: {
+            stepsPerQuarter: stepsPerQuarter
+          }
+        };
+
+        let currentStep = 0;
+        allMelody.forEach((item) => {
+          const noteDuration = item.duration || 0.5;
+          const durationInSteps = Math.max(1, Math.round((noteDuration * qpm * stepsPerQuarter) / 60));
+
+          if (item.notes) {
+            item.notes.forEach(noteNumber => {
+              inputSequence.notes.push({
+                pitch: noteNumber,
+                quantizedStartStep: currentStep,
+                quantizedEndStep: currentStep + durationInSteps,
+                velocity: 80
+              });
+            });
+          }
+
+          currentStep += durationInSteps;
+        });
+
+        inputSequence.totalQuantizedSteps = currentStep;
+
+        // Use continueSequence with 0 steps to just get a refined version
+        // Temperature lower for more conservative changes
+        const result = await musicRNNRef.current.continueSequence(
+          inputSequence,
+          5, // Just a few extra notes to help with flow
+          0.8 // Lower temperature for subtler refinement
+        );
+
+        console.log('Polish result:', result);
+
+        // Convert entire result back
+        const polished = [];
+        result.notes.forEach((note) => {
+          const durationInSteps = note.quantizedEndStep - note.quantizedStartStep;
+          const duration = (durationInSteps * 60) / (qpm * stepsPerQuarter);
+          const relativeTime = (note.quantizedStartStep * 60) / (qpm * stepsPerQuarter);
+
+          polished.push({
+            notes: [note.pitch],
+            time: Date.now() + relativeTime * 1000,
+            duration,
+            isChord: false
+          });
+        });
+
+        // Split back into user sequence (first part) and AI melody (rest)
+        const userLength = userSequence.length;
+        setUserSequence(polished.slice(0, userLength));
+        setAiMelody(polished.slice(userLength));
+
+        console.log('Polished successfully');
+      } else {
+        // Fallback: smooth transitions algorithmically
+        console.log('Using algorithmic polish...');
+
+        const polished = [];
+        
+        for (let i = 0; i < allMelody.length; i++) {
+          const current = allMelody[i];
+          const prev = i > 0 ? allMelody[i - 1] : null;
+          const next = i < allMelody.length - 1 ? allMelody[i + 1] : null;
+
+          // Smooth large jumps
+          if (prev && next) {
+            const prevNote = prev.notes[0];
+            const currentNote = current.notes[0];
+            const nextNote = next.notes[0];
+            
+            const jumpToPrev = Math.abs(currentNote - prevNote);
+            const jumpToNext = Math.abs(currentNote - nextNote);
+
+            // If jumps are too large, adjust slightly
+            if (jumpToPrev > 7 || jumpToNext > 7) {
+              const target = Math.round((prevNote + nextNote) / 2);
+              const smoothed = Math.round((currentNote + target) / 2);
+              
+              polished.push({
+                ...current,
+                notes: [Math.max(60, Math.min(83, smoothed))]
+              });
+              continue;
+            }
+          }
+
+          polished.push({ ...current });
+        }
+
+        const userLength = userSequence.length;
+        setUserSequence(polished.slice(0, userLength));
+        setAiMelody(polished.slice(userLength));
+
+        console.log('Algorithmic polish complete');
+      }
+
+      setIsPolishing(false);
+    } catch (error) {
+      console.error('Polish error:', error);
+      alert('Failed to polish melody. Keeping original.');
+      setPrePolishBackup(null);
+      setIsPolishing(false);
+    }
+  }, [userSequence, aiMelody, musicRNNRef]);
+
+  // Undo polish - restore pre-polished version
+  const undoPolish = useCallback(() => {
+    if (prePolishBackup) {
+      setUserSequence(prePolishBackup.userSequence);
+      setAiMelody(prePolishBackup.aiMelody);
+      setPrePolishBackup(null);
+      console.log('Restored pre-polished version');
+    }
+  }, [prePolishBackup]);
 
   // Handle mouse/touch down on piano key
   const handleKeyDown = useCallback((noteNumber) => {
@@ -724,6 +873,7 @@ function MelodyMaker() {
   const canGenerate = userSequence.length >= 4 && !isGenerating;
   const canGenerateDrums = allMelody.length > 0 && !isGeneratingDrums;
   const canPlay = allMelody.length > 0 && !isPlaying;
+  const canPolish = allMelody.length >= 4 && !isPolishing && aiMelody.length > 0;
   
   // Count total notes
   const userNoteCount = userSequence.reduce((sum, item) => sum + (item.notes?.length || 0), 0);
@@ -1026,6 +1176,44 @@ function MelodyMaker() {
               {isGeneratingDrums ? 'Generating...' : aiDrums.length > 0 ? 'Regenerate Drums' : 'Add Drums'}
             </button>
             
+            {canPolish && (
+              <button
+                onClick={polishMelody}
+                disabled={isPolishing}
+                className="px-7 py-3 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: COLORS.sageLight,
+                  color: COLORS.white,
+                  borderRadius: '20px 20px 20px 4px',
+                  boxShadow: `0 4px 12px ${COLORS.shadow}`,
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  fontWeight: '500',
+                  fontSize: '0.95rem',
+                  border: 'none'
+                }}
+              >
+                {isPolishing ? 'Polishing...' : 'Polish with AI'}
+              </button>
+            )}
+            
+            {prePolishBackup && (
+              <button
+                onClick={undoPolish}
+                className="px-6 py-3 transition-all"
+                style={{
+                  background: COLORS.bgLight,
+                  color: COLORS.text.secondary,
+                  borderRadius: '16px 16px 16px 4px',
+                  border: `2px solid ${COLORS.bg}`,
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  fontWeight: '500',
+                  fontSize: '0.9rem'
+                }}
+              >
+                Undo Polish
+              </button>
+            )}
+            
             {aiMelody.length > 0 && (
               <button
                 onClick={regenerateMelody}
@@ -1088,7 +1276,8 @@ function MelodyMaker() {
             {userSequence.length === 0 && 'Start by pressing piano keys or using your keyboard (A-B keys)'}
             {userSequence.length > 0 && userSequence.length < 4 && `${userSequence.length} notes/chords recorded - need ${4 - userSequence.length} more for AI completion`}
             {userSequence.length >= 4 && aiMelody.length === 0 && 'Ready for AI melody completion!'}
-            {aiMelody.length > 0 && !aiDrums.length && 'Melody complete! Click "Add Drums" for AI accompaniment'}
+            {aiMelody.length > 0 && !prePolishBackup && !aiDrums.length && 'Melody complete! Try "Polish with AI" for smoother flow, or "Add Drums" for accompaniment'}
+            {aiMelody.length > 0 && prePolishBackup && 'Polished version active - click "Undo Polish" to restore original'}
             {aiMelody.length > 0 && aiDrums.length > 0 && `Complete composition: ${userNoteCount} user notes + ${aiNoteCount} AI notes + ${aiDrums.length} drum hits`}
           </div>
           

@@ -11,9 +11,19 @@
         "config": {
           "type": "dock",
           "name": "Dock Space",
-          "description": "Dock mode with macOS-style dock bar for widgets (zoom locked at 50% via DOCK_MODE_ZOOM constant)"
+          "description": "Dock mode with macOS-style dock bar for widgets (zoom locked at 50% via DOCK_MODE_ZOOM constant)",
+          "canvasBounds": {
+            "x": 0,
+            "y": 0,
+            "w": 2227.282491944146,
+            "h": 1080
+          },
+          "canvasSize": {
+            "width": 2227.282491944146,
+            "height": 1080
+          }
         },
-        "lastUpdated": 1768619307013
+        "lastUpdated": 1768620462231
       }
     },
     "id": "document:document",
@@ -29,7 +39,7 @@
       "name": "Page 1",
       "index": "a1",
       "typeName": "page",
-      "lastChangedClock": 2396
+      "lastChangedClock": 2427
     }
   ],
   "schema": {
@@ -74,9 +84,9 @@
       "com.tldraw.binding.arrow": 1
     }
   },
-  "generatedAt": "2026-01-17T03:25:42.799Z",
-  "clock": 2426,
-  "documentClock": 2426,
+  "generatedAt": "2026-01-17T03:28:05.591Z",
+  "clock": 2433,
+  "documentClock": 2433,
   "tombstones": {
     "shape:Mc763fzC5WkvmnejB1phG": 1693,
     "shape:journal-mental-health-zZs0ya50NX4ze8Io": 656,
