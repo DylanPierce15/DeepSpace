@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { PianoSynth, DrumSynth } from './utils/audioSynth.js';
+import CurrentChord from './components/CurrentChord.jsx';
+import SaveDialog from './components/SaveDialog.jsx';
+import Library from './components/Library.jsx';
+import MelodyTimeline from './components/MelodyTimeline.jsx';
+import ControlPanel from './components/ControlPanel.jsx';
+import Piano from './components/Piano.jsx';
 
 // Note definitions for 2 octaves (C4 to B5)
 const NOTES = [
@@ -1153,329 +1159,35 @@ function MelodyMaker() {
 
         {/* Save Dialog */}
         {showSaveDialog && (
-          <div className="mb-4 p-5" style={{
-            background: COLORS.cardBg,
-            borderRadius: '24px 24px 8px 24px',
-            boxShadow: `0 4px 16px ${COLORS.shadow}`
-          }}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-sm uppercase" style={{ 
-                color: COLORS.text.secondary,
-                letterSpacing: '0.08em',
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                fontWeight: '500'
-              }}>
-                Save Melody
-              </div>
-              <button
-                onClick={() => setSaveName(generateNameSuggestion())}
-                className="px-3 py-1 text-xs"
-                style={{
-                  background: COLORS.bgLight,
-                  color: COLORS.text.tertiary,
-                  borderRadius: '8px 8px 2px 8px',
-                  border: `1px solid ${COLORS.bg}`,
-                  fontFamily: 'system-ui, -apple-system, sans-serif',
-                  fontWeight: '500'
-                }}
-              >
-                Suggest Name
-              </button>
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={saveName}
-                onChange={(e) => setSaveName(e.target.value)}
-                onFocus={() => setIsTyping(true)}
-                onBlur={() => setIsTyping(false)}
-                onKeyDown={(e) => e.key === 'Enter' && saveMelody()}
-                placeholder="Enter melody name..."
-                className="flex-1 px-4 py-2"
-                autoFocus
-                style={{
-                  background: COLORS.bgLight,
-                  color: COLORS.text.primary,
-                  border: `2px solid ${COLORS.bg}`,
-                  borderRadius: '16px 16px 4px 16px',
-                  fontFamily: 'system-ui, -apple-system, sans-serif',
-                  outline: 'none'
-                }}
-              />
-              <button
-                onClick={saveMelody}
-                className="px-5 py-2"
-                style={{
-                  background: COLORS.sage,
-                  color: COLORS.white,
-                  borderRadius: '12px 4px 12px 12px',
-                  border: 'none',
-                  fontFamily: 'system-ui, -apple-system, sans-serif',
-                  fontWeight: '500',
-                  boxShadow: `0 2px 8px ${COLORS.shadow}`
-                }}
-              >
-                Save
-              </button>
-              <button
-                onClick={() => { setShowSaveDialog(false); setSaveName(''); }}
-                className="px-5 py-2"
-                style={{
-                  background: COLORS.bgLight,
-                  color: COLORS.text.secondary,
-                  borderRadius: '12px 12px 12px 4px',
-                  border: `2px solid ${COLORS.bg}`,
-                  fontFamily: 'system-ui, -apple-system, sans-serif',
-                  fontWeight: '500'
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+          <SaveDialog
+            saveName={saveName}
+            setSaveName={setSaveName}
+            onSave={saveMelody}
+            onCancel={() => { setShowSaveDialog(false); setSaveName(''); }}
+            onSuggestName={() => setSaveName(generateNameSuggestion())}
+            onFocus={() => setIsTyping(true)}
+            onBlur={() => setIsTyping(false)}
+            colors={COLORS}
+          />
         )}
 
 
-        {/* Current Chord Preview - Fixed height to prevent layout shift */}
-        <div className="mb-4 p-5" style={{
-          background: COLORS.cardBg,
-          borderRadius: '24px 24px 8px 24px',
-          boxShadow: `0 4px 16px ${COLORS.shadow}`,
-          minHeight: '100px'
-        }}>
-          {currentChord.length > 0 ? (
-            <>
-              <div className="text-xs mb-3 uppercase" style={{ 
-                color: COLORS.text.secondary,
-                letterSpacing: '0.08em',
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                fontWeight: '500'
-              }}>
-                Current Chord (Release keys to record)
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                {currentChord.map((note, idx) => (
-                  <div
-                    key={idx}
-                    className="px-4 py-2 text-sm"
-                    style={{ 
-                      backgroundColor: COLORS.sage,
-                      color: COLORS.white,
-                      borderRadius: idx % 2 === 0 ? '16px 16px 4px 16px' : '16px 4px 16px 16px',
-                      fontFamily: 'system-ui, -apple-system, sans-serif',
-                      fontWeight: '500',
-                      boxShadow: `0 2px 8px ${COLORS.shadow}`
-                    }}
-                  >
-                    {NOTES.find(n => n.note === note)?.name}
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div className="text-xs uppercase flex items-center justify-center h-full" style={{ 
-              color: COLORS.text.tertiary,
-              letterSpacing: '0.08em',
-              fontFamily: 'system-ui, -apple-system, sans-serif',
-              fontWeight: '500'
-            }}>
-              Press keys to play notes
-            </div>
-          )}
-        </div>
+        {/* Current Chord Preview */}
+        <CurrentChord currentChord={currentChord} colors={COLORS} />
 
-        {/* Piano Roll Visualization */}
-        <div className="mb-4 p-6" style={{
-          background: COLORS.cardBg,
-          borderRadius: '32px 8px 32px 32px',
-          boxShadow: `0 6px 24px ${COLORS.shadow}`
-        }}>
-          <h2 className="text-xs mb-4 tracking-wide uppercase" style={{ 
-            color: COLORS.text.secondary,
-            letterSpacing: '0.08em',
-            fontFamily: 'system-ui, -apple-system, sans-serif',
-            fontWeight: '500'
-          }}>
-            Melody Timeline
-          </h2>
-          
-          {allMelody.length === 0 ? (
-            <div className="text-center py-12" style={{ 
-              color: COLORS.text.tertiary,
-              fontFamily: 'system-ui, -apple-system, sans-serif'
-            }}>
-              Press piano keys below or use your keyboard (A-B keys) to start
-            </div>
-          ) : (
-            <div>
-              {/* Melody Timeline */}
-              <div className="mb-4">
-                <div className="text-xs mb-2 uppercase" style={{ 
-                  color: COLORS.text.tertiary,
-                  letterSpacing: '0.08em',
-                  fontFamily: 'system-ui, -apple-system, sans-serif',
-                  fontWeight: '500'
-                }}>
-                  Melody
-                </div>
-                <div className="flex items-start gap-2 flex-wrap">
-                  {userSequence.map((item, idx) => (
-                    <div
-                      key={`user-${idx}`}
-                      className="flex flex-col items-center gap-2 group relative"
-                    >
-                      <div 
-                        className="flex flex-col gap-1 relative cursor-pointer"
-                        onDoubleClick={() => deleteNote(idx)}
-                        onClick={() => setPlayFromIndex(idx)}
-                        title="Click to play from here, double-click to delete"
-                      >
-                        {item.notes?.map((note, noteIdx) => (
-                          <div
-                            key={noteIdx}
-                            className="px-3 py-2 flex items-center justify-center text-xs"
-                            style={{
-                              backgroundColor: COLORS.sage,
-                              color: COLORS.white,
-                              borderRadius: (idx + noteIdx) % 3 === 0 ? '12px 12px 4px 12px' : (idx + noteIdx) % 3 === 1 ? '12px 4px 12px 12px' : '4px 12px 12px 12px',
-                              boxShadow: activeNotes.has(note) ? `0 4px 16px ${COLORS.sage}80` : `0 2px 6px ${COLORS.shadow}`,
-                              transform: activeNotes.has(note) ? 'scale(1.08)' : 'scale(1)',
-                              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                              minWidth: '46px',
-                              fontFamily: 'system-ui, -apple-system, sans-serif',
-                              fontWeight: '500',
-                              opacity: playFromIndex === idx ? 0.7 : 1
-                            }}
-                          >
-                            {NOTES.find(n => n.note === note)?.name}
-                          </div>
-                        ))}
-                        {playFromIndex === idx && (
-                          <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full" style={{
-                            backgroundColor: COLORS.terracotta,
-                            boxShadow: `0 0 8px ${COLORS.terracotta}`
-                          }} />
-                        )}
-                      </div>
-                      <div className="text-xs" style={{ 
-                        color: COLORS.text.tertiary,
-                        fontFamily: 'system-ui, -apple-system, sans-serif'
-                      }}>
-                        {item.isChord ? 'Chord' : 'You'}
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {aiMelody.length > 0 && (
-                    <div className="w-px h-14 mx-2" style={{ 
-                      background: `linear-gradient(to bottom, ${COLORS.creamDark}, transparent, ${COLORS.creamDark})`
-                    }}></div>
-                  )}
-                  
-                  {aiMelody.map((item, idx) => {
-                    const actualIndex = userSequence.length + idx;
-                    return (
-                      <div
-                        key={`ai-${idx}`}
-                        className="flex flex-col items-center gap-2 group relative"
-                      >
-                        <div 
-                          className="flex flex-col gap-1 relative cursor-pointer"
-                          onDoubleClick={() => deleteAiNote(idx)}
-                          onClick={() => setPlayFromIndex(actualIndex)}
-                          title="Click to play from here, double-click to delete"
-                        >
-                          {item.notes?.map((note, noteIdx) => (
-                            <div
-                              key={noteIdx}
-                              className="px-3 py-2 flex items-center justify-center text-xs"
-                              style={{
-                                backgroundColor: COLORS.warmBrown,
-                                color: COLORS.white,
-                                borderRadius: (idx + noteIdx) % 3 === 0 ? '12px 4px 12px 12px' : (idx + noteIdx) % 3 === 1 ? '4px 12px 12px 12px' : '12px 12px 4px 12px',
-                                boxShadow: activeNotes.has(note) ? `0 4px 16px ${COLORS.warmBrown}80` : `0 2px 6px ${COLORS.shadow}`,
-                                transform: activeNotes.has(note) ? 'scale(1.08)' : 'scale(1)',
-                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                minWidth: '46px',
-                                fontFamily: 'system-ui, -apple-system, sans-serif',
-                                fontWeight: '500',
-                                opacity: playFromIndex === actualIndex ? 0.7 : 1
-                              }}
-                            >
-                              {NOTES.find(n => n.note === note)?.name}
-                            </div>
-                          ))}
-                          {playFromIndex === actualIndex && (
-                            <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full" style={{
-                              backgroundColor: COLORS.terracotta,
-                              boxShadow: `0 0 8px ${COLORS.terracotta}`
-                            }} />
-                          )}
-                        </div>
-                        <div className="text-xs" style={{ 
-                          color: COLORS.text.tertiary,
-                          fontFamily: 'system-ui, -apple-system, sans-serif'
-                        }}>
-                          AI
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Drum Timeline */}
-              {aiDrums.length > 0 && (
-                <div className="mt-5 pt-5" style={{ 
-                  borderTop: `2px solid ${COLORS.creamDark}`
-                }}>
-                  <div className="text-xs mb-2 uppercase" style={{ 
-                    color: COLORS.text.tertiary,
-                    letterSpacing: '0.08em',
-                    fontFamily: 'system-ui, -apple-system, sans-serif',
-                    fontWeight: '500'
-                  }}>
-                    Drums (AI Generated)
-                  </div>
-                  <div className="flex items-start gap-2 flex-wrap">
-                    {aiDrums.slice(0, 32).map((drum, idx) => (
-                      <div
-                        key={`drum-${idx}`}
-                        className="flex flex-col items-center gap-2"
-                      >
-                        <div
-                          className="px-3 py-2 flex items-center justify-center text-xs uppercase"
-                          style={{
-                            backgroundColor: COLORS.terracotta,
-                            color: COLORS.white,
-                            borderRadius: idx % 4 === 0 ? '12px 4px 12px 4px' : idx % 4 === 1 ? '4px 12px 4px 12px' : idx % 4 === 2 ? '12px 12px 4px 4px' : '4px 4px 12px 12px',
-                            boxShadow: activeDrums.has(drum.drumType) ? `0 4px 16px ${COLORS.terracotta}80` : `0 2px 6px ${COLORS.shadow}`,
-                            transform: activeDrums.has(drum.drumType) ? 'scale(1.08)' : 'scale(1)',
-                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                            minWidth: '50px',
-                            fontFamily: 'system-ui, -apple-system, sans-serif',
-                            fontWeight: '600',
-                            letterSpacing: '0.05em'
-                          }}
-                        >
-                          {drum.drumType === 'hihat' ? 'HH' : drum.drumType === 'openhat' ? 'OH' : drum.drumType[0].toUpperCase()}
-                        </div>
-                      </div>
-                    ))}
-                    {aiDrums.length > 32 && (
-                      <div className="px-3 py-2 text-xs" style={{ 
-                        color: COLORS.text.tertiary,
-                        fontFamily: 'system-ui, -apple-system, sans-serif'
-                      }}>
-                        +{aiDrums.length - 32} more
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        {/* Melody Timeline */}
+        <MelodyTimeline
+          userSequence={userSequence}
+          aiMelody={aiMelody}
+          aiDrums={aiDrums}
+          activeNotes={activeNotes}
+          activeDrums={activeDrums}
+          playFromIndex={playFromIndex}
+          onNoteClick={(idx) => setPlayFromIndex(idx)}
+          onNoteDoubleClick={deleteNote}
+          onAiNoteDoubleClick={deleteAiNote}
+          colors={COLORS}
+        />
 
         {/* Control Panel */}
         <div className="mb-4 p-6" style={{
