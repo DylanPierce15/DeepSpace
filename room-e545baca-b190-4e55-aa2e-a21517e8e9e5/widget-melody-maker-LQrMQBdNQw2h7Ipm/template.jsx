@@ -29,23 +29,27 @@ const NOTES = [
   { note: 83, name: 'B5', isBlack: false, key: 'b' }
 ];
 
-// Natural/Organic color palette - earth tones
+// Natural/Organic color palette - darker earth tones
 const COLORS = {
-  sage: '#7d9b76', // Sage green
-  sageLight: '#a8c4a0',
-  sageDark: '#5a7353',
-  terracotta: '#c97456', // Terracotta
-  terracottaLight: '#d89580',
-  warmBrown: '#8b6f47', // Warm brown
-  cream: '#f4ede4', // Cream
-  creamDark: '#e8dcc9',
+  sage: '#5a7353', // Deep forest green
+  sageLight: '#6d8765',
+  sageDark: '#475a42',
+  terracotta: '#b05a3c', // Burnt terracotta
+  terracottaLight: '#c97456',
+  warmBrown: '#6b5434', // Rich brown
+  warmBrownLight: '#8b6f47',
+  bg: '#2d2620', // Deep warm brown background
+  bgLight: '#3d362f',
+  cardBg: '#4a4239', // Warm dark card background
+  cream: '#c9b99a', // Warm beige
+  creamDark: '#a89978',
   text: {
-    primary: '#4a3f2f', // Warm dark brown instead of black
-    secondary: '#7a6a54',
-    tertiary: '#9d8f7a'
+    primary: '#e8dcc9', // Light cream for text
+    secondary: '#c9b99a',
+    tertiary: '#a89978'
   },
   white: '#fdfcfa',
-  shadow: 'rgba(139, 111, 71, 0.15)' // Warm shadow
+  shadow: 'rgba(0, 0, 0, 0.3)' // Deeper shadow
 };
 
 function MelodyMaker() {
@@ -94,23 +98,23 @@ function MelodyMaker() {
     }
   }, []);
 
-  // Apply cream background with subtle texture
+  // Apply dark warm background with subtle texture
   useEffect(() => {
-    document.body.style.background = COLORS.cream;
+    document.body.style.background = COLORS.bg;
     document.body.style.backgroundImage = `
       repeating-linear-gradient(
         90deg,
         transparent,
         transparent 2px,
-        rgba(139, 111, 71, 0.02) 2px,
-        rgba(139, 111, 71, 0.02) 4px
+        rgba(0, 0, 0, 0.1) 2px,
+        rgba(0, 0, 0, 0.1) 4px
       ),
       repeating-linear-gradient(
         0deg,
         transparent,
         transparent 2px,
-        rgba(139, 111, 71, 0.02) 2px,
-        rgba(139, 111, 71, 0.02) 4px
+        rgba(0, 0, 0, 0.1) 2px,
+        rgba(0, 0, 0, 0.1) 4px
       )
     `;
     document.documentElement.style.minHeight = '100%';
@@ -263,31 +267,37 @@ function MelodyMaker() {
         // Use actual Magenta MusicRNN model
         console.log('Generating melody with MusicRNN...');
         
-        // Convert user sequence to NoteSequence format - using actual durations
+        // Convert user sequence to quantized NoteSequence format
+        const stepsPerQuarter = 4;
+        const qpm = 120;
         const inputSequence = {
           notes: [],
-          totalTime: 0
+          totalQuantizedSteps: 0,
+          quantizationInfo: {
+            stepsPerQuarter: stepsPerQuarter
+          }
         };
         
-        let cumulativeTime = 0;
+        let currentStep = 0;
         userSequence.forEach((item) => {
           const noteDuration = item.duration || 0.5;
+          const durationInSteps = Math.max(1, Math.round((noteDuration * qpm * stepsPerQuarter) / 60));
           
           if (item.notes) {
             item.notes.forEach(noteNumber => {
               inputSequence.notes.push({
                 pitch: noteNumber,
-                startTime: cumulativeTime,
-                endTime: cumulativeTime + noteDuration,
+                quantizedStartStep: currentStep,
+                quantizedEndStep: currentStep + durationInSteps,
                 velocity: 80
               });
             });
           }
           
-          cumulativeTime += noteDuration;
+          currentStep += durationInSteps;
         });
         
-        inputSequence.totalTime = cumulativeTime;
+        inputSequence.totalQuantizedSteps = currentStep;
         
         console.log('Input sequence:', inputSequence);
         
@@ -295,23 +305,26 @@ function MelodyMaker() {
         const result = await musicRNNRef.current.continueSequence(
           inputSequence,
           20, // steps to generate  
-          1.1, // temperature (higher = more creative)
-          ['Cm', 'C'] // Optional chord progression
+          1.1 // temperature (higher = more creative)
         );
         
         console.log('MusicRNN result:', result);
         
         // Convert result back to our format
         const generated = [];
-        const userEndTime = inputSequence.totalTime;
+        const userEndStep = inputSequence.totalQuantizedSteps;
         
         result.notes
-          .filter(note => note.startTime >= userEndTime)
-          .forEach((note, idx, arr) => {
-            const duration = note.endTime - note.startTime;
+          .filter(note => note.quantizedStartStep >= userEndStep)
+          .forEach((note) => {
+            const durationInSteps = note.quantizedEndStep - note.quantizedStartStep;
+            const duration = (durationInSteps * 60) / (qpm * stepsPerQuarter);
+            const relativeStep = note.quantizedStartStep - userEndStep;
+            const relativeTime = (relativeStep * 60) / (qpm * stepsPerQuarter);
+            
             generated.push({
               notes: [note.pitch],
-              time: Date.now() + (note.startTime - userEndTime) * 1000,
+              time: Date.now() + relativeTime * 1000,
               duration,
               isChord: false
             });
@@ -661,9 +674,9 @@ function MelodyMaker() {
 
   if (!magentaLoaded || !modelLoaded) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: COLORS.cream }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: COLORS.bg }}>
         <div className="text-center px-8 py-12 rounded-[32px]" style={{
-          background: COLORS.white,
+          background: COLORS.cardBg,
           boxShadow: `0 8px 32px ${COLORS.shadow}`
         }}>
           <div className="text-lg mb-2" style={{ 
@@ -694,10 +707,10 @@ function MelodyMaker() {
   const aiNoteCount = aiMelody.reduce((sum, item) => sum + (item.notes?.length || 0), 0);
 
   return (
-    <div className="min-h-screen p-6" style={{ background: COLORS.cream }}>
+    <div className="min-h-screen p-6" style={{ background: COLORS.bg }}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-6">
+        <div className="mb-5">
           <h1 className="text-3xl mb-2" style={{ 
             color: COLORS.text.primary,
             fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -715,45 +728,57 @@ function MelodyMaker() {
           </p>
         </div>
 
-        {/* Current Chord Preview */}
-        {currentChord.length > 0 && (
-          <div className="mb-4 p-5" style={{
-            background: COLORS.white,
-            borderRadius: '24px 24px 8px 24px',
-            boxShadow: `0 4px 16px ${COLORS.shadow}`
-          }}>
-            <div className="text-xs mb-3 uppercase" style={{ 
-              color: COLORS.text.secondary,
+        {/* Current Chord Preview - Fixed height to prevent layout shift */}
+        <div className="mb-4 p-5" style={{
+          background: COLORS.cardBg,
+          borderRadius: '24px 24px 8px 24px',
+          boxShadow: `0 4px 16px ${COLORS.shadow}`,
+          minHeight: '100px'
+        }}>
+          {currentChord.length > 0 ? (
+            <>
+              <div className="text-xs mb-3 uppercase" style={{ 
+                color: COLORS.text.secondary,
+                letterSpacing: '0.08em',
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                fontWeight: '500'
+              }}>
+                Current Chord (Release keys to record)
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {currentChord.map((note, idx) => (
+                  <div
+                    key={idx}
+                    className="px-4 py-2 text-sm"
+                    style={{ 
+                      backgroundColor: COLORS.sage,
+                      color: COLORS.white,
+                      borderRadius: idx % 2 === 0 ? '16px 16px 4px 16px' : '16px 4px 16px 16px',
+                      fontFamily: 'system-ui, -apple-system, sans-serif',
+                      fontWeight: '500',
+                      boxShadow: `0 2px 8px ${COLORS.shadow}`
+                    }}
+                  >
+                    {NOTES.find(n => n.note === note)?.name}
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="text-xs uppercase flex items-center justify-center h-full" style={{ 
+              color: COLORS.text.tertiary,
               letterSpacing: '0.08em',
               fontFamily: 'system-ui, -apple-system, sans-serif',
               fontWeight: '500'
             }}>
-              Current Chord (Release keys to record)
+              Press keys to play notes
             </div>
-            <div className="flex gap-2 flex-wrap">
-              {currentChord.map((note, idx) => (
-                <div
-                  key={idx}
-                  className="px-4 py-2 text-sm"
-                  style={{ 
-                    backgroundColor: COLORS.sage,
-                    color: COLORS.white,
-                    borderRadius: idx % 2 === 0 ? '16px 16px 4px 16px' : '16px 4px 16px 16px',
-                    fontFamily: 'system-ui, -apple-system, sans-serif',
-                    fontWeight: '500',
-                    boxShadow: `0 2px 8px ${COLORS.shadow}`
-                  }}
-                >
-                  {NOTES.find(n => n.note === note)?.name}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Piano Roll Visualization */}
         <div className="mb-4 p-6" style={{
-          background: COLORS.white,
+          background: COLORS.cardBg,
           borderRadius: '32px 8px 32px 32px',
           boxShadow: `0 6px 24px ${COLORS.shadow}`
         }}>
@@ -919,7 +944,7 @@ function MelodyMaker() {
 
         {/* Control Panel */}
         <div className="mb-4 p-6" style={{
-          background: COLORS.white,
+          background: COLORS.cardBg,
           borderRadius: '8px 32px 32px 32px',
           boxShadow: `0 6px 24px ${COLORS.shadow}`
         }}>
@@ -983,11 +1008,11 @@ function MelodyMaker() {
                 onClick={regenerateMelody}
                 disabled={isGenerating}
                 className="px-6 py-3 transition-all"
-                style={{
-                  background: COLORS.cream,
-                  color: COLORS.text.primary,
-                  borderRadius: '16px 16px 4px 16px',
-                  border: `2px solid ${COLORS.creamDark}`,
+              style={{
+                background: COLORS.bgLight,
+                color: COLORS.text.secondary,
+                borderRadius: '16px 16px 4px 16px',
+                border: `2px solid ${COLORS.bg}`,
                   fontFamily: 'system-ui, -apple-system, sans-serif',
                   fontWeight: '500',
                   fontSize: '0.9rem'
@@ -1001,11 +1026,11 @@ function MelodyMaker() {
               <button
                 onClick={clearDrums}
                 className="px-6 py-3 transition-all"
-                style={{
-                  background: COLORS.cream,
-                  color: COLORS.text.primary,
-                  borderRadius: '16px 4px 16px 16px',
-                  border: `2px solid ${COLORS.creamDark}`,
+              style={{
+                background: COLORS.bgLight,
+                color: COLORS.text.secondary,
+                borderRadius: '16px 4px 16px 16px',
+                border: `2px solid ${COLORS.bg}`,
                   fontFamily: 'system-ui, -apple-system, sans-serif',
                   fontWeight: '500',
                   fontSize: '0.9rem'
@@ -1019,10 +1044,10 @@ function MelodyMaker() {
               onClick={clearAll}
               className="px-6 py-3 transition-all"
               style={{
-                background: COLORS.cream,
-                color: COLORS.text.primary,
+                background: COLORS.bgLight,
+                color: COLORS.text.secondary,
                 borderRadius: '4px 16px 16px 16px',
-                border: `2px solid ${COLORS.creamDark}`,
+                border: `2px solid ${COLORS.bg}`,
                 fontFamily: 'system-ui, -apple-system, sans-serif',
                 fontWeight: '500',
                 fontSize: '0.9rem'
@@ -1056,7 +1081,7 @@ function MelodyMaker() {
 
         {/* Piano Keyboard */}
         <div className="p-6" style={{
-          background: COLORS.white,
+          background: COLORS.cardBg,
           borderRadius: '32px 32px 8px 8px',
           boxShadow: `0 6px 24px ${COLORS.shadow}`
         }}>
@@ -1096,7 +1121,7 @@ function MelodyMaker() {
                       style={{
                         width: '52px',
                         height: '200px',
-                        backgroundColor: isPressed ? COLORS.sageLight : COLORS.white,
+                        backgroundColor: isPressed ? COLORS.sageLight : COLORS.cream,
                         transform: isPressed ? 'translateY(2px)' : 'none',
                         boxShadow: isPressed ? `inset 0 3px 8px ${COLORS.shadow}` : `0 3px 8px ${COLORS.shadow}`,
                         border: `2px solid ${COLORS.creamDark}`,
@@ -1106,7 +1131,7 @@ function MelodyMaker() {
                     >
                       <div className="absolute top-3 left-0 right-0 text-center">
                         <div className="text-xs mb-1" style={{ 
-                          color: isPressed ? COLORS.sage : COLORS.text.tertiary,
+                          color: isPressed ? COLORS.white : COLORS.warmBrown,
                           textTransform: 'uppercase',
                           fontFamily: 'system-ui, -apple-system, sans-serif',
                           fontWeight: '600'
@@ -1115,7 +1140,7 @@ function MelodyMaker() {
                         </div>
                       </div>
                       <span className="absolute bottom-3 left-0 right-0 text-center text-xs" style={{
-                        color: COLORS.text.tertiary,
+                        color: COLORS.warmBrown,
                         fontFamily: 'system-ui, -apple-system, sans-serif',
                         fontWeight: '500'
                       }}>
@@ -1148,13 +1173,13 @@ function MelodyMaker() {
                       style={{
                         width: '36px',
                         height: '130px',
-                        backgroundColor: isPressed ? COLORS.warmBrown : COLORS.text.primary,
+                        backgroundColor: isPressed ? COLORS.warmBrownLight : '#1a1612',
                         left: `${leftPos}px`,
                         transform: isPressed ? 'translateY(2px)' : 'none',
                         boxShadow: isPressed ? `inset 0 3px 8px rgba(0,0,0,0.4)` : `0 4px 12px ${COLORS.shadow}, 0 2px 4px rgba(0,0,0,0.3)`,
                         zIndex: 10,
                         borderRadius: whiteKeysBefore % 3 === 0 ? '4px 4px 8px 4px' : whiteKeysBefore % 3 === 1 ? '4px 4px 4px 8px' : '8px 4px 4px 4px',
-                        border: `2px solid ${COLORS.text.primary}`
+                        border: `2px solid #0d0a08`
                       }}
                     >
                       <div className="absolute top-2 left-0 right-0 text-center">

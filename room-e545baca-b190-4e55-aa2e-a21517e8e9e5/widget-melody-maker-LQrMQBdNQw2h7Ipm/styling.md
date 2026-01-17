@@ -1,8 +1,8 @@
 # Style ID
-nature-organic
+nature-organic-dark
 
 # Style Name
-Nature & Organic
+Nature & Organic (Dark)
 
 # Style Prompt
-Create a Natural/Organic UI. Use a color palette of earth tones: sage greens, warm browns, terracotta, and cream. Avoid pure black. Use organic shapes (blobs or asymmetrical border radii). Fonts should be humanist sans-serifs or rounded serifs. You can use subtle textures (grain, paper) in the background. Shadows should be soft and warm. The feel is eco-friendly, calm, and grounded.
+Create a Natural/Organic UI with darker earth tones: deep forest greens, rich browns, burnt terracotta, and warm beige. Avoid pure black. Use organic shapes (blobs or asymmetrical border radii). Fonts should be humanist sans-serifs. Subtle textures in the background. Soft, warm shadows. Eco-friendly, calm, and grounded.

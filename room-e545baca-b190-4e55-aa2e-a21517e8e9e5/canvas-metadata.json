@@ -29,7 +29,7 @@
       "name": "Page 1",
       "index": "a1",
       "typeName": "page",
-      "lastChangedClock": 2261
+      "lastChangedClock": 2366
     }
   ],
   "schema": {
@@ -74,9 +74,9 @@
       "com.tldraw.binding.arrow": 1
     }
   },
-  "generatedAt": "2026-01-17T03:15:52.348Z",
-  "clock": 2356,
-  "documentClock": 2353,
+  "generatedAt": "2026-01-17T03:21:10.379Z",
+  "clock": 2395,
+  "documentClock": 2395,
   "tombstones": {
     "shape:Mc763fzC5WkvmnejB1phG": 1693,
     "shape:journal-mental-health-zZs0ya50NX4ze8Io": 656,
