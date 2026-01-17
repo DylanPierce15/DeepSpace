@@ -3,12 +3,12 @@
   "widgetId": "melody-maker_1768615948217",
   "templateHandle": "melody-maker",
   "position": {
-    "x": -25057.654191499372,
-    "y": -24837.123000313677
+    "x": 405.6030142320086,
+    "y": 112.40215494092374
   },
   "size": {
-    "w": 700,
-    "h": 600
+    "w": 1058.453276047261,
+    "h": 906.2513426423201
   },
   "rotation": 0,
   "opacity": 1,
@@ -17,9 +17,13 @@
   "zoomScale": 1,
   "savedJsxContentHash": "initial",
   "meta": {
-    "initializationState": "ready"
+    "initializationState": "ready",
+    "justCreated": false,
+    "createdAt": 1768616040245,
+    "dockOrder": 6,
+    "showDefaultHandles": false
   },
   "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
-  "index": "aW",
-  "lastChangedClock": 1676
+  "index": "arbF2zOl",
+  "lastChangedClock": 2029
 }
