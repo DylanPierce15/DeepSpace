@@ -770,10 +770,15 @@ function MelodyMaker() {
     const id = `melody-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
     melodiesFiles.write(id, melodyData);
+    console.log('Saved melody with ID:', id);
+    console.log('Melody data:', melodyData);
+    
+    // Verify it was saved
+    const verification = melodiesFiles.read(id);
+    console.log('Verification read:', verification);
     
     setSaveName('');
     setShowSaveDialog(false);
-    console.log('Saved melody:', melodyData.name);
   }, [saveName, userSequence, aiMelody, aiDrums, tempo, melodiesFiles]);
 
   // Load melody from library
@@ -799,17 +804,33 @@ function MelodyMaker() {
   // Toggle favorite status
   const toggleFavorite = useCallback((id) => {
     const melody = melodiesFiles.read(id);
+    console.log('Toggling favorite for ID:', id);
+    console.log('Current melody data:', melody);
     if (melody) {
-      melodiesFiles.write(id, { ...melody, favorite: !melody.favorite });
-      console.log('Toggled favorite for:', melody.name);
+      const updated = { ...melody, favorite: !melody.favorite };
+      melodiesFiles.write(id, updated);
+      console.log('Updated favorite status:', updated.favorite);
+      
+      // Verify update
+      const verification = melodiesFiles.read(id);
+      console.log('Verification after toggle:', verification);
     }
   }, [melodiesFiles]);
 
   // Get all saved melodies with filtering
   const savedMelodies = useMemo(() => {
     let melodies = melodiesFiles.list()
-      .map(id => ({ id, ...melodiesFiles.read(id) }))
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      .map(id => {
+        const data = melodiesFiles.read(id);
+        console.log('Reading melody:', id, data);
+        return { id, ...data };
+      })
+      .filter(m => m.name) // Filter out corrupted entries
+      .sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
     
     // Filter by search query
     if (searchQuery.trim()) {

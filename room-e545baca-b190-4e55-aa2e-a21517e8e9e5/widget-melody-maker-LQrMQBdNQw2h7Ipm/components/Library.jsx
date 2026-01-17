@@ -121,7 +121,8 @@ export default function Library({
                   color: colors.text.tertiary,
                   fontFamily: 'system-ui, -apple-system, sans-serif'
                 }}>
-                  {melody.noteCount} notes • {melody.drumCount} drums • {new Date(melody.createdAt).toLocaleDateString()}
+                  {melody.noteCount || 0} notes • {melody.drumCount || 0} drums
+                  {melody.createdAt && ` • ${new Date(melody.createdAt).toLocaleDateString()}`}
                 </div>
               </div>
               <div className="flex gap-2">
