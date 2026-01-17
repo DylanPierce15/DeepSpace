@@ -692,9 +692,9 @@ function MelodyMaker() {
         console.log('Polish result:', result);
         console.log('Polish result has', result.notes.length, 'notes');
 
-        // If result has fewer notes than input, something went wrong - use fallback
-        if (result.notes.length < allMelody.length) {
-          console.log('MusicRNN polish lost notes, using fallback');
+        // Only fail if result is completely empty or way too short
+        if (result.notes.length < 3) {
+          console.log('MusicRNN polish returned too few notes, using fallback');
           throw new Error('Polish result too short');
         }
 
@@ -716,15 +716,19 @@ function MelodyMaker() {
         console.log('Polished has', polished.length, 'notes');
 
         // Split back into user sequence (first part) and AI melody (rest)
-        const userLength = userSequence.length;
-        const polishedUser = polished.slice(0, userLength);
-        const polishedAI = polished.slice(userLength);
+        // Use a proportional split based on original lengths
+        const totalOriginal = userSequence.length + aiMelody.length;
+        const userRatio = userSequence.length / totalOriginal;
+        const splitPoint = Math.round(polished.length * userRatio);
+        
+        const polishedUser = polished.slice(0, splitPoint);
+        const polishedAI = polished.slice(splitPoint);
         
         console.log('Split: user =', polishedUser.length, ', AI =', polishedAI.length);
 
-        // Safety check - don't lose everything
-        if (polishedUser.length === 0 && polishedAI.length === 0) {
-          throw new Error('Polish resulted in empty sequences');
+        // Safety check - must have at least some notes
+        if (polished.length === 0) {
+          throw new Error('Polish resulted in empty sequence');
         }
 
         setUserSequence(polishedUser);
