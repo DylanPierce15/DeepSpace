@@ -635,6 +635,8 @@ function MelodyMaker() {
 
     setIsPolishing(true);
     console.log('Starting polish with', allMelody.length, 'notes');
+    console.log('User sequence length:', userSequence.length);
+    console.log('AI melody length:', aiMelody.length);
 
     // Backup current state
     setPrePolishBackup({
@@ -677,16 +679,24 @@ function MelodyMaker() {
         });
 
         inputSequence.totalQuantizedSteps = currentStep;
+        console.log('Polish input has', inputSequence.notes.length, 'notes');
 
         // Use continueSequence with 0 steps to just get a refined version
         // Temperature lower for more conservative changes
         const result = await musicRNNRef.current.continueSequence(
           inputSequence,
-          5, // Just a few extra notes to help with flow
+          8, // Just a few extra notes to help with flow
           0.8 // Lower temperature for subtler refinement
         );
 
         console.log('Polish result:', result);
+        console.log('Polish result has', result.notes.length, 'notes');
+
+        // If result has fewer notes than input, something went wrong - use fallback
+        if (result.notes.length < allMelody.length) {
+          console.log('MusicRNN polish lost notes, using fallback');
+          throw new Error('Polish result too short');
+        }
 
         // Convert entire result back
         const polished = [];
@@ -703,10 +713,22 @@ function MelodyMaker() {
           });
         });
 
+        console.log('Polished has', polished.length, 'notes');
+
         // Split back into user sequence (first part) and AI melody (rest)
         const userLength = userSequence.length;
-        setUserSequence(polished.slice(0, userLength));
-        setAiMelody(polished.slice(userLength));
+        const polishedUser = polished.slice(0, userLength);
+        const polishedAI = polished.slice(userLength);
+        
+        console.log('Split: user =', polishedUser.length, ', AI =', polishedAI.length);
+
+        // Safety check - don't lose everything
+        if (polishedUser.length === 0 && polishedAI.length === 0) {
+          throw new Error('Polish resulted in empty sequences');
+        }
+
+        setUserSequence(polishedUser);
+        setAiMelody(polishedAI);
 
         console.log('Polished successfully');
       } else {
@@ -755,11 +777,20 @@ function MelodyMaker() {
       setIsPolishing(false);
     } catch (error) {
       console.error('Polish error:', error);
-      alert('Failed to polish melody. Keeping original.');
+      console.error('Error details:', error.message);
+      
+      // Restore from backup on error
+      if (prePolishBackup) {
+        console.log('Restoring from backup due to error');
+        setUserSequence(prePolishBackup.userSequence);
+        setAiMelody(prePolishBackup.aiMelody);
+      }
+      
+      alert('Polish failed. Original melody restored.');
       setPrePolishBackup(null);
       setIsPolishing(false);
     }
-  }, [userSequence, aiMelody, musicRNNRef]);
+  }, [userSequence, aiMelody, musicRNNRef, prePolishBackup]);
 
   // Undo polish - restore pre-polished version
   const undoPolish = useCallback(() => {
