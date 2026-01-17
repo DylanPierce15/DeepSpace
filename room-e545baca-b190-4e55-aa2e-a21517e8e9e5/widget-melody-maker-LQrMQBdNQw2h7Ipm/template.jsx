@@ -29,18 +29,6 @@ const NOTES = [
   { note: 83, name: 'B5', isBlack: false, key: 'b' }
 ];
 
-// Drum pad definitions
-const DRUM_PADS = [
-  { id: 'kick', name: 'Kick', key: 'a', row: 0, col: 0 },
-  { id: 'snare', name: 'Snare', key: 's', row: 0, col: 1 },
-  { id: 'hihat', name: 'Hi-Hat', key: 'd', row: 0, col: 2 },
-  { id: 'openhat', name: 'Open Hat', key: 'f', row: 0, col: 3 },
-  { id: 'kick', name: 'Kick 2', key: 'z', row: 1, col: 0 },
-  { id: 'snare', name: 'Snare 2', key: 'x', row: 1, col: 1 },
-  { id: 'hihat', name: 'HH 2', key: 'c', row: 1, col: 2 },
-  { id: 'openhat', name: 'OH 2', key: 'v', row: 1, col: 3 }
-];
-
 // Elegant color palette
 const COLORS = {
   accent: '#7c3aed', // Sophisticated purple
@@ -192,6 +180,7 @@ function MelodyMaker() {
     if (!pianoSynthRef.current) return;
     pianoSynthRef.current.startNote(noteNumber);
     setActiveNotes(prev => new Set([...prev, noteNumber]));
+    setNoteStartTimes(prev => new Map(prev).set(noteNumber, Date.now()));
   }, []);
 
   // Stop playing a note
@@ -205,165 +194,90 @@ function MelodyMaker() {
     });
   }, []);
 
-  // Play a chord (multiple notes) for playback
+  // Play a chord (multiple notes) for playback with specific duration
   const playChord = useCallback((notes, duration = 0.5) => {
     if (!pianoSynthRef.current) return;
     notes.forEach(noteNumber => {
-      pianoSynthRef.current.playNote(noteNumber, duration);
+      pianoSynthRef.current.playNote(noteNumber, duration, 0.7);
     });
   }, []);
 
-  // Play drum hit
-  const playDrum = useCallback((drumType) => {
-    if (!drumSynthRef.current) return;
-    drumSynthRef.current.playDrumHit(drumType);
-    setActiveDrums(prev => new Set([...prev, drumType]));
-    setTimeout(() => {
-      setActiveDrums(prev => {
-        const next = new Set(prev);
-        next.delete(drumType);
-        return next;
-      });
-    }, 100);
-  }, []);
-
-  // Record current chord to sequence
+  // Record current chord to sequence with duration
   const recordChord = useCallback(() => {
     if (currentChord.length === 0) return;
     
+    // Calculate duration based on how long the first note was held
+    const now = Date.now();
+    const startTime = noteStartTimes.get(currentChord[0]) || now;
+    const duration = Math.max(0.1, (now - startTime) / 1000); // Duration in seconds, minimum 0.1s
+    
     setUserSequence(prev => [...prev, { 
       notes: [...currentChord], 
-      time: Date.now(),
-      isChord: currentChord.length > 1,
-      instrument: 'piano'
+      time: now,
+      duration,
+      isChord: currentChord.length > 1
     }]);
     
     setCurrentChord([]);
-  }, [currentChord]);
+    // Clear start times for recorded notes
+    setNoteStartTimes(prev => {
+      const next = new Map(prev);
+      currentChord.forEach(note => next.delete(note));
+      return next;
+    });
+  }, [currentChord, noteStartTimes]);
 
-  // Record drum hit
-  const recordDrum = useCallback((drumType) => {
-    setUserSequence(prev => [...prev, {
-      drumType,
-      time: Date.now(),
-      instrument: 'drums'
-    }]);
-  }, []);
-
-  // Generate AI continuation using Magenta MusicRNN or DrumRNN
+  // Generate AI melody continuation using Magenta MusicRNN
   const generateMelody = useCallback(async () => {
     if (userSequence.length < 4) {
-      alert(`Please input at least 4 ${instrument === 'drums' ? 'drum hits' : 'notes/chords'} before generating AI continuation`);
+      alert('Please input at least 4 notes/chords before generating AI continuation');
       return;
     }
     
     setIsGenerating(true);
     
     try {
-      // Check if we're in drum mode
-      if (instrument === 'drums' && drumRNNRef.current) {
-        console.log('Generating drum pattern with DrumRNN...');
-        
-        // Convert user drum sequence to NoteSequence format for DrumRNN
-        const inputSequence = {
-          notes: [],
-          totalTime: 0,
-          quantizationInfo: { stepsPerQuarter: 4 }
-        };
-        
-        let cumulativeTime = 0;
-        const stepDuration = 0.25; // 16th notes
-        
-        userSequence.forEach((item, idx) => {
-          if (item.instrument === 'drums' && item.drumType) {
-            // Map drum types to MIDI drum notes
-            const drumMidiMap = {
-              'kick': 36,
-              'snare': 38,
-              'hihat': 42,
-              'openhat': 46
-            };
-            
-            const pitch = drumMidiMap[item.drumType] || 36;
-            inputSequence.notes.push({
-              pitch,
-              quantizedStartStep: idx * 4,
-              quantizedEndStep: idx * 4 + 1,
-              isDrum: true,
-              velocity: 100
-            });
-          }
-          cumulativeTime += stepDuration;
-        });
-        
-        inputSequence.totalTime = cumulativeTime;
-        inputSequence.totalQuantizedSteps = Math.ceil(cumulativeTime / stepDuration);
-        
-        // Generate continuation
-        const result = await drumRNNRef.current.continueSequence(
-          inputSequence,
-          32, // steps to generate
-          1.0 // temperature
-        );
-        
-        // Convert result back to our format
-        const generated = [];
-        const userEndStep = inputSequence.totalQuantizedSteps;
-        
-        result.notes
-          .filter(note => note.quantizedStartStep >= userEndStep)
-          .forEach(note => {
-            const drumTypeMap = {
-              36: 'kick',
-              38: 'snare',
-              42: 'hihat',
-              46: 'openhat'
-            };
-            const drumType = drumTypeMap[note.pitch] || 'kick';
-            
-            generated.push({
-              drumType,
-              time: Date.now() + (note.quantizedStartStep - userEndStep) * stepDuration * 1000,
-              instrument: 'drums'
-            });
-          });
-        
-        setAiSequence(generated);
-        console.log('Generated', generated.length, 'drum hits with DrumRNN');
-      } else if (instrument === 'piano' && musicRNNRef.current) {
+      if (musicRNNRef.current) {
         // Use actual Magenta MusicRNN model
-        console.log('Generating with MusicRNN...');
+        console.log('Generating melody with MusicRNN...');
         
-        // Convert user sequence to NoteSequence format
+        // Convert user sequence to NoteSequence format - using actual durations
         const inputSequence = {
           notes: [],
           totalTime: 0
         };
         
         let cumulativeTime = 0;
-        userSequence.forEach((item, idx) => {
-          const noteDuration = 0.5; // Half second per note/chord
+        userSequence.forEach((item) => {
+          const noteDuration = item.duration || 0.5;
           
-          item.notes.forEach(noteNumber => {
-            inputSequence.notes.push({
-              pitch: noteNumber,
-              startTime: cumulativeTime,
-              endTime: cumulativeTime + noteDuration,
-              velocity: 80
+          if (item.notes) {
+            item.notes.forEach(noteNumber => {
+              inputSequence.notes.push({
+                pitch: noteNumber,
+                startTime: cumulativeTime,
+                endTime: cumulativeTime + noteDuration,
+                velocity: 80
+              });
             });
-          });
+          }
           
           cumulativeTime += noteDuration;
         });
         
         inputSequence.totalTime = cumulativeTime;
         
-        // Generate continuation
+        console.log('Input sequence:', inputSequence);
+        
+        // Generate continuation with temperature
         const result = await musicRNNRef.current.continueSequence(
           inputSequence,
-          16, // steps to generate
-          1.0 // temperature
+          20, // steps to generate  
+          1.1, // temperature (higher = more creative)
+          ['Cm', 'C'] // Optional chord progression
         );
+        
+        console.log('MusicRNN result:', result);
         
         // Convert result back to our format
         const generated = [];
@@ -371,145 +285,242 @@ function MelodyMaker() {
         
         result.notes
           .filter(note => note.startTime >= userEndTime)
-          .forEach(note => {
+          .forEach((note, idx, arr) => {
+            const duration = note.endTime - note.startTime;
             generated.push({
               notes: [note.pitch],
               time: Date.now() + (note.startTime - userEndTime) * 1000,
+              duration,
               isChord: false
             });
           });
         
-        setAiSequence(generated);
+        setAiMelody(generated);
         console.log('Generated', generated.length, 'notes with MusicRNN');
       } else {
         // Fallback to algorithmic generation
-        console.log('Using fallback algorithm...');
+        console.log('MusicRNN not available, using fallback algorithm...');
         
-        if (instrument === 'drums') {
-          // Simple drum pattern generation
-          const generated = [];
-          const drumTypes = ['kick', 'snare', 'hihat', 'openhat'];
-          
-          for (let i = 0; i < 16; i++) {
-            // Basic pattern: kick on 1 and 3, snare on 2 and 4, hihat on all beats
-            let drumType;
-            if (i % 4 === 0 || i % 4 === 2) {
-              drumType = 'kick';
-            } else if (i % 4 === 1 || i % 4 === 3) {
-              drumType = 'snare';
-            } else {
-              drumType = Math.random() < 0.7 ? 'hihat' : 'openhat';
-            }
-            
-            generated.push({
-              drumType,
-              time: Date.now() + i * 100,
-              instrument: 'drums'
-            });
-          }
-          
-          setAiSequence(generated);
-        } else {
-          // Melodic generation
-          const lastItem = userSequence[userSequence.length - 1];
-          const lastNote = lastItem.notes ? lastItem.notes[0] : 60;
-          const generated = [];
-          
-          const numNotes = 8 + Math.floor(Math.random() * 5);
-          let currentNote = lastNote;
-          
-          for (let i = 0; i < numNotes; i++) {
-            const interval = Math.random() < 0.7 
-              ? (Math.random() < 0.5 ? 2 : -2)
-              : (Math.random() < 0.5 ? 5 : -5);
-            
-            currentNote = Math.max(60, Math.min(83, currentNote + interval));
-            generated.push({ 
-              notes: [currentNote], 
-              time: Date.now() + i * 100,
-              isChord: false,
-              instrument: 'piano'
-            });
-          }
-          
-          setAiSequence(generated);
-        }
-      }
-      
-      setIsGenerating(false);
-    } catch (error) {
-      console.error('Generation error:', error);
-      alert('Failed to generate. Using fallback algorithm.');
-      
-      // Fallback
-      if (instrument === 'drums') {
-        const generated = [];
-        const drumTypes = ['kick', 'snare', 'hihat'];
-        for (let i = 0; i < 16; i++) {
-          generated.push({
-            drumType: drumTypes[i % 3],
-            time: Date.now() + i * 100,
-            instrument: 'drums'
-          });
-        }
-        setAiSequence(generated);
-      } else {
         const lastItem = userSequence[userSequence.length - 1];
         const lastNote = lastItem.notes ? lastItem.notes[0] : 60;
         const generated = [];
         
-        for (let i = 0; i < 12; i++) {
-          const interval = Math.random() < 0.7 ? 2 : 5;
-          const nextNote = Math.max(60, Math.min(83, lastNote + interval * (Math.random() < 0.5 ? 1 : -1)));
+        const numNotes = 8 + Math.floor(Math.random() * 5);
+        let currentNote = lastNote;
+        
+        for (let i = 0; i < numNotes; i++) {
+          const interval = Math.random() < 0.7 
+            ? (Math.random() < 0.5 ? 2 : -2)
+            : (Math.random() < 0.5 ? 5 : -5);
+          
+          currentNote = Math.max(60, Math.min(83, currentNote + interval));
           generated.push({ 
-            notes: [nextNote], 
+            notes: [currentNote], 
             time: Date.now() + i * 100,
-            isChord: false,
-            instrument: 'piano'
+            duration: 0.5,
+            isChord: false
           });
         }
         
-        setAiSequence(generated);
+        setAiMelody(generated);
       }
       
       setIsGenerating(false);
+    } catch (error) {
+      console.error('Melody generation error:', error);
+      alert(`Failed to generate melody: ${error.message}. Using fallback algorithm.`);
+      
+      // Fallback
+      const lastItem = userSequence[userSequence.length - 1];
+      const lastNote = lastItem.notes ? lastItem.notes[0] : 60;
+      const generated = [];
+      
+      for (let i = 0; i < 12; i++) {
+        const interval = Math.random() < 0.7 ? 2 : 5;
+        const nextNote = Math.max(60, Math.min(83, lastNote + interval * (Math.random() < 0.5 ? 1 : -1)));
+        generated.push({ 
+          notes: [nextNote], 
+          time: Date.now() + i * 100,
+          duration: 0.5,
+          isChord: false
+        });
+      }
+      
+      setAiMelody(generated);
+      setIsGenerating(false);
     }
-  }, [userSequence, instrument]);
+  }, [userSequence]);
 
-  // Play the complete melody/pattern
+  // Generate AI drum accompaniment on top of the melody
+  const generateDrums = useCallback(async () => {
+    const totalSequence = [...userSequence, ...aiMelody];
+    if (totalSequence.length === 0) {
+      alert('Create a melody first before adding drums');
+      return;
+    }
+    
+    setIsGeneratingDrums(true);
+    
+    try {
+      if (drumRNNRef.current) {
+        console.log('Generating drum accompaniment with DrumRNN...');
+        
+        // Calculate total duration of the melody
+        let totalTime = 0;
+        totalSequence.forEach(item => {
+          totalTime += item.duration || 0.5;
+        });
+        
+        // Create a simple seed pattern for DrumRNN
+        const seedPattern = {
+          notes: [
+            { pitch: 36, quantizedStartStep: 0, quantizedEndStep: 1, isDrum: true, velocity: 100 }, // Kick
+            { pitch: 42, quantizedStartStep: 1, quantizedEndStep: 2, isDrum: true, velocity: 80 },  // HiHat
+            { pitch: 38, quantizedStartStep: 2, quantizedEndStep: 3, isDrum: true, velocity: 100 }, // Snare
+            { pitch: 42, quantizedStartStep: 3, quantizedEndStep: 4, isDrum: true, velocity: 80 }   // HiHat
+          ],
+          totalTime: 1.0,
+          totalQuantizedSteps: 4,
+          quantizationInfo: { stepsPerQuarter: 4 }
+        };
+        
+        // Generate drum pattern matching the melody length
+        const stepsToGenerate = Math.ceil(totalTime * 4); // 4 steps per second
+        const result = await drumRNNRef.current.continueSequence(
+          seedPattern,
+          stepsToGenerate,
+          1.0
+        );
+        
+        // Convert result to our format
+        const generated = [];
+        const stepDuration = 0.25;
+        
+        result.notes
+          .filter(note => note.quantizedStartStep >= 4) // Skip seed
+          .forEach(note => {
+            const drumTypeMap = {
+              36: 'kick',
+              38: 'snare',
+              42: 'hihat',
+              46: 'openhat'
+            };
+            const drumType = drumTypeMap[note.pitch] || 'hihat';
+            
+            generated.push({
+              drumType,
+              time: Date.now() + (note.quantizedStartStep - 4) * stepDuration * 1000,
+              duration: stepDuration
+            });
+          });
+        
+        setAiDrums(generated);
+        console.log('Generated', generated.length, 'drum hits with DrumRNN');
+      } else {
+        // Fallback: Create a simple drum pattern
+        console.log('DrumRNN not available, using algorithmic drums...');
+        
+        let totalTime = 0;
+        totalSequence.forEach(item => {
+          totalTime += item.duration || 0.5;
+        });
+        
+        const generated = [];
+        const beatsPerBar = 4;
+        const numBeats = Math.ceil(totalTime * 2); // 2 beats per second (120 BPM)
+        
+        for (let i = 0; i < numBeats; i++) {
+          const beatTime = i * 0.5;
+          
+          // Kick on 1 and 3
+          if (i % 4 === 0 || i % 4 === 2) {
+            generated.push({
+              drumType: 'kick',
+              time: Date.now() + beatTime * 1000,
+              duration: 0.1
+            });
+          }
+          
+          // Snare on 2 and 4
+          if (i % 4 === 1 || i % 4 === 3) {
+            generated.push({
+              drumType: 'snare',
+              time: Date.now() + beatTime * 1000,
+              duration: 0.1
+            });
+          }
+          
+          // Hi-hat on every beat
+          generated.push({
+            drumType: 'hihat',
+            time: Date.now() + beatTime * 1000,
+            duration: 0.1
+          });
+        }
+        
+        setAiDrums(generated);
+      }
+      
+      setIsGeneratingDrums(false);
+    } catch (error) {
+      console.error('Drum generation error:', error);
+      alert(`Failed to generate drums: ${error.message}`);
+      setIsGeneratingDrums(false);
+    }
+  }, [userSequence, aiMelody]);
+
+  // Play the complete melody with drums
   const playMelody = useCallback(() => {
     if (isPlaying) return;
-    if (userSequence.length === 0 && aiSequence.length === 0) return;
+    
+    const allMelody = [...userSequence, ...aiMelody];
+    if (allMelody.length === 0) return;
     
     setIsPlaying(true);
     
-    const allItems = [...userSequence, ...aiSequence];
-    const noteDuration = 60 / tempo; // Duration in seconds based on tempo
+    // Play melody notes with actual durations
+    let cumulativeTime = 0;
+    let maxTime = 0;
     
-    allItems.forEach((item, index) => {
-      const timeout = setTimeout(() => {
-        if (item.instrument === 'drums' && item.drumType) {
-          // Play drum hit
-          drumSynthRef.current?.playDrumHit(item.drumType);
-          setActiveDrums(new Set([item.drumType]));
-          setTimeout(() => setActiveDrums(new Set()), 100);
-        } else if (item.notes) {
-          // Play piano notes/chord
-          playChord(item.notes, noteDuration * 0.8);
-          setActiveNotes(new Set(item.notes));
-          setTimeout(() => setActiveNotes(new Set()), noteDuration * 800);
-        }
+    allMelody.forEach((item, index) => {
+      if (item.notes) {
+        const duration = item.duration || 0.5;
+        maxTime = cumulativeTime + duration;
         
-        if (index === allItems.length - 1) {
-          setTimeout(() => setIsPlaying(false), noteDuration * 1000);
-        }
-      }, index * noteDuration * 1000);
-      
-      if (playbackTimeoutRef.current) {
+        const timeout = setTimeout(() => {
+          playChord(item.notes, duration);
+          setActiveNotes(new Set(item.notes));
+          setTimeout(() => setActiveNotes(new Set()), duration * 900);
+        }, cumulativeTime * 1000);
+        
         playbackTimeoutRef.current.push(timeout);
+        cumulativeTime += duration;
       }
     });
-  }, [userSequence, aiSequence, tempo, playChord, isPlaying]);
+    
+    // Play drum accompaniment if available
+    if (aiDrums.length > 0) {
+      aiDrums.forEach(drum => {
+        const relativeTime = (drum.time - Date.now()) / 1000;
+        if (relativeTime < maxTime) {
+          const timeout = setTimeout(() => {
+            drumSynthRef.current?.playDrumHit(drum.drumType);
+            setActiveDrums(new Set([drum.drumType]));
+            setTimeout(() => setActiveDrums(new Set()), 100);
+          }, Math.max(0, relativeTime * 1000));
+          
+          playbackTimeoutRef.current.push(timeout);
+        }
+      });
+    }
+    
+    // Stop playing after all notes finish
+    const stopTimeout = setTimeout(() => {
+      setIsPlaying(false);
+    }, maxTime * 1000 + 500);
+    
+    playbackTimeoutRef.current.push(stopTimeout);
+  }, [userSequence, aiMelody, aiDrums, playChord, isPlaying]);
 
   // Stop playback
   const stopPlayback = useCallback(() => {
@@ -525,40 +536,38 @@ function MelodyMaker() {
   const clearAll = useCallback(() => {
     stopPlayback();
     setUserSequence([]);
-    setAiSequence([]);
+    setAiMelody([]);
+    setAiDrums([]);
   }, [stopPlayback]);
 
-  // Regenerate AI notes
-  const regenerate = useCallback(() => {
-    setAiSequence([]);
+  // Regenerate AI melody
+  const regenerateMelody = useCallback(() => {
+    setAiMelody([]);
     generateMelody();
   }, [generateMelody]);
 
+  // Clear drums
+  const clearDrums = useCallback(() => {
+    setAiDrums([]);
+  }, []);
+
   // Handle mouse/touch down on piano key
   const handleKeyDown = useCallback((noteNumber) => {
-    if (isPlaying || instrument !== 'piano') return;
+    if (isPlaying) return;
     startNote(noteNumber);
     setPressedKeys(prev => new Set([...prev, noteNumber]));
     setCurrentChord(prev => [...prev, noteNumber]);
-  }, [isPlaying, startNote, instrument]);
+  }, [isPlaying, startNote]);
 
   // Handle mouse/touch up on piano key
   const handleKeyUp = useCallback((noteNumber) => {
-    if (instrument !== 'piano') return;
     stopNote(noteNumber);
     setPressedKeys(prev => {
       const next = new Set(prev);
       next.delete(noteNumber);
       return next;
     });
-  }, [stopNote, instrument]);
-
-  // Handle drum pad hit
-  const handleDrumHit = useCallback((drumType) => {
-    if (isPlaying || instrument !== 'drums') return;
-    playDrum(drumType);
-    recordDrum(drumType);
-  }, [isPlaying, playDrum, recordDrum, instrument]);
+  }, [stopNote]);
 
   // Physical keyboard support
   useEffect(() => {
@@ -567,62 +576,41 @@ function MelodyMaker() {
       if (e.repeat) return; // Ignore key repeat
       
       const key = e.key.toLowerCase();
+      const noteData = NOTES.find(n => n.key === key);
       
-      if (instrument === 'piano') {
-        const noteData = NOTES.find(n => n.key === key);
-        
-        if (noteData && !keyDownRef.current.has(key)) {
-          e.preventDefault();
-          keyDownRef.current.add(key);
-          startNote(noteData.note);
-          setPressedKeys(prev => new Set([...prev, noteData.note]));
-          setCurrentChord(prev => [...prev, noteData.note]);
-        }
-      } else if (instrument === 'drums') {
-        const drumPad = DRUM_PADS.find(d => d.key === key);
-        
-        if (drumPad && !keyDownRef.current.has(key)) {
-          e.preventDefault();
-          keyDownRef.current.add(key);
-          handleDrumHit(drumPad.id);
-        }
+      if (noteData && !keyDownRef.current.has(key)) {
+        e.preventDefault();
+        keyDownRef.current.add(key);
+        startNote(noteData.note);
+        setPressedKeys(prev => new Set([...prev, noteData.note]));
+        setCurrentChord(prev => [...prev, noteData.note]);
       }
     };
     
     const handlePhysicalKeyUp = (e) => {
       const key = e.key.toLowerCase();
+      const noteData = NOTES.find(n => n.key === key);
       
-      if (instrument === 'piano') {
-        const noteData = NOTES.find(n => n.key === key);
+      if (noteData && keyDownRef.current.has(key)) {
+        e.preventDefault();
+        keyDownRef.current.delete(key);
+        stopNote(noteData.note);
+        setPressedKeys(prev => {
+          const next = new Set(prev);
+          next.delete(noteData.note);
+          return next;
+        });
         
-        if (noteData && keyDownRef.current.has(key)) {
-          e.preventDefault();
-          keyDownRef.current.delete(key);
-          stopNote(noteData.note);
-          setPressedKeys(prev => {
-            const next = new Set(prev);
-            next.delete(noteData.note);
-            return next;
-          });
-          
-          // Record chord when all keys released
-          if (keyDownRef.current.size === 0 && currentChord.length > 0) {
-            recordChord();
-          }
-        }
-        
-        // Space bar to record current chord
-        if (e.key === ' ' && currentChord.length > 0) {
-          e.preventDefault();
+        // Record chord when all keys released
+        if (keyDownRef.current.size === 0 && currentChord.length > 0) {
           recordChord();
         }
-      } else if (instrument === 'drums') {
-        const drumPad = DRUM_PADS.find(d => d.key === key);
-        
-        if (drumPad && keyDownRef.current.has(key)) {
-          e.preventDefault();
-          keyDownRef.current.delete(key);
-        }
+      }
+      
+      // Space bar to record current chord
+      if (e.key === ' ' && currentChord.length > 0) {
+        e.preventDefault();
+        recordChord();
       }
     };
     
@@ -633,7 +621,7 @@ function MelodyMaker() {
       window.removeEventListener('keydown', handlePhysicalKeyDown);
       window.removeEventListener('keyup', handlePhysicalKeyUp);
     };
-  }, [isPlaying, instrument, startNote, stopNote, currentChord, recordChord, handleDrumHit]);
+  }, [isPlaying, startNote, stopNote, currentChord, recordChord]);
 
   // Initialize playback timeout ref
   useEffect(() => {
@@ -664,69 +652,30 @@ function MelodyMaker() {
     );
   }
 
-  const allSequence = [...userSequence, ...aiSequence];
+  const allMelody = [...userSequence, ...aiMelody];
   const canGenerate = userSequence.length >= 4 && !isGenerating;
-  const canPlay = allSequence.length > 0 && !isPlaying;
+  const canGenerateDrums = allMelody.length > 0 && !isGeneratingDrums;
+  const canPlay = allMelody.length > 0 && !isPlaying;
   
-  // Count total notes (handle both piano notes and drum hits)
-  const userNoteCount = userSequence.reduce((sum, item) => sum + (item.notes?.length || 1), 0);
-  const aiNoteCount = aiSequence.reduce((sum, item) => sum + (item.notes?.length || 1), 0);
+  // Count total notes
+  const userNoteCount = userSequence.reduce((sum, item) => sum + (item.notes?.length || 0), 0);
+  const aiNoteCount = aiMelody.reduce((sum, item) => sum + (item.notes?.length || 0), 0);
 
   return (
     <div className="min-h-screen bg-white p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-4xl font-light mb-3" style={{ color: COLORS.text.primary }}>
-                Melody Maker
-              </h1>
-              <p className="font-light" style={{ color: COLORS.text.secondary }}>
-                Create melodies and chords - let AI complete them with Magenta.js
-              </p>
-            </div>
-            
-            {/* Instrument Selector */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setInstrument('piano');
-                  setUserSequence([]);
-                  setAiSequence([]);
-                }}
-                className="px-6 py-3 rounded-xl font-medium transition-all"
-                style={{
-                  backgroundColor: instrument === 'piano' ? COLORS.accent : 'white',
-                  color: instrument === 'piano' ? 'white' : COLORS.text.secondary,
-                  border: `1px solid ${instrument === 'piano' ? COLORS.accent : COLORS.border}`,
-                  boxShadow: instrument === 'piano' ? `0 10px 30px ${COLORS.accent}20` : 'none'
-                }}
-              >
-                {'\u{1F3B9}'} Piano
-              </button>
-              <button
-                onClick={() => {
-                  setInstrument('drums');
-                  setUserSequence([]);
-                  setAiSequence([]);
-                }}
-                className="px-6 py-3 rounded-xl font-medium transition-all"
-                style={{
-                  backgroundColor: instrument === 'drums' ? COLORS.drum : 'white',
-                  color: instrument === 'drums' ? 'white' : COLORS.text.secondary,
-                  border: `1px solid ${instrument === 'drums' ? COLORS.drum : COLORS.border}`,
-                  boxShadow: instrument === 'drums' ? `0 10px 30px ${COLORS.drum}20` : 'none'
-                }}
-              >
-                {'\u{1F941}'} Drums
-              </button>
-            </div>
-          </div>
+          <h1 className="text-4xl font-light mb-3" style={{ color: COLORS.text.primary }}>
+            Melody Maker
+          </h1>
+          <p className="font-light" style={{ color: COLORS.text.secondary }}>
+            Create melodies - let AI complete them and add drum accompaniment with Magenta.js
+          </p>
         </div>
 
-        {/* Current Chord Preview (Piano mode only) */}
-        {instrument === 'piano' && currentChord.length > 0 && (
+        {/* Current Chord Preview */}
+        {currentChord.length > 0 && (
           <div className="mb-6 bg-white rounded-xl p-6" style={{
             boxShadow: '0 20px 60px rgba(0, 0, 0, 0.03)',
             border: `1px solid ${COLORS.border}`
@@ -757,127 +706,114 @@ function MelodyMaker() {
             Melody Timeline
           </h2>
           
-          {allSequence.length === 0 ? (
+          {allMelody.length === 0 ? (
             <div className="text-center py-16 font-light" style={{ color: COLORS.text.tertiary }}>
-              {instrument === 'piano' 
-                ? 'Press piano keys below or use your keyboard (A-B keys) to start'
-                : 'Hit drum pads below or use your keyboard (A-V keys) to start'}
+              Press piano keys below or use your keyboard (A-B keys) to start
             </div>
           ) : (
-            <div className="flex items-start gap-2 flex-wrap">
-              {userSequence.map((item, idx) => {
-                if (item.instrument === 'drums') {
-                  return (
+            <div>
+              {/* Melody Timeline */}
+              <div className="mb-4">
+                <div className="text-xs font-medium mb-2 tracking-wide uppercase" style={{ color: COLORS.text.tertiary }}>
+                  Melody
+                </div>
+                <div className="flex items-start gap-2 flex-wrap">
+                  {userSequence.map((item, idx) => (
                     <div
                       key={`user-${idx}`}
                       className="flex flex-col items-center gap-2"
                     >
-                      <div
-                        className="px-4 py-3 rounded-lg flex items-center justify-center text-xs font-bold text-white uppercase"
-                        style={{
-                          backgroundColor: COLORS.drum,
-                          boxShadow: activeDrums.has(item.drumType) ? `0 4px 12px ${COLORS.drum}40` : 'none',
-                          transform: activeDrums.has(item.drumType) ? 'scale(1.05)' : 'scale(1)',
-                          transition: 'all 0.15s',
-                          minWidth: '60px'
-                        }}
-                      >
-                        {item.drumType}
+                      <div className="flex flex-col gap-1">
+                        {item.notes?.map((note, noteIdx) => (
+                          <div
+                            key={noteIdx}
+                            className="px-3 py-2 rounded-lg flex items-center justify-center text-xs font-medium text-white"
+                            style={{
+                              backgroundColor: COLORS.userNote,
+                              boxShadow: activeNotes.has(note) ? `0 4px 12px ${COLORS.userNote}40` : 'none',
+                              transform: activeNotes.has(note) ? 'scale(1.05)' : 'scale(1)',
+                              transition: 'all 0.15s',
+                              minWidth: '48px'
+                            }}
+                          >
+                            {NOTES.find(n => n.note === note)?.name}
+                          </div>
+                        ))}
                       </div>
                       <div className="text-xs font-light" style={{ color: COLORS.text.tertiary }}>
-                        You
+                        {item.isChord ? 'Chord' : 'You'}
                       </div>
                     </div>
-                  );
-                }
-                
-                return (
-                  <div
-                    key={`user-${idx}`}
-                    className="flex flex-col items-center gap-2"
-                  >
-                    <div className="flex flex-col gap-1">
-                      {item.notes?.map((note, noteIdx) => (
-                        <div
-                          key={noteIdx}
-                          className="px-3 py-2 rounded-lg flex items-center justify-center text-xs font-medium text-white"
-                          style={{
-                            backgroundColor: COLORS.userNote,
-                            boxShadow: activeNotes.has(note) ? `0 4px 12px ${COLORS.userNote}40` : 'none',
-                            transform: activeNotes.has(note) ? 'scale(1.05)' : 'scale(1)',
-                            transition: 'all 0.15s',
-                            minWidth: '48px'
-                          }}
-                        >
-                          {NOTES.find(n => n.note === note)?.name}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="text-xs font-light" style={{ color: COLORS.text.tertiary }}>
-                      {item.isChord ? 'Chord' : 'You'}
-                    </div>
-                  </div>
-                );
-              })}
-              
-              {aiSequence.length > 0 && (
-                <div className="w-px h-16 mx-2" style={{ backgroundColor: COLORS.border }}></div>
-              )}
-              
-              {aiSequence.map((item, idx) => {
-                if (item.instrument === 'drums') {
-                  return (
+                  ))}
+                  
+                  {aiMelody.length > 0 && (
+                    <div className="w-px h-16 mx-2" style={{ backgroundColor: COLORS.border }}></div>
+                  )}
+                  
+                  {aiMelody.map((item, idx) => (
                     <div
                       key={`ai-${idx}`}
                       className="flex flex-col items-center gap-2"
                     >
-                      <div
-                        className="px-4 py-3 rounded-lg flex items-center justify-center text-xs font-bold text-white uppercase"
-                        style={{
-                          backgroundColor: COLORS.aiNote,
-                          boxShadow: activeDrums.has(item.drumType) ? `0 4px 12px ${COLORS.aiNote}40` : 'none',
-                          transform: activeDrums.has(item.drumType) ? 'scale(1.05)' : 'scale(1)',
-                          transition: 'all 0.15s',
-                          minWidth: '60px'
-                        }}
-                      >
-                        {item.drumType}
+                      <div className="flex flex-col gap-1">
+                        {item.notes?.map((note, noteIdx) => (
+                          <div
+                            key={noteIdx}
+                            className="px-3 py-2 rounded-lg flex items-center justify-center text-xs font-medium text-white"
+                            style={{
+                              backgroundColor: COLORS.aiNote,
+                              boxShadow: activeNotes.has(note) ? `0 4px 12px ${COLORS.aiNote}40` : 'none',
+                              transform: activeNotes.has(note) ? 'scale(1.05)' : 'scale(1)',
+                              transition: 'all 0.15s',
+                              minWidth: '48px'
+                            }}
+                          >
+                            {NOTES.find(n => n.note === note)?.name}
+                          </div>
+                        ))}
                       </div>
                       <div className="text-xs font-light" style={{ color: COLORS.text.tertiary }}>
                         AI
                       </div>
                     </div>
-                  );
-                }
-                
-                return (
-                  <div
-                    key={`ai-${idx}`}
-                    className="flex flex-col items-center gap-2"
-                  >
-                    <div className="flex flex-col gap-1">
-                      {item.notes?.map((note, noteIdx) => (
+                  ))}
+                </div>
+              </div>
+
+              {/* Drum Timeline */}
+              {aiDrums.length > 0 && (
+                <div className="mt-6 pt-6" style={{ borderTop: `1px solid ${COLORS.border}` }}>
+                  <div className="text-xs font-medium mb-2 tracking-wide uppercase" style={{ color: COLORS.text.tertiary }}>
+                    Drums (AI Generated)
+                  </div>
+                  <div className="flex items-start gap-2 flex-wrap">
+                    {aiDrums.slice(0, 32).map((drum, idx) => (
+                      <div
+                        key={`drum-${idx}`}
+                        className="flex flex-col items-center gap-2"
+                      >
                         <div
-                          key={noteIdx}
-                          className="px-3 py-2 rounded-lg flex items-center justify-center text-xs font-medium text-white"
+                          className="px-3 py-2 rounded-lg flex items-center justify-center text-xs font-bold text-white uppercase"
                           style={{
-                            backgroundColor: COLORS.aiNote,
-                            boxShadow: activeNotes.has(note) ? `0 4px 12px ${COLORS.aiNote}40` : 'none',
-                            transform: activeNotes.has(note) ? 'scale(1.05)' : 'scale(1)',
+                            backgroundColor: COLORS.drum,
+                            boxShadow: activeDrums.has(drum.drumType) ? `0 4px 12px ${COLORS.drum}40` : 'none',
+                            transform: activeDrums.has(drum.drumType) ? 'scale(1.05)' : 'scale(1)',
                             transition: 'all 0.15s',
-                            minWidth: '48px'
+                            minWidth: '52px'
                           }}
                         >
-                          {NOTES.find(n => n.note === note)?.name}
+                          {drum.drumType === 'hihat' ? 'HH' : drum.drumType === 'openhat' ? 'OH' : drum.drumType[0].toUpperCase()}
                         </div>
-                      ))}
-                    </div>
-                    <div className="text-xs font-light" style={{ color: COLORS.text.tertiary }}>
-                      AI
-                    </div>
+                      </div>
+                    ))}
+                    {aiDrums.length > 32 && (
+                      <div className="px-3 py-2 text-xs font-light" style={{ color: COLORS.text.tertiary }}>
+                        +{aiDrums.length - 32} more
+                      </div>
+                    )}
                   </div>
-                );
-              })}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -891,7 +827,7 @@ function MelodyMaker() {
             <div className="flex gap-3 flex-wrap">
               <button
                 onClick={canPlay ? playMelody : stopPlayback}
-                disabled={allSequence.length === 0}
+                disabled={allMelody.length === 0}
                 className="px-8 py-3 rounded-xl font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{
                   backgroundColor: isPlaying ? '#ef4444' : COLORS.accent,
@@ -912,12 +848,25 @@ function MelodyMaker() {
                   boxShadow: `0 10px 30px ${COLORS.accentLight}20`
                 }}
               >
-                {isGenerating ? 'Generating...' : 'Complete with AI'}
+                {isGenerating ? 'Generating...' : 'Complete Melody'}
               </button>
               
-              {aiSequence.length > 0 && (
+              <button
+                onClick={generateDrums}
+                disabled={!canGenerateDrums}
+                className="px-8 py-3 rounded-xl font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: COLORS.drum,
+                  color: 'white',
+                  boxShadow: `0 10px 30px ${COLORS.drum}20`
+                }}
+              >
+                {isGeneratingDrums ? 'Generating...' : aiDrums.length > 0 ? 'Regenerate Drums' : 'Add Drums'}
+              </button>
+              
+              {aiMelody.length > 0 && (
                 <button
-                  onClick={regenerate}
+                  onClick={regenerateMelody}
                   disabled={isGenerating}
                   className="px-6 py-3 rounded-xl font-medium transition-all"
                   style={{
@@ -926,6 +875,19 @@ function MelodyMaker() {
                   }}
                 >
                   Regenerate
+                </button>
+              )}
+              
+              {aiDrums.length > 0 && (
+                <button
+                  onClick={clearDrums}
+                  className="px-6 py-3 rounded-xl font-medium transition-all"
+                  style={{
+                    border: `1px solid ${COLORS.border}`,
+                    color: COLORS.text.secondary
+                  }}
+                >
+                  Clear Drums
                 </button>
               )}
               
@@ -941,59 +903,38 @@ function MelodyMaker() {
               </button>
             </div>
 
-            {/* Tempo Control */}
-            <div className="flex items-center gap-4">
-              <label className="text-xs font-medium tracking-wide" style={{ color: COLORS.text.secondary }}>
-                TEMPO
-              </label>
-              <input
-                type="range"
-                min="60"
-                max="200"
-                value={tempo}
-                onChange={(e) => setTempo(Number(e.target.value))}
-                className="w-32"
-                style={{ accentColor: COLORS.accent }}
-              />
-              <span className="text-sm font-medium w-16" style={{ color: COLORS.text.primary }}>
-                {tempo} BPM
-              </span>
-            </div>
+            {/* Tempo Control - removed for now as we use actual durations */}
           </div>
 
           {/* Status */}
           <div className="text-sm font-light" style={{ color: COLORS.text.secondary }}>
-            {userSequence.length === 0 && (instrument === 'piano' 
-              ? 'Start by pressing piano keys or using your keyboard (A-B keys)'
-              : 'Start by hitting drum pads or using your keyboard (A-V keys)')}
-            {userSequence.length > 0 && userSequence.length < 4 && `${userSequence.length} items recorded - need ${4 - userSequence.length} more for AI completion`}
-            {userSequence.length >= 4 && aiSequence.length === 0 && 'Ready for AI completion!'}
-            {aiSequence.length > 0 && (instrument === 'piano'
-              ? `Complete sequence: ${userNoteCount} user notes + ${aiNoteCount} AI notes`
-              : `Complete pattern: ${userSequence.length} user hits + ${aiSequence.length} AI hits`)}
+            {userSequence.length === 0 && 'Start by pressing piano keys or using your keyboard (A-B keys)'}
+            {userSequence.length > 0 && userSequence.length < 4 && `${userSequence.length} notes/chords recorded - need ${4 - userSequence.length} more for AI completion`}
+            {userSequence.length >= 4 && aiMelody.length === 0 && 'Ready for AI melody completion!'}
+            {aiMelody.length > 0 && !aiDrums.length && 'Melody complete! Click "Add Drums" for AI accompaniment'}
+            {aiMelody.length > 0 && aiDrums.length > 0 && `Complete composition: ${userNoteCount} user notes + ${aiNoteCount} AI notes + ${aiDrums.length} drum hits`}
           </div>
           
-          {((instrument === 'piano' && musicRNNRef.current) || (instrument === 'drums' && drumRNNRef.current)) && (
+          {musicRNNRef.current && (
             <div className="mt-3 text-xs font-light" style={{ color: COLORS.text.tertiary }}>
-              {'\u{2713}'} Using Magenta {instrument === 'piano' ? 'MusicRNN' : 'DrumRNN'} model for generation
+              {'\u{2713}'} Using Magenta MusicRNN{drumRNNRef.current ? ' and DrumRNN' : ''} for generation
             </div>
           )}
         </div>
 
         {/* Piano Keyboard */}
-        {instrument === 'piano' && (
-          <div className="bg-white rounded-xl p-8" style={{
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.03)',
-            border: `1px solid ${COLORS.border}`
-          }}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xs font-medium tracking-wide uppercase" style={{ color: COLORS.text.secondary }}>
-                Piano Keyboard
-              </h2>
-              <div className="text-xs font-light" style={{ color: COLORS.text.tertiary }}>
-                Hold multiple keys for chords
-              </div>
+        <div className="bg-white rounded-xl p-8" style={{
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.03)',
+          border: `1px solid ${COLORS.border}`
+        }}>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xs font-medium tracking-wide uppercase" style={{ color: COLORS.text.secondary }}>
+              Piano Keyboard
+            </h2>
+            <div className="text-xs font-light" style={{ color: COLORS.text.tertiary }}>
+              Hold multiple keys for chords - hold time matters!
             </div>
+          </div>
           
           <div className="relative flex justify-center mb-4">
             <div className="relative inline-flex">
@@ -1089,90 +1030,25 @@ function MelodyMaker() {
             </div>
           </div>
           
-            {/* Keyboard mapping hint */}
-            <div className="text-center text-xs font-light mt-6" style={{ color: COLORS.text.tertiary }}>
-              Use your keyboard: A-B keys map to piano keys • Hold multiple for chords • Release to record
-            </div>
+          {/* Keyboard mapping hint */}
+          <div className="text-center text-xs font-light mt-6" style={{ color: COLORS.text.tertiary }}>
+            Use your keyboard: A-B keys map to piano keys • Hold multiple for chords • Hold time = note duration • Release to record
           </div>
-        )}
-
-        {/* Drum Pads */}
-        {instrument === 'drums' && (
-          <div className="bg-white rounded-xl p-8" style={{
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.03)',
-            border: `1px solid ${COLORS.border}`
-          }}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xs font-medium tracking-wide uppercase" style={{ color: COLORS.text.secondary }}>
-                Drum Pads
-              </h2>
-              <div className="text-xs font-light" style={{ color: COLORS.text.tertiary }}>
-                Click pads or use keyboard
-              </div>
-            </div>
-            
-            <div className="flex flex-col gap-4 max-w-2xl mx-auto">
-              {[0, 1].map(row => (
-                <div key={row} className="flex gap-4 justify-center">
-                  {DRUM_PADS.filter(pad => pad.row === row).map(pad => {
-                    const isActive = activeDrums.has(pad.id);
-                    return (
-                      <button
-                        key={`${pad.id}-${pad.key}`}
-                        onClick={() => handleDrumHit(pad.id)}
-                        disabled={isPlaying}
-                        className="relative transition-all disabled:cursor-not-allowed disabled:opacity-50"
-                        style={{
-                          width: '140px',
-                          height: '140px',
-                          backgroundColor: isActive ? COLORS.drum : 'white',
-                          border: `2px solid ${isActive ? COLORS.drum : COLORS.border}`,
-                          borderRadius: '16px',
-                          transform: isActive ? 'scale(0.95)' : 'scale(1)',
-                          boxShadow: isActive ? `0 8px 24px ${COLORS.drum}30` : '0 4px 12px rgba(0,0,0,0.05)'
-                        }}
-                      >
-                        <div className="absolute top-3 left-3">
-                          <div className="text-xs font-bold px-2 py-1 rounded" style={{
-                            backgroundColor: isActive ? 'rgba(255,255,255,0.3)' : COLORS.keyPressed,
-                            color: isActive ? 'white' : COLORS.text.tertiary
-                          }}>
-                            {pad.key.toUpperCase()}
-                          </div>
-                        </div>
-                        <div className="text-lg font-bold mb-1" style={{
-                          color: isActive ? 'white' : COLORS.text.primary
-                        }}>
-                          {pad.name}
-                        </div>
-                        <div className="text-xs font-light uppercase" style={{
-                          color: isActive ? 'rgba(255,255,255,0.8)' : COLORS.text.tertiary
-                        }}>
-                          {pad.id}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-            
-            {/* Keyboard mapping hint */}
-            <div className="text-center text-xs font-light mt-6" style={{ color: COLORS.text.tertiary }}>
-              Use your keyboard: A, S, D, F (top row) • Z, X, C, V (bottom row) • Auto-records on hit
-            </div>
-          </div>
-        )}
+        </div>
 
         {/* Legend */}
         <div className="mt-8 flex justify-center gap-8 text-sm font-light" style={{ color: COLORS.text.secondary }}>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded" style={{ backgroundColor: instrument === 'piano' ? COLORS.userNote : COLORS.drum }}></div>
-            <span>Your Input</span>
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: COLORS.userNote }}></div>
+            <span>Your Melody</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: COLORS.aiNote }}></div>
-            <span>AI Generated</span>
+            <span>AI Melody</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: COLORS.drum }}></div>
+            <span>AI Drums</span>
           </div>
         </div>
       </div>
