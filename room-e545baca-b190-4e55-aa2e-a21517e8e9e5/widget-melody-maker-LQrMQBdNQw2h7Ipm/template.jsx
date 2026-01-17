@@ -652,101 +652,82 @@ function MelodyMaker() {
     });
 
     try {
+      let useMusicRNN = false;
+      let polished = [];
+
+      // Try MusicRNN first
       if (musicRNNRef.current) {
-        console.log('Polishing with MusicRNN...');
+        try {
+          console.log('Attempting polish with MusicRNN...');
 
-        // Convert entire sequence to quantized format
-        const stepsPerQuarter = 4;
-        const qpm = 120;
-        const inputSequence = {
-          notes: [],
-          totalQuantizedSteps: 0,
-          quantizationInfo: {
-            stepsPerQuarter: stepsPerQuarter
-          }
-        };
+          // Convert entire sequence to quantized format
+          const stepsPerQuarter = 4;
+          const qpm = 120;
+          const inputSequence = {
+            notes: [],
+            totalQuantizedSteps: 0,
+            quantizationInfo: {
+              stepsPerQuarter: stepsPerQuarter
+            }
+          };
 
-        let currentStep = 0;
-        allMelody.forEach((item) => {
-          const noteDuration = item.duration || 0.5;
-          const durationInSteps = Math.max(1, Math.round((noteDuration * qpm * stepsPerQuarter) / 60));
+          let currentStep = 0;
+          allMelody.forEach((item) => {
+            const noteDuration = item.duration || 0.5;
+            const durationInSteps = Math.max(1, Math.round((noteDuration * qpm * stepsPerQuarter) / 60));
 
-          if (item.notes) {
-            item.notes.forEach(noteNumber => {
-              inputSequence.notes.push({
-                pitch: noteNumber,
-                quantizedStartStep: currentStep,
-                quantizedEndStep: currentStep + durationInSteps,
-                velocity: 80
+            if (item.notes) {
+              item.notes.forEach(noteNumber => {
+                inputSequence.notes.push({
+                  pitch: noteNumber,
+                  quantizedStartStep: currentStep,
+                  quantizedEndStep: currentStep + durationInSteps,
+                  velocity: 80
+                });
+              });
+            }
+
+            currentStep += durationInSteps;
+          });
+
+          inputSequence.totalQuantizedSteps = currentStep;
+          console.log('Polish input has', inputSequence.notes.length, 'notes');
+
+          const result = await musicRNNRef.current.continueSequence(
+            inputSequence,
+            8,
+            0.8
+          );
+
+          console.log('MusicRNN polish result has', result.notes.length, 'notes');
+
+          // Only use MusicRNN result if it's reasonable
+          if (result.notes.length >= 3) {
+            result.notes.forEach((note) => {
+              const durationInSteps = note.quantizedEndStep - note.quantizedStartStep;
+              const duration = (durationInSteps * 60) / (qpm * stepsPerQuarter);
+              const relativeTime = (note.quantizedStartStep * 60) / (qpm * stepsPerQuarter);
+
+              polished.push({
+                notes: [note.pitch],
+                time: Date.now() + relativeTime * 1000,
+                duration,
+                isChord: false
               });
             });
+            useMusicRNN = true;
+            console.log('MusicRNN polish successful with', polished.length, 'notes');
+          } else {
+            console.log('MusicRNN result too short, falling back to algorithm');
           }
-
-          currentStep += durationInSteps;
-        });
-
-        inputSequence.totalQuantizedSteps = currentStep;
-        console.log('Polish input has', inputSequence.notes.length, 'notes');
-
-        // Use continueSequence with 0 steps to just get a refined version
-        // Temperature lower for more conservative changes
-        const result = await musicRNNRef.current.continueSequence(
-          inputSequence,
-          8, // Just a few extra notes to help with flow
-          0.8 // Lower temperature for subtler refinement
-        );
-
-        console.log('Polish result:', result);
-        console.log('Polish result has', result.notes.length, 'notes');
-
-        // Only fail if result is completely empty or way too short
-        if (result.notes.length < 3) {
-          console.log('MusicRNN polish returned too few notes, using fallback');
-          throw new Error('Polish result too short');
+        } catch (rnnError) {
+          console.log('MusicRNN polish error, falling back to algorithm:', rnnError.message);
         }
+      }
 
-        // Convert entire result back
-        const polished = [];
-        result.notes.forEach((note) => {
-          const durationInSteps = note.quantizedEndStep - note.quantizedStartStep;
-          const duration = (durationInSteps * 60) / (qpm * stepsPerQuarter);
-          const relativeTime = (note.quantizedStartStep * 60) / (qpm * stepsPerQuarter);
-
-          polished.push({
-            notes: [note.pitch],
-            time: Date.now() + relativeTime * 1000,
-            duration,
-            isChord: false
-          });
-        });
-
-        console.log('Polished has', polished.length, 'notes');
-
-        // Split back into user sequence (first part) and AI melody (rest)
-        // Use a proportional split based on original lengths
-        const totalOriginal = userSequence.length + aiMelody.length;
-        const userRatio = userSequence.length / totalOriginal;
-        const splitPoint = Math.round(polished.length * userRatio);
-        
-        const polishedUser = polished.slice(0, splitPoint);
-        const polishedAI = polished.slice(splitPoint);
-        
-        console.log('Split: user =', polishedUser.length, ', AI =', polishedAI.length);
-
-        // Safety check - must have at least some notes
-        if (polished.length === 0) {
-          throw new Error('Polish resulted in empty sequence');
-        }
-
-        setUserSequence(polishedUser);
-        setAiMelody(polishedAI);
-
-        console.log('Polished successfully');
-      } else {
-        // Fallback: smooth transitions algorithmically
+      // If MusicRNN didn't work or isn't available, use algorithmic smoothing
+      if (!useMusicRNN) {
         console.log('Using algorithmic polish...');
-
-        const polished = [];
         
         for (let i = 0; i < allMelody.length; i++) {
           const current = allMelody[i];
@@ -777,12 +758,25 @@ function MelodyMaker() {
 
           polished.push({ ...current });
         }
+        console.log('Algorithmic polish complete with', polished.length, 'notes');
+      }
 
-        const userLength = userSequence.length;
-        setUserSequence(polished.slice(0, userLength));
-        setAiMelody(polished.slice(userLength));
+      // Apply the polished result (from either method)
+      if (polished.length > 0) {
+        const totalOriginal = userSequence.length + aiMelody.length;
+        const userRatio = userSequence.length / totalOriginal;
+        const splitPoint = Math.round(polished.length * userRatio);
+        
+        const polishedUser = polished.slice(0, splitPoint);
+        const polishedAI = polished.slice(splitPoint);
+        
+        console.log('Final split: user =', polishedUser.length, ', AI =', polishedAI.length);
 
-        console.log('Algorithmic polish complete');
+        setUserSequence(polishedUser);
+        setAiMelody(polishedAI);
+        console.log('Polish applied successfully');
+      } else {
+        throw new Error('Polish resulted in no notes');
       }
 
       setIsPolishing(false);

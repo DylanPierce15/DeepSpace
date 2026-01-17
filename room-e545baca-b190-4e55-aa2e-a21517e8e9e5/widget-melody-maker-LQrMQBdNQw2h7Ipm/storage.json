@@ -3,10 +3,10 @@
   "userNotes": "[{\"note\":60,\"time\":1768616051205},{\"note\":62,\"time\":1768616051644},{\"note\":64,\"time\":1768616052507},{\"note\":64,\"time\":1768616052757},{\"note\":79,\"time\":1768616059586},{\"note\":79,\"time\":1768616059740},{\"note\":79,\"time\":1768616060129}]",
   "tempo": "115",
   "aiNotes": "[{\"note\":77,\"time\":1768616075872},{\"note\":79,\"time\":1768616075972},{\"note\":81,\"time\":1768616076072},{\"note\":79,\"time\":1768616076172},{\"note\":81,\"time\":1768616076272},{\"note\":76,\"time\":1768616076372},{\"note\":78,\"time\":1768616076472},{\"note\":80,\"time\":1768616076572},{\"note\":78,\"time\":1768616076672},{\"note\":76,\"time\":1768616076772},{\"note\":78,\"time\":1768616076872},{\"note\":80,\"time\":1768616076972}]",
-  "userSequence": "[{\"notes\":[61,60,62,65,64],\"time\":1768621222803,\"duration\":0.629,\"isChord\":true},{\"notes\":[66,63,62,66],\"time\":1768621227487,\"duration\":0.1,\"isChord\":true}]",
+  "userSequence": "[{\"notes\":[61,60,62,65,64],\"time\":1768621222803,\"duration\":0.629,\"isChord\":true},{\"notes\":[66,63,62,66],\"time\":1768621227487,\"duration\":0.1,\"isChord\":true},{\"notes\":[61],\"time\":1768621471668,\"duration\":0.163,\"isChord\":false},{\"notes\":[60,62,64,65],\"time\":1768621473379,\"duration\":1.104,\"isChord\":true}]",
   "aiSequence": "[]",
   "instrument": "piano",
-  "aiMelody": "[]",
-  "aiDrums": "[]",
+  "aiMelody": "[{\"notes\":[67],\"time\":1768621488626,\"duration\":1.375,\"isChord\":false},{\"notes\":[61],\"time\":1768621490001,\"duration\":0.25,\"isChord\":false},{\"notes\":[63],\"time\":1768621490251,\"duration\":0.25,\"isChord\":false},{\"notes\":[72],\"time\":1768621490501,\"duration\":0.125,\"isChord\":false}]",
+  "aiDrums": "[{\"drumType\":\"kick\",\"time\":1768621495507,\"duration\":0.25},{\"drumType\":\"hihat\",\"time\":1768621495757,\"duration\":0.25},{\"drumType\":\"snare\",\"time\":1768621496007,\"duration\":0.25},{\"drumType\":\"hihat\",\"time\":1768621496257,\"duration\":0.25},{\"drumType\":\"kick\",\"time\":1768621496507,\"duration\":0.25},{\"drumType\":\"hihat\",\"time\":1768621496757,\"duration\":0.25},{\"drumType\":\"snare\",\"time\":1768621497007,\"duration\":0.25},{\"drumType\":\"hihat\",\"time\":1768621497257,\"duration\":0.25},{\"drumType\":\"kick\",\"time\":1768621497507,\"duration\":0.25},{\"drumType\":\"hihat\",\"time\":1768621497757,\"duration\":0.25},{\"drumType\":\"snare\",\"time\":1768621498007,\"duration\":0.25},{\"drumType\":\"hihat\",\"time\":1768621498257,\"duration\":0.25}]",
   "prePolishBackup": "null"
 }
