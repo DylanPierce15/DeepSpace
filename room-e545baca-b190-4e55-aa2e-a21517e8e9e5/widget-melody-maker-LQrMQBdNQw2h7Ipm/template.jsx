@@ -73,9 +73,10 @@ function MelodyMaker() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingDrums, setIsGeneratingDrums] = useState(false);
   const [isPolishing, setIsPolishing] = useState(false);
-  const [showLibrary, setShowLibrary] = useState(false);
+  const [activeTab, setActiveTab] = useState('piano'); // 'piano' or 'library'
   const [saveName, setSaveName] = useState('');
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const [pressedKeys, setPressedKeys] = useState(new Set());
   const [activeNotes, setActiveNotes] = useState(new Set());
   const [currentChord, setCurrentChord] = useState([]);
@@ -855,7 +856,7 @@ function MelodyMaker() {
       setAiDrums(melody.aiDrums || []);
       setTempo(melody.tempo || 120);
       setPrePolishBackup(null);
-      setShowLibrary(false);
+      setActiveTab('piano');
       console.log('Loaded melody:', melody.name);
     }
   }, [melodiesFiles]);
@@ -896,6 +897,7 @@ function MelodyMaker() {
     const handlePhysicalKeyDown = (e) => {
       if (isPlaying) return;
       if (e.repeat) return; // Ignore key repeat
+      if (isTyping) return; // Don't play piano while typing in input fields
       
       const key = e.key.toLowerCase();
       const noteData = NOTES.find(n => n.key === key);
@@ -943,7 +945,7 @@ function MelodyMaker() {
       window.removeEventListener('keydown', handlePhysicalKeyDown);
       window.removeEventListener('keyup', handlePhysicalKeyUp);
     };
-  }, [isPlaying, startNote, stopNote, currentChord, recordChord]);
+  }, [isPlaying, startNote, stopNote, currentChord, recordChord, isTyping]);
 
   // Initialize playback timeout ref
   useEffect(() => {
@@ -1036,11 +1038,11 @@ function MelodyMaker() {
               Save
             </button>
             <button
-              onClick={() => setShowLibrary(!showLibrary)}
+              onClick={() => setActiveTab(activeTab === 'library' ? 'piano' : 'library')}
               className="px-5 py-2 transition-all"
               style={{
-                background: showLibrary ? COLORS.warmBrown : COLORS.bgLight,
-                color: showLibrary ? COLORS.white : COLORS.text.secondary,
+                background: activeTab === 'library' ? COLORS.warmBrown : COLORS.bgLight,
+                color: activeTab === 'library' ? COLORS.white : COLORS.text.secondary,
                 borderRadius: '12px 4px 12px 12px',
                 border: `2px solid ${COLORS.bg}`,
                 fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -1074,9 +1076,12 @@ function MelodyMaker() {
                 type="text"
                 value={saveName}
                 onChange={(e) => setSaveName(e.target.value)}
+                onFocus={() => setIsTyping(true)}
+                onBlur={() => setIsTyping(false)}
                 onKeyDown={(e) => e.key === 'Enter' && saveMelody()}
                 placeholder="Enter melody name..."
                 className="flex-1 px-4 py-2"
+                autoFocus
                 style={{
                   background: COLORS.bgLight,
                   color: COLORS.text.primary,
@@ -1119,100 +1124,6 @@ function MelodyMaker() {
           </div>
         )}
 
-        {/* Melody Library */}
-        {showLibrary && (
-          <div className="mb-4 p-6" style={{
-            background: COLORS.cardBg,
-            borderRadius: '32px 8px 32px 32px',
-            boxShadow: `0 6px 24px ${COLORS.shadow}`
-          }}>
-            <h2 className="text-xs mb-4 tracking-wide uppercase" style={{ 
-              color: COLORS.text.secondary,
-              letterSpacing: '0.08em',
-              fontFamily: 'system-ui, -apple-system, sans-serif',
-              fontWeight: '500'
-            }}>
-              Saved Melodies ({savedMelodies.length})
-            </h2>
-            
-            {savedMelodies.length === 0 ? (
-              <div className="text-center py-8" style={{ 
-                color: COLORS.text.tertiary,
-                fontFamily: 'system-ui, -apple-system, sans-serif'
-              }}>
-                No saved melodies yet. Create and save your first melody!
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {savedMelodies.map((melody) => (
-                  <div
-                    key={melody.id}
-                    className="p-4 flex items-center justify-between gap-4"
-                    style={{
-                      background: COLORS.bgLight,
-                      borderRadius: '16px 16px 4px 16px',
-                      border: `2px solid ${COLORS.bg}`
-                    }}
-                  >
-                    <div className="flex-1">
-                      <div className="text-sm mb-1" style={{
-                        color: COLORS.text.primary,
-                        fontFamily: 'system-ui, -apple-system, sans-serif',
-                        fontWeight: '500'
-                      }}>
-                        {melody.name}
-                      </div>
-                      <div className="text-xs" style={{
-                        color: COLORS.text.tertiary,
-                        fontFamily: 'system-ui, -apple-system, sans-serif'
-                      }}>
-                        {melody.noteCount} notes • {melody.drumCount} drums • {new Date(melody.createdAt).toLocaleDateString()}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => loadMelody(melody.id)}
-                        className="px-4 py-2"
-                        style={{
-                          background: COLORS.sage,
-                          color: COLORS.white,
-                          borderRadius: '10px 10px 2px 10px',
-                          border: 'none',
-                          fontFamily: 'system-ui, -apple-system, sans-serif',
-                          fontWeight: '500',
-                          fontSize: '0.85rem',
-                          boxShadow: `0 2px 6px ${COLORS.shadow}`
-                        }}
-                      >
-                        Load
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm(`Delete "${melody.name}"?`)) {
-                            deleteMelody(melody.id);
-                          }
-                        }}
-                        className="px-4 py-2"
-                        style={{
-                          background: COLORS.terracotta,
-                          color: COLORS.white,
-                          borderRadius: '10px 2px 10px 10px',
-                          border: 'none',
-                          fontFamily: 'system-ui, -apple-system, sans-serif',
-                          fontWeight: '500',
-                          fontSize: '0.85rem',
-                          boxShadow: `0 2px 6px ${COLORS.shadow}`
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Current Chord Preview - Fixed height to prevent layout shift */}
         <div className="mb-4 p-5" style={{
@@ -1602,12 +1513,14 @@ function MelodyMaker() {
           )}
         </div>
 
-        {/* Piano Keyboard */}
-        <div className="p-6" style={{
-          background: COLORS.cardBg,
-          borderRadius: '32px 32px 8px 8px',
-          boxShadow: `0 6px 24px ${COLORS.shadow}`
-        }}>
+        {/* Tab Content */}
+        {activeTab === 'piano' ? (
+          /* Piano Keyboard */
+          <div className="p-6" style={{
+            background: COLORS.cardBg,
+            borderRadius: '32px 32px 8px 8px',
+            boxShadow: `0 6px 24px ${COLORS.shadow}`
+          }}>
           <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
             <h2 className="text-xs tracking-wide uppercase" style={{ 
               color: COLORS.text.secondary,
@@ -1729,14 +1642,108 @@ function MelodyMaker() {
             </div>
           </div>
           
-          {/* Keyboard mapping hint */}
-          <div className="text-center text-xs mt-5" style={{ 
-            color: COLORS.text.tertiary,
-            fontFamily: 'system-ui, -apple-system, sans-serif'
-          }}>
-            Use your keyboard: A-B keys map to piano keys • Hold multiple for chords • Hold time = note duration • Release to record
+            {/* Keyboard mapping hint */}
+            <div className="text-center text-xs mt-5" style={{ 
+              color: COLORS.text.tertiary,
+              fontFamily: 'system-ui, -apple-system, sans-serif'
+            }}>
+              Use your keyboard: A-B keys map to piano keys • Hold multiple for chords • Hold time = note duration • Release to record
+            </div>
           </div>
-        </div>
+        ) : (
+          /* Melody Library */
+          <div className="p-6" style={{
+            background: COLORS.cardBg,
+            borderRadius: '32px 32px 8px 8px',
+            boxShadow: `0 6px 24px ${COLORS.shadow}`
+          }}>
+            <h2 className="text-xs mb-5 tracking-wide uppercase" style={{ 
+              color: COLORS.text.secondary,
+              letterSpacing: '0.08em',
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+              fontWeight: '500'
+            }}>
+              Saved Melodies ({savedMelodies.length})
+            </h2>
+            
+            {savedMelodies.length === 0 ? (
+              <div className="text-center py-16" style={{ 
+                color: COLORS.text.tertiary,
+                fontFamily: 'system-ui, -apple-system, sans-serif'
+              }}>
+                No saved melodies yet. Create and save your first melody!
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {savedMelodies.map((melody) => (
+                  <div
+                    key={melody.id}
+                    className="p-4 flex items-center justify-between gap-4"
+                    style={{
+                      background: COLORS.bgLight,
+                      borderRadius: '16px 16px 4px 16px',
+                      border: `2px solid ${COLORS.bg}`
+                    }}
+                  >
+                    <div className="flex-1">
+                      <div className="text-sm mb-1" style={{
+                        color: COLORS.text.primary,
+                        fontFamily: 'system-ui, -apple-system, sans-serif',
+                        fontWeight: '500'
+                      }}>
+                        {melody.name}
+                      </div>
+                      <div className="text-xs" style={{
+                        color: COLORS.text.tertiary,
+                        fontFamily: 'system-ui, -apple-system, sans-serif'
+                      }}>
+                        {melody.noteCount} notes • {melody.drumCount} drums • {new Date(melody.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => loadMelody(melody.id)}
+                        className="px-4 py-2"
+                        style={{
+                          background: COLORS.sage,
+                          color: COLORS.white,
+                          borderRadius: '10px 10px 2px 10px',
+                          border: 'none',
+                          fontFamily: 'system-ui, -apple-system, sans-serif',
+                          fontWeight: '500',
+                          fontSize: '0.85rem',
+                          boxShadow: `0 2px 6px ${COLORS.shadow}`
+                        }}
+                      >
+                        Load
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm(`Delete "${melody.name}"?`)) {
+                            deleteMelody(melody.id);
+                          }
+                        }}
+                        className="px-4 py-2"
+                        style={{
+                          background: COLORS.terracotta,
+                          color: COLORS.white,
+                          borderRadius: '10px 2px 10px 10px',
+                          border: 'none',
+                          fontFamily: 'system-ui, -apple-system, sans-serif',
+                          fontWeight: '500',
+                          fontSize: '0.85rem',
+                          boxShadow: `0 2px 6px ${COLORS.shadow}`
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Legend */}
         <div className="mt-6 flex justify-center gap-6 text-sm flex-wrap" style={{ 
