@@ -171,7 +171,7 @@ export class DrumSynth {
   }
 
   // Kick drum
-  playKick(time = null) {
+  playKick(time = null, volume = 0.8) {
     const t = time || this.ctx.currentTime;
     
     const osc = this.ctx.createOscillator();
@@ -183,7 +183,7 @@ export class DrumSynth {
     osc.frequency.setValueAtTime(150, t);
     osc.frequency.exponentialRampToValueAtTime(40, t + 0.1);
     
-    gain.gain.setValueAtTime(0.8, t);
+    gain.gain.setValueAtTime(volume, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
     
     osc.start(t);
@@ -191,8 +191,9 @@ export class DrumSynth {
   }
 
   // Snare drum
-  playSnare(time = null) {
+  playSnare(time = null, volume = 1.0) {
     const t = time || this.ctx.currentTime;
+    const vol = volume * 0.8;
     
     // Tone component
     const osc = this.ctx.createOscillator();
@@ -225,10 +226,10 @@ export class DrumSynth {
     noiseGain.connect(mixGain);
     mixGain.connect(this.ctx.destination);
     
-    oscGain.gain.setValueAtTime(0.3, t);
+    oscGain.gain.setValueAtTime(0.3 * vol, t);
     oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
     
-    noiseGain.gain.setValueAtTime(0.5, t);
+    noiseGain.gain.setValueAtTime(0.5 * vol, t);
     noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
     
     osc.start(t);
@@ -238,7 +239,7 @@ export class DrumSynth {
   }
 
   // Hi-hat
-  playHiHat(time = null, open = false) {
+  playHiHat(time = null, open = false, volume = 0.3) {
     const t = time || this.ctx.currentTime;
     
     const bufferSize = this.ctx.sampleRate * 0.05;
@@ -262,7 +263,7 @@ export class DrumSynth {
     gain.connect(this.ctx.destination);
     
     const duration = open ? 0.3 : 0.05;
-    gain.gain.setValueAtTime(0.3, t);
+    gain.gain.setValueAtTime(volume, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
     
     noise.start(t);
@@ -270,19 +271,19 @@ export class DrumSynth {
   }
 
   // Play drum pattern
-  playDrumHit(drumType, time = null) {
+  playDrumHit(drumType, volume = 0.7, time = null) {
     switch(drumType) {
       case 'kick':
-        this.playKick(time);
+        this.playKick(time, volume);
         break;
       case 'snare':
-        this.playSnare(time);
+        this.playSnare(time, volume);
         break;
       case 'hihat':
-        this.playHiHat(time, false);
+        this.playHiHat(time, false, volume * 0.4);
         break;
       case 'openhat':
-        this.playHiHat(time, true);
+        this.playHiHat(time, true, volume * 0.4);
         break;
     }
   }

@@ -64,6 +64,8 @@ function MelodyMaker() {
   const [aiDrums, setAiDrums] = useStorage('aiDrums', []);
   const [tempo, setTempo] = useStorage('tempo', 120);
   const [prePolishBackup, setPrePolishBackup] = useStorage('prePolishBackup', null);
+  const [pianoVolume, setPianoVolume] = useStorage('pianoVolume', 0.7);
+  const [drumVolume, setDrumVolume] = useStorage('drumVolume', 0.7);
   
   // Melody library using useFiles
   const melodiesFiles = useFiles('melodies');
@@ -77,6 +79,7 @@ function MelodyMaker() {
   const [saveName, setSaveName] = useState('');
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [playFromIndex, setPlayFromIndex] = useState(null);
   const [pressedKeys, setPressedKeys] = useState(new Set());
   const [activeNotes, setActiveNotes] = useState(new Set());
   const [currentChord, setCurrentChord] = useState([]);
@@ -213,10 +216,10 @@ function MelodyMaker() {
   // Start playing a note (for chord support)
   const startNote = useCallback((noteNumber) => {
     if (!pianoSynthRef.current) return;
-    pianoSynthRef.current.startNote(noteNumber);
+    pianoSynthRef.current.startNote(noteNumber, pianoVolume);
     setActiveNotes(prev => new Set([...prev, noteNumber]));
     setNoteStartTimes(prev => new Map(prev).set(noteNumber, Date.now()));
-  }, []);
+  }, [pianoVolume]);
 
   // Stop playing a note
   const stopNote = useCallback((noteNumber) => {
@@ -233,9 +236,9 @@ function MelodyMaker() {
   const playChord = useCallback((notes, duration = 0.5) => {
     if (!pianoSynthRef.current) return;
     notes.forEach(noteNumber => {
-      pianoSynthRef.current.playNote(noteNumber, duration, 0.7);
+      pianoSynthRef.current.playNote(noteNumber, duration, pianoVolume);
     });
-  }, []);
+  }, [pianoVolume]);
 
   // Record current chord to sequence with duration
   const recordChord = useCallback(() => {
@@ -549,25 +552,32 @@ function MelodyMaker() {
     }
   }, [userSequence, aiMelody]);
 
-  // Play the complete melody with drums
-  const playMelody = useCallback(() => {
+  // Play the complete melody with drums (optionally from a specific index)
+  const playMelody = useCallback((startIndex = 0) => {
     if (isPlaying) return;
     
     const allMelody = [...userSequence, ...aiMelody];
     if (allMelody.length === 0) return;
     
     setIsPlaying(true);
+    setPlayFromIndex(null);
     
-    // Calculate total melody duration
+    // Calculate offset if starting from a specific index
+    let startOffset = 0;
+    for (let i = 0; i < startIndex; i++) {
+      startOffset += allMelody[i].duration || 0.5;
+    }
+    
+    // Calculate total melody duration from start point
     let totalMelodyDuration = 0;
-    allMelody.forEach(item => {
+    allMelody.slice(startIndex).forEach(item => {
       totalMelodyDuration += item.duration || 0.5;
     });
     
     // Play melody notes with actual durations
     let cumulativeTime = 0;
     
-    allMelody.forEach((item, index) => {
+    allMelody.slice(startIndex).forEach((item, index) => {
       if (item.notes) {
         const duration = item.duration || 0.5;
         
@@ -607,7 +617,7 @@ function MelodyMaker() {
             // Only play if within melody duration
             if (playTime < totalMelodyDuration) {
               const timeout = setTimeout(() => {
-                drumSynthRef.current?.playDrumHit(drum.drumType);
+                drumSynthRef.current?.playDrumHit(drum.drumType, drumVolume);
                 setActiveDrums(new Set([drum.drumType]));
                 setTimeout(() => setActiveDrums(new Set()), 100);
               }, Math.max(0, playTime * 1000));
@@ -623,7 +633,7 @@ function MelodyMaker() {
           
           if (relativeTime < totalMelodyDuration) {
             const timeout = setTimeout(() => {
-              drumSynthRef.current?.playDrumHit(drum.drumType);
+              drumSynthRef.current?.playDrumHit(drum.drumType, drumVolume);
               setActiveDrums(new Set([drum.drumType]));
               setTimeout(() => setActiveDrums(new Set()), 100);
             }, Math.max(0, relativeTime * 1000));
@@ -654,12 +664,27 @@ function MelodyMaker() {
 
   // Clear all notes
   const clearAll = useCallback(() => {
-    stopPlayback();
-    setUserSequence([]);
-    setAiMelody([]);
-    setAiDrums([]);
-    setPrePolishBackup(null);
-  }, [stopPlayback]);
+    const allMelody = [...userSequence, ...aiMelody];
+    if (allMelody.length === 0) return;
+    
+    if (confirm('Clear all notes and drums? This cannot be undone.')) {
+      stopPlayback();
+      setUserSequence([]);
+      setAiMelody([]);
+      setAiDrums([]);
+      setPrePolishBackup(null);
+    }
+  }, [stopPlayback, userSequence, aiMelody]);
+
+  // Delete a specific note from user sequence
+  const deleteNote = useCallback((index) => {
+    setUserSequence(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  // Delete a specific note from AI melody
+  const deleteAiNote = useCallback((index) => {
+    setAiMelody(prev => prev.filter((_, i) => i !== index));
+  }, []);
 
   // Regenerate AI melody
   const regenerateMelody = useCallback(() => {
@@ -846,6 +871,39 @@ function MelodyMaker() {
       console.log('Restored pre-polished version');
     }
   }, [prePolishBackup]);
+
+  // Generate name suggestions based on melody characteristics
+  const generateNameSuggestion = useCallback(() => {
+    const allMelody = [...userSequence, ...aiMelody];
+    if (allMelody.length === 0) return 'My Melody';
+    
+    // Analyze melody characteristics
+    const noteCount = allMelody.reduce((sum, item) => sum + (item.notes?.length || 0), 0);
+    const hasDrums = aiDrums.length > 0;
+    const avgPitch = allMelody.reduce((sum, item) => sum + (item.notes?.[0] || 60), 0) / allMelody.length;
+    const totalDuration = allMelody.reduce((sum, item) => sum + (item.duration || 0.5), 0);
+    
+    // Descriptive words based on characteristics
+    const tempoWords = totalDuration > 10 ? ['Long', 'Extended', 'Epic'] : totalDuration > 5 ? ['Medium', 'Flowing'] : ['Short', 'Quick', 'Brief'];
+    const pitchWords = avgPitch > 72 ? ['High', 'Bright', 'Soprano'] : avgPitch < 66 ? ['Low', 'Deep', 'Bass'] : ['Mid', 'Balanced'];
+    const styleWords = hasDrums ? ['Rhythmic', 'Groovy', 'Beat'] : ['Melodic', 'Pure', 'Simple'];
+    const moodWords = ['Calm', 'Happy', 'Dreamy', 'Jazzy', 'Peaceful', 'Upbeat', 'Smooth', 'Gentle'];
+    
+    // Random selection
+    const tempo = tempoWords[Math.floor(Math.random() * tempoWords.length)];
+    const mood = moodWords[Math.floor(Math.random() * moodWords.length)];
+    const style = styleWords[Math.floor(Math.random() * styleWords.length)];
+    
+    const suggestions = [
+      `${mood} ${style}`,
+      `${tempo} ${mood} Melody`,
+      `${style} Composition`,
+      `${mood} ${pitchWords[0]} Notes`,
+      `${tempo} ${style}`
+    ];
+    
+    return suggestions[Math.floor(Math.random() * suggestions.length)];
+  }, [userSequence, aiMelody, aiDrums]);
 
   // Save current melody to library
   const saveMelody = useCallback(() => {
@@ -1055,7 +1113,10 @@ function MelodyMaker() {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => setShowSaveDialog(true)}
+              onClick={() => {
+                setShowSaveDialog(true);
+                setSaveName(generateNameSuggestion());
+              }}
               disabled={userSequence.length === 0}
               className="px-5 py-2 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               style={{
@@ -1097,13 +1158,29 @@ function MelodyMaker() {
             borderRadius: '24px 24px 8px 24px',
             boxShadow: `0 4px 16px ${COLORS.shadow}`
           }}>
-            <div className="text-sm mb-3 uppercase" style={{ 
-              color: COLORS.text.secondary,
-              letterSpacing: '0.08em',
-              fontFamily: 'system-ui, -apple-system, sans-serif',
-              fontWeight: '500'
-            }}>
-              Save Melody
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm uppercase" style={{ 
+                color: COLORS.text.secondary,
+                letterSpacing: '0.08em',
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                fontWeight: '500'
+              }}>
+                Save Melody
+              </div>
+              <button
+                onClick={() => setSaveName(generateNameSuggestion())}
+                className="px-3 py-1 text-xs"
+                style={{
+                  background: COLORS.bgLight,
+                  color: COLORS.text.tertiary,
+                  borderRadius: '8px 8px 2px 8px',
+                  border: `1px solid ${COLORS.bg}`,
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  fontWeight: '500'
+                }}
+              >
+                Suggest Name
+              </button>
             </div>
             <div className="flex gap-2">
               <input
@@ -1245,9 +1322,14 @@ function MelodyMaker() {
                   {userSequence.map((item, idx) => (
                     <div
                       key={`user-${idx}`}
-                      className="flex flex-col items-center gap-2"
+                      className="flex flex-col items-center gap-2 group relative"
                     >
-                      <div className="flex flex-col gap-1">
+                      <div 
+                        className="flex flex-col gap-1 relative cursor-pointer"
+                        onDoubleClick={() => deleteNote(idx)}
+                        onClick={() => setPlayFromIndex(idx)}
+                        title="Click to play from here, double-click to delete"
+                      >
                         {item.notes?.map((note, noteIdx) => (
                           <div
                             key={noteIdx}
@@ -1261,12 +1343,19 @@ function MelodyMaker() {
                               transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                               minWidth: '46px',
                               fontFamily: 'system-ui, -apple-system, sans-serif',
-                              fontWeight: '500'
+                              fontWeight: '500',
+                              opacity: playFromIndex === idx ? 0.7 : 1
                             }}
                           >
                             {NOTES.find(n => n.note === note)?.name}
                           </div>
                         ))}
+                        {playFromIndex === idx && (
+                          <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full" style={{
+                            backgroundColor: COLORS.terracotta,
+                            boxShadow: `0 0 8px ${COLORS.terracotta}`
+                          }} />
+                        )}
                       </div>
                       <div className="text-xs" style={{ 
                         color: COLORS.text.tertiary,
@@ -1283,40 +1372,55 @@ function MelodyMaker() {
                     }}></div>
                   )}
                   
-                  {aiMelody.map((item, idx) => (
-                    <div
-                      key={`ai-${idx}`}
-                      className="flex flex-col items-center gap-2"
-                    >
-                      <div className="flex flex-col gap-1">
-                        {item.notes?.map((note, noteIdx) => (
-                          <div
-                            key={noteIdx}
-                            className="px-3 py-2 flex items-center justify-center text-xs"
-                            style={{
-                              backgroundColor: COLORS.warmBrown,
-                              color: COLORS.white,
-                              borderRadius: (idx + noteIdx) % 3 === 0 ? '12px 4px 12px 12px' : (idx + noteIdx) % 3 === 1 ? '4px 12px 12px 12px' : '12px 12px 4px 12px',
-                              boxShadow: activeNotes.has(note) ? `0 4px 16px ${COLORS.warmBrown}80` : `0 2px 6px ${COLORS.shadow}`,
-                              transform: activeNotes.has(note) ? 'scale(1.08)' : 'scale(1)',
-                              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                              minWidth: '46px',
-                              fontFamily: 'system-ui, -apple-system, sans-serif',
-                              fontWeight: '500'
-                            }}
-                          >
-                            {NOTES.find(n => n.note === note)?.name}
-                          </div>
-                        ))}
+                  {aiMelody.map((item, idx) => {
+                    const actualIndex = userSequence.length + idx;
+                    return (
+                      <div
+                        key={`ai-${idx}`}
+                        className="flex flex-col items-center gap-2 group relative"
+                      >
+                        <div 
+                          className="flex flex-col gap-1 relative cursor-pointer"
+                          onDoubleClick={() => deleteAiNote(idx)}
+                          onClick={() => setPlayFromIndex(actualIndex)}
+                          title="Click to play from here, double-click to delete"
+                        >
+                          {item.notes?.map((note, noteIdx) => (
+                            <div
+                              key={noteIdx}
+                              className="px-3 py-2 flex items-center justify-center text-xs"
+                              style={{
+                                backgroundColor: COLORS.warmBrown,
+                                color: COLORS.white,
+                                borderRadius: (idx + noteIdx) % 3 === 0 ? '12px 4px 12px 12px' : (idx + noteIdx) % 3 === 1 ? '4px 12px 12px 12px' : '12px 12px 4px 12px',
+                                boxShadow: activeNotes.has(note) ? `0 4px 16px ${COLORS.warmBrown}80` : `0 2px 6px ${COLORS.shadow}`,
+                                transform: activeNotes.has(note) ? 'scale(1.08)' : 'scale(1)',
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                minWidth: '46px',
+                                fontFamily: 'system-ui, -apple-system, sans-serif',
+                                fontWeight: '500',
+                                opacity: playFromIndex === actualIndex ? 0.7 : 1
+                              }}
+                            >
+                              {NOTES.find(n => n.note === note)?.name}
+                            </div>
+                          ))}
+                          {playFromIndex === actualIndex && (
+                            <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full" style={{
+                              backgroundColor: COLORS.terracotta,
+                              boxShadow: `0 0 8px ${COLORS.terracotta}`
+                            }} />
+                          )}
+                        </div>
+                        <div className="text-xs" style={{ 
+                          color: COLORS.text.tertiary,
+                          fontFamily: 'system-ui, -apple-system, sans-serif'
+                        }}>
+                          AI
+                        </div>
                       </div>
-                      <div className="text-xs" style={{ 
-                        color: COLORS.text.tertiary,
-                        fontFamily: 'system-ui, -apple-system, sans-serif'
-                      }}>
-                        AI
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1379,9 +1483,81 @@ function MelodyMaker() {
           borderRadius: '8px 32px 32px 32px',
           boxShadow: `0 6px 24px ${COLORS.shadow}`
         }}>
+          {/* Volume Controls */}
+          <div className="mb-5 flex gap-6 items-center flex-wrap">
+            <div className="flex items-center gap-3 flex-1 min-w-[200px]">
+              <div className="text-xs uppercase" style={{ 
+                color: COLORS.text.tertiary,
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                fontWeight: '500',
+                minWidth: '60px'
+              }}>
+                Piano
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={pianoVolume}
+                onChange={(e) => setPianoVolume(parseFloat(e.target.value))}
+                className="flex-1"
+                style={{
+                  accentColor: COLORS.sage
+                }}
+              />
+              <div className="text-xs" style={{ 
+                color: COLORS.text.tertiary,
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                minWidth: '30px',
+                textAlign: 'right'
+              }}>
+                {Math.round(pianoVolume * 100)}%
+              </div>
+            </div>
+            <div className="flex items-center gap-3 flex-1 min-w-[200px]">
+              <div className="text-xs uppercase" style={{ 
+                color: COLORS.text.tertiary,
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                fontWeight: '500',
+                minWidth: '60px'
+              }}>
+                Drums
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={drumVolume}
+                onChange={(e) => setDrumVolume(parseFloat(e.target.value))}
+                className="flex-1"
+                style={{
+                  accentColor: COLORS.terracotta
+                }}
+              />
+              <div className="text-xs" style={{ 
+                color: COLORS.text.tertiary,
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                minWidth: '30px',
+                textAlign: 'right'
+              }}>
+                {Math.round(drumVolume * 100)}%
+              </div>
+            </div>
+          </div>
+
           <div className="flex flex-wrap gap-3 items-center mb-5">
             <button
-              onClick={canPlay ? playMelody : stopPlayback}
+              onClick={() => {
+                if (isPlaying) {
+                  stopPlayback();
+                } else if (playFromIndex !== null) {
+                  playMelody(playFromIndex);
+                } else {
+                  playMelody(0);
+                }
+              }}
               disabled={allMelody.length === 0}
               className="px-7 py-3 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               style={{
@@ -1395,7 +1571,7 @@ function MelodyMaker() {
                 border: 'none'
               }}
             >
-              {isPlaying ? 'Stop' : 'Play'}
+              {isPlaying ? 'Stop' : playFromIndex !== null ? 'Play from Note' : 'Play'}
             </button>
             
             <button
