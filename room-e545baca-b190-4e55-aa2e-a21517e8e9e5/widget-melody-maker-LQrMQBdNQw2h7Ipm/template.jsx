@@ -51,18 +51,20 @@ function MelodyMaker() {
   const [modelLoaded, setModelLoaded] = useState(false);
   const [modelError, setModelError] = useState(null);
   
-  // Storage for melody notes - now storing sequences with timing
+  // Storage for melody notes - now storing sequences with timing and duration
   const [userSequence, setUserSequence] = useStorage('userSequence', []);
-  const [aiSequence, setAiSequence] = useStorage('aiSequence', []);
+  const [aiMelody, setAiMelody] = useStorage('aiMelody', []);
+  const [aiDrums, setAiDrums] = useStorage('aiDrums', []);
   const [tempo, setTempo] = useStorage('tempo', 120);
-  const [instrument, setInstrument] = useStorage('instrument', 'piano'); // 'piano' or 'drums'
   
   // UI state
   const [isPlaying, setIsPlaying] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingDrums, setIsGeneratingDrums] = useState(false);
   const [pressedKeys, setPressedKeys] = useState(new Set());
   const [activeNotes, setActiveNotes] = useState(new Set());
   const [currentChord, setCurrentChord] = useState([]);
+  const [noteStartTimes, setNoteStartTimes] = useState(new Map());
   const [activeDrums, setActiveDrums] = useState(new Set());
   
   // Refs
