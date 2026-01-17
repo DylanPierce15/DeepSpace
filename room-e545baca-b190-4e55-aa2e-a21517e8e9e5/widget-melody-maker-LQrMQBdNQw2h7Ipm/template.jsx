@@ -65,11 +65,17 @@ function MelodyMaker() {
   const [tempo, setTempo] = useStorage('tempo', 120);
   const [prePolishBackup, setPrePolishBackup] = useStorage('prePolishBackup', null);
   
+  // Melody library using useFiles
+  const melodiesFiles = useFiles('melodies');
+  
   // UI state
   const [isPlaying, setIsPlaying] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingDrums, setIsGeneratingDrums] = useState(false);
   const [isPolishing, setIsPolishing] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [saveName, setSaveName] = useState('');
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [pressedKeys, setPressedKeys] = useState(new Set());
   const [activeNotes, setActiveNotes] = useState(new Set());
   const [currentChord, setCurrentChord] = useState([]);
@@ -806,6 +812,67 @@ function MelodyMaker() {
     }
   }, [prePolishBackup]);
 
+  // Save current melody to library
+  const saveMelody = useCallback(() => {
+    if (!saveName.trim()) {
+      alert('Please enter a name for your melody');
+      return;
+    }
+
+    const allMelody = [...userSequence, ...aiMelody];
+    if (allMelody.length === 0) {
+      alert('No melody to save');
+      return;
+    }
+
+    const melodyData = {
+      name: saveName.trim(),
+      userSequence: [...userSequence],
+      aiMelody: [...aiMelody],
+      aiDrums: [...aiDrums],
+      tempo,
+      createdAt: new Date().toISOString(),
+      noteCount: allMelody.reduce((sum, item) => sum + (item.notes?.length || 0), 0),
+      drumCount: aiDrums.length
+    };
+
+    // Generate a unique ID
+    const id = `melody-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    melodiesFiles.write(id, melodyData);
+    
+    setSaveName('');
+    setShowSaveDialog(false);
+    console.log('Saved melody:', melodyData.name);
+  }, [saveName, userSequence, aiMelody, aiDrums, tempo, melodiesFiles]);
+
+  // Load melody from library
+  const loadMelody = useCallback((id) => {
+    const melody = melodiesFiles.read(id);
+    if (melody) {
+      setUserSequence(melody.userSequence || []);
+      setAiMelody(melody.aiMelody || []);
+      setAiDrums(melody.aiDrums || []);
+      setTempo(melody.tempo || 120);
+      setPrePolishBackup(null);
+      setShowLibrary(false);
+      console.log('Loaded melody:', melody.name);
+    }
+  }, [melodiesFiles]);
+
+  // Delete melody from library
+  const deleteMelody = useCallback((id) => {
+    melodiesFiles.delete(id);
+    console.log('Deleted melody:', id);
+  }, [melodiesFiles]);
+
+  // Get all saved melodies
+  const savedMelodies = useMemo(() => {
+    return melodiesFiles.list()
+      .map(id => ({ id, ...melodiesFiles.read(id) }))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [melodiesFiles]);
+
   // Handle mouse/touch down on piano key
   const handleKeyDown = useCallback((noteNumber) => {
     if (isPlaying) return;
@@ -932,23 +999,220 @@ function MelodyMaker() {
     <div className="min-h-screen p-6" style={{ background: COLORS.bg }}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-5">
-          <h1 className="text-3xl mb-2" style={{ 
-            color: COLORS.text.primary,
-            fontFamily: 'system-ui, -apple-system, sans-serif',
-            fontWeight: '600',
-            letterSpacing: '-0.02em'
-          }}>
-            Melody Maker
-          </h1>
-          <p style={{ 
-            color: COLORS.text.secondary,
-            fontFamily: 'system-ui, -apple-system, sans-serif',
-            fontSize: '0.95rem'
-          }}>
-            Create melodies - let AI complete them and add drum accompaniment with Magenta.js
-          </p>
+        <div className="mb-5 flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-3xl mb-2" style={{ 
+              color: COLORS.text.primary,
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+              fontWeight: '600',
+              letterSpacing: '-0.02em'
+            }}>
+              Melody Maker
+            </h1>
+            <p style={{ 
+              color: COLORS.text.secondary,
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+              fontSize: '0.95rem'
+            }}>
+              Create melodies - let AI complete them and add drum accompaniment with Magenta.js
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowSaveDialog(true)}
+              disabled={userSequence.length === 0}
+              className="px-5 py-2 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              style={{
+                background: COLORS.sage,
+                color: COLORS.white,
+                borderRadius: '12px 12px 4px 12px',
+                border: 'none',
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                fontWeight: '500',
+                fontSize: '0.9rem',
+                boxShadow: `0 2px 8px ${COLORS.shadow}`
+              }}
+            >
+              Save
+            </button>
+            <button
+              onClick={() => setShowLibrary(!showLibrary)}
+              className="px-5 py-2 transition-all"
+              style={{
+                background: showLibrary ? COLORS.warmBrown : COLORS.bgLight,
+                color: showLibrary ? COLORS.white : COLORS.text.secondary,
+                borderRadius: '12px 4px 12px 12px',
+                border: `2px solid ${COLORS.bg}`,
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                fontWeight: '500',
+                fontSize: '0.9rem',
+                boxShadow: `0 2px 8px ${COLORS.shadow}`
+              }}
+            >
+              Library ({savedMelodies.length})
+            </button>
+          </div>
         </div>
+
+        {/* Save Dialog */}
+        {showSaveDialog && (
+          <div className="mb-4 p-5" style={{
+            background: COLORS.cardBg,
+            borderRadius: '24px 24px 8px 24px',
+            boxShadow: `0 4px 16px ${COLORS.shadow}`
+          }}>
+            <div className="text-sm mb-3 uppercase" style={{ 
+              color: COLORS.text.secondary,
+              letterSpacing: '0.08em',
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+              fontWeight: '500'
+            }}>
+              Save Melody
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={saveName}
+                onChange={(e) => setSaveName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && saveMelody()}
+                placeholder="Enter melody name..."
+                className="flex-1 px-4 py-2"
+                style={{
+                  background: COLORS.bgLight,
+                  color: COLORS.text.primary,
+                  border: `2px solid ${COLORS.bg}`,
+                  borderRadius: '16px 16px 4px 16px',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  outline: 'none'
+                }}
+              />
+              <button
+                onClick={saveMelody}
+                className="px-5 py-2"
+                style={{
+                  background: COLORS.sage,
+                  color: COLORS.white,
+                  borderRadius: '12px 4px 12px 12px',
+                  border: 'none',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  fontWeight: '500',
+                  boxShadow: `0 2px 8px ${COLORS.shadow}`
+                }}
+              >
+                Save
+              </button>
+              <button
+                onClick={() => { setShowSaveDialog(false); setSaveName(''); }}
+                className="px-5 py-2"
+                style={{
+                  background: COLORS.bgLight,
+                  color: COLORS.text.secondary,
+                  borderRadius: '12px 12px 12px 4px',
+                  border: `2px solid ${COLORS.bg}`,
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  fontWeight: '500'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Melody Library */}
+        {showLibrary && (
+          <div className="mb-4 p-6" style={{
+            background: COLORS.cardBg,
+            borderRadius: '32px 8px 32px 32px',
+            boxShadow: `0 6px 24px ${COLORS.shadow}`
+          }}>
+            <h2 className="text-xs mb-4 tracking-wide uppercase" style={{ 
+              color: COLORS.text.secondary,
+              letterSpacing: '0.08em',
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+              fontWeight: '500'
+            }}>
+              Saved Melodies ({savedMelodies.length})
+            </h2>
+            
+            {savedMelodies.length === 0 ? (
+              <div className="text-center py-8" style={{ 
+                color: COLORS.text.tertiary,
+                fontFamily: 'system-ui, -apple-system, sans-serif'
+              }}>
+                No saved melodies yet. Create and save your first melody!
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {savedMelodies.map((melody) => (
+                  <div
+                    key={melody.id}
+                    className="p-4 flex items-center justify-between gap-4"
+                    style={{
+                      background: COLORS.bgLight,
+                      borderRadius: '16px 16px 4px 16px',
+                      border: `2px solid ${COLORS.bg}`
+                    }}
+                  >
+                    <div className="flex-1">
+                      <div className="text-sm mb-1" style={{
+                        color: COLORS.text.primary,
+                        fontFamily: 'system-ui, -apple-system, sans-serif',
+                        fontWeight: '500'
+                      }}>
+                        {melody.name}
+                      </div>
+                      <div className="text-xs" style={{
+                        color: COLORS.text.tertiary,
+                        fontFamily: 'system-ui, -apple-system, sans-serif'
+                      }}>
+                        {melody.noteCount} notes • {melody.drumCount} drums • {new Date(melody.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => loadMelody(melody.id)}
+                        className="px-4 py-2"
+                        style={{
+                          background: COLORS.sage,
+                          color: COLORS.white,
+                          borderRadius: '10px 10px 2px 10px',
+                          border: 'none',
+                          fontFamily: 'system-ui, -apple-system, sans-serif',
+                          fontWeight: '500',
+                          fontSize: '0.85rem',
+                          boxShadow: `0 2px 6px ${COLORS.shadow}`
+                        }}
+                      >
+                        Load
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm(`Delete "${melody.name}"?`)) {
+                            deleteMelody(melody.id);
+                          }
+                        }}
+                        className="px-4 py-2"
+                        style={{
+                          background: COLORS.terracotta,
+                          color: COLORS.white,
+                          borderRadius: '10px 2px 10px 10px',
+                          border: 'none',
+                          fontFamily: 'system-ui, -apple-system, sans-serif',
+                          fontWeight: '500',
+                          fontSize: '0.85rem',
+                          boxShadow: `0 2px 6px ${COLORS.shadow}`
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Current Chord Preview - Fixed height to prevent layout shift */}
         <div className="mb-4 p-5" style={{
