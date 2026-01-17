@@ -257,7 +257,7 @@ export default function ControlPanel({
         {userSequence.length > 0 && userSequence.length < 4 && `${userSequence.length} notes/chords recorded - need ${4 - userSequence.length} more for AI completion`}
         {userSequence.length >= 4 && aiMelody.length === 0 && 'Ready for AI melody completion!'}
         {aiMelody.length > 0 && !prePolishBackup && !aiDrums.length && 'Melody complete! Try "Polish with AI" for smoother flow, or "Add Drums" for accompaniment'}
-        {aiMelody.length > 0 && prePolishBackup && 'Polished version active - click "Undo Polish" to restore original'}
+        {aiMelody.length > 0 && prePolishBackup && 'Polished version active - click "Undo Polish" to restore original '}
         {aiMelody.length > 0 && aiDrums.length > 0 && `Complete composition: ${userNoteCount} user notes + ${aiNoteCount} AI notes + ${aiDrums.length} drum hits`}
       </div>
       

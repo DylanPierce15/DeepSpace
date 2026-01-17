@@ -2,6 +2,11 @@
   "shapeId": "shape:melody-maker-LQrMQBdNQw2h7Ipm",
   "widgetId": "melody-maker_1768615948217",
   "templateHandle": "melody-maker",
+  "templateName": "Melody Maker",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiPackage"
+  },
   "position": {
     "x": 117.93501611170785,
     "y": 61.30571965628375
@@ -15,6 +20,7 @@
   "isLocked": false,
   "color": "black",
   "zoomScale": 1,
+  "isFullscreen": false,
   "savedJsxContentHash": "initial",
   "meta": {
     "initializationState": "ready",
@@ -25,5 +31,5 @@
   },
   "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
   "index": "avwUaWDl",
-  "lastChangedClock": 2677
+  "lastChangedClock": 2764
 }
