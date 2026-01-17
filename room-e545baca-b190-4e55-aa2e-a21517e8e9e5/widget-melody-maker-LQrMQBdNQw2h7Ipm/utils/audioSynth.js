@@ -9,6 +9,8 @@ export class PianoSynth {
   // Create a more realistic piano sound using multiple oscillators and ADSR envelope
   startNote(noteNumber, velocity = 0.7) {
     if (this.activeNotes.has(noteNumber)) return;
+    // Skip if volume is too low
+    if (velocity < 0.001) return;
 
     const frequency = 440 * Math.pow(2, (noteNumber - 69) / 12);
     
@@ -51,20 +53,20 @@ export class PianoSynth {
     
     // Set gain levels for each harmonic
     const now = this.ctx.currentTime;
-    const baseVolume = velocity * 0.3;
+    const baseVolume = Math.max(0.001, velocity * 0.3);
     
-    // Attack-Decay-Sustain envelope
-    mainGain.gain.setValueAtTime(0, now);
+    // Attack-Decay-Sustain envelope - ensure values never reach 0
+    mainGain.gain.setValueAtTime(0.001, now);
     mainGain.gain.linearRampToValueAtTime(baseVolume, now + 0.01); // Fast attack
-    mainGain.gain.exponentialRampToValueAtTime(baseVolume * 0.7, now + 0.1); // Quick decay
+    mainGain.gain.exponentialRampToValueAtTime(Math.max(0.001, baseVolume * 0.7), now + 0.1); // Quick decay
     
-    harm1Gain.gain.setValueAtTime(0, now);
-    harm1Gain.gain.linearRampToValueAtTime(baseVolume * 0.3, now + 0.01);
-    harm1Gain.gain.exponentialRampToValueAtTime(baseVolume * 0.2, now + 0.1);
+    harm1Gain.gain.setValueAtTime(0.001, now);
+    harm1Gain.gain.linearRampToValueAtTime(Math.max(0.001, baseVolume * 0.3), now + 0.01);
+    harm1Gain.gain.exponentialRampToValueAtTime(Math.max(0.001, baseVolume * 0.2), now + 0.1);
     
-    harm2Gain.gain.setValueAtTime(0, now);
-    harm2Gain.gain.linearRampToValueAtTime(baseVolume * 0.15, now + 0.01);
-    harm2Gain.gain.exponentialRampToValueAtTime(baseVolume * 0.1, now + 0.1);
+    harm2Gain.gain.setValueAtTime(0.001, now);
+    harm2Gain.gain.linearRampToValueAtTime(Math.max(0.001, baseVolume * 0.15), now + 0.01);
+    harm2Gain.gain.exponentialRampToValueAtTime(Math.max(0.001, baseVolume * 0.1), now + 0.1);
     
     // Start oscillators
     fundamental.start(now);
@@ -101,6 +103,9 @@ export class PianoSynth {
 
   // Play a note for a fixed duration (for playback)
   playNote(noteNumber, duration = 0.5, velocity = 0.7) {
+    // Skip playback if volume is too low
+    if (velocity < 0.001) return;
+    
     const frequency = 440 * Math.pow(2, (noteNumber - 69) / 12);
     
     const fundamental = this.ctx.createOscillator();
@@ -133,26 +138,26 @@ export class PianoSynth {
     filter.connect(this.ctx.destination);
     
     const now = this.ctx.currentTime;
-    const baseVolume = velocity * 0.3;
+    const baseVolume = Math.max(0.001, velocity * 0.3);
     const release = 0.2;
     
-    // ADSR envelope
-    mainGain.gain.setValueAtTime(0, now);
+    // ADSR envelope - use Math.max to ensure values never reach 0
+    mainGain.gain.setValueAtTime(0.001, now);
     mainGain.gain.linearRampToValueAtTime(baseVolume, now + 0.01);
-    mainGain.gain.exponentialRampToValueAtTime(baseVolume * 0.7, now + 0.05);
-    mainGain.gain.setValueAtTime(baseVolume * 0.7, now + duration - release);
+    mainGain.gain.exponentialRampToValueAtTime(Math.max(0.001, baseVolume * 0.7), now + 0.05);
+    mainGain.gain.setValueAtTime(Math.max(0.001, baseVolume * 0.7), now + duration - release);
     mainGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
     
-    harm1Gain.gain.setValueAtTime(0, now);
-    harm1Gain.gain.linearRampToValueAtTime(baseVolume * 0.3, now + 0.01);
-    harm1Gain.gain.exponentialRampToValueAtTime(baseVolume * 0.2, now + 0.05);
-    harm1Gain.gain.setValueAtTime(baseVolume * 0.2, now + duration - release);
+    harm1Gain.gain.setValueAtTime(0.001, now);
+    harm1Gain.gain.linearRampToValueAtTime(Math.max(0.001, baseVolume * 0.3), now + 0.01);
+    harm1Gain.gain.exponentialRampToValueAtTime(Math.max(0.001, baseVolume * 0.2), now + 0.05);
+    harm1Gain.gain.setValueAtTime(Math.max(0.001, baseVolume * 0.2), now + duration - release);
     harm1Gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
     
-    harm2Gain.gain.setValueAtTime(0, now);
-    harm2Gain.gain.linearRampToValueAtTime(baseVolume * 0.15, now + 0.01);
-    harm2Gain.gain.exponentialRampToValueAtTime(baseVolume * 0.1, now + 0.05);
-    harm2Gain.gain.setValueAtTime(baseVolume * 0.1, now + duration - release);
+    harm2Gain.gain.setValueAtTime(0.001, now);
+    harm2Gain.gain.linearRampToValueAtTime(Math.max(0.001, baseVolume * 0.15), now + 0.01);
+    harm2Gain.gain.exponentialRampToValueAtTime(Math.max(0.001, baseVolume * 0.1), now + 0.05);
+    harm2Gain.gain.setValueAtTime(Math.max(0.001, baseVolume * 0.1), now + duration - release);
     harm2Gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
     
     fundamental.start(now);
@@ -172,6 +177,9 @@ export class DrumSynth {
 
   // Kick drum
   playKick(time = null, volume = 0.8) {
+    // Skip if volume is too low
+    if (volume < 0.001) return;
+    
     const t = time || this.ctx.currentTime;
     
     const osc = this.ctx.createOscillator();
@@ -183,7 +191,7 @@ export class DrumSynth {
     osc.frequency.setValueAtTime(150, t);
     osc.frequency.exponentialRampToValueAtTime(40, t + 0.1);
     
-    gain.gain.setValueAtTime(volume, t);
+    gain.gain.setValueAtTime(Math.max(0.001, volume), t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
     
     osc.start(t);
@@ -192,8 +200,11 @@ export class DrumSynth {
 
   // Snare drum
   playSnare(time = null, volume = 1.0) {
+    // Skip if volume is too low
+    if (volume < 0.001) return;
+    
     const t = time || this.ctx.currentTime;
-    const vol = volume * 0.8;
+    const vol = Math.max(0.001, volume * 0.8);
     
     // Tone component
     const osc = this.ctx.createOscillator();
@@ -226,10 +237,10 @@ export class DrumSynth {
     noiseGain.connect(mixGain);
     mixGain.connect(this.ctx.destination);
     
-    oscGain.gain.setValueAtTime(0.3 * vol, t);
+    oscGain.gain.setValueAtTime(Math.max(0.001, 0.3 * vol), t);
     oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
     
-    noiseGain.gain.setValueAtTime(0.5 * vol, t);
+    noiseGain.gain.setValueAtTime(Math.max(0.001, 0.5 * vol), t);
     noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
     
     osc.start(t);
@@ -240,6 +251,9 @@ export class DrumSynth {
 
   // Hi-hat
   playHiHat(time = null, open = false, volume = 0.3) {
+    // Skip if volume is too low
+    if (volume < 0.001) return;
+    
     const t = time || this.ctx.currentTime;
     
     const bufferSize = this.ctx.sampleRate * 0.05;
@@ -263,7 +277,7 @@ export class DrumSynth {
     gain.connect(this.ctx.destination);
     
     const duration = open ? 0.3 : 0.05;
-    gain.gain.setValueAtTime(volume, t);
+    gain.gain.setValueAtTime(Math.max(0.001, volume), t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
     
     noise.start(t);
