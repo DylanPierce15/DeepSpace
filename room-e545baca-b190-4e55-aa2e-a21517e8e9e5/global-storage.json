@@ -25,7 +25,7 @@
       }
     }
   },
-  "__widget_io_configs": "{\"shape:journal-notebook-VaLHK3vtcMqnRsqD\":{\"inputs\":[],\"outputs\":[]},\"shape:neural-network-playground-RE1jOzw-ylkiNBF9ekPBp\":{\"inputs\":[],\"outputs\":[]},\"shape:melody-maker-LQrMQBdNQw2h7Ipm\":{\"inputs\":[],\"outputs\":[]}}",
+  "__widget_io_configs": "{\"shape:journal-notebook-VaLHK3vtcMqnRsqD\":{\"inputs\":[],\"outputs\":[]},\"shape:neural-network-playground-RE1jOzw-ylkiNBF9ekPBp\":{\"inputs\":[],\"outputs\":[]},\"shape:melody-maker-LQrMQBdNQw2h7Ipm\":{\"inputs\":[],\"outputs\":[]},\"shape:webgl-fluid-simulation-Tuc96SxLj6IITpaIJOHxf\":{\"inputs\":[],\"outputs\":[]}}",
   "2048-game-data": "{\"board\":[[0,0,0,0],[0,0,0,2],[0,0,0,4],[2,0,2,16]],\"score\":44,\"bestTile\":16,\"gameWon\":false,\"gameOver\":false,\"isActive\":true}",
   "2048-best-tile-ever": "16",
   "__widget_connections": "[]",

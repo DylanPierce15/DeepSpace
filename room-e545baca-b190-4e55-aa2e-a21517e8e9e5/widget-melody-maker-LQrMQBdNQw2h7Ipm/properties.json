@@ -3,12 +3,12 @@
   "widgetId": "melody-maker_1768615948217",
   "templateHandle": "melody-maker",
   "position": {
-    "x": 405.6030142320086,
-    "y": 112.40215494092374
+    "x": 132.02319414607945,
+    "y": 50
   },
   "size": {
-    "w": 1058.453276047261,
-    "h": 906.2513426423201
+    "w": 1473.7486573576798,
+    "h": 958.4532760472608
   },
   "rotation": 0,
   "opacity": 1,
@@ -24,6 +24,6 @@
     "showDefaultHandles": false
   },
   "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
-  "index": "arbF2zOl",
-  "lastChangedClock": 2257
+  "index": "avwUaWDl",
+  "lastChangedClock": 2353
 }

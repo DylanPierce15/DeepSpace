@@ -29,20 +29,23 @@ const NOTES = [
   { note: 83, name: 'B5', isBlack: false, key: 'b' }
 ];
 
-// Elegant color palette
+// Natural/Organic color palette - earth tones
 const COLORS = {
-  accent: '#7c3aed', // Sophisticated purple
-  accentLight: '#a78bfa',
-  userNote: '#7c3aed',
-  aiNote: '#818cf8',
-  drum: '#ec4899', // Pink for drums
+  sage: '#7d9b76', // Sage green
+  sageLight: '#a8c4a0',
+  sageDark: '#5a7353',
+  terracotta: '#c97456', // Terracotta
+  terracottaLight: '#d89580',
+  warmBrown: '#8b6f47', // Warm brown
+  cream: '#f4ede4', // Cream
+  creamDark: '#e8dcc9',
   text: {
-    primary: '#1f2937',
-    secondary: '#6b7280',
-    tertiary: '#9ca3af'
+    primary: '#4a3f2f', // Warm dark brown instead of black
+    secondary: '#7a6a54',
+    tertiary: '#9d8f7a'
   },
-  border: '#f0f0f0',
-  keyPressed: '#f3f4f6'
+  white: '#fdfcfa',
+  shadow: 'rgba(139, 111, 71, 0.15)' // Warm shadow
 };
 
 function MelodyMaker() {
@@ -91,12 +94,29 @@ function MelodyMaker() {
     }
   }, []);
 
-  // Apply white background to body
+  // Apply cream background with subtle texture
   useEffect(() => {
-    document.body.style.background = '#ffffff';
+    document.body.style.background = COLORS.cream;
+    document.body.style.backgroundImage = `
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 2px,
+        rgba(139, 111, 71, 0.02) 2px,
+        rgba(139, 111, 71, 0.02) 4px
+      ),
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(139, 111, 71, 0.02) 2px,
+        rgba(139, 111, 71, 0.02) 4px
+      )
+    `;
     document.documentElement.style.minHeight = '100%';
     return () => {
       document.body.style.background = '';
+      document.body.style.backgroundImage = '';
       document.documentElement.style.minHeight = '';
     };
   }, []);
@@ -641,12 +661,22 @@ function MelodyMaker() {
 
   if (!magentaLoaded || !modelLoaded) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-lg font-light mb-2" style={{ color: COLORS.text.primary }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: COLORS.cream }}>
+        <div className="text-center px-8 py-12 rounded-[32px]" style={{
+          background: COLORS.white,
+          boxShadow: `0 8px 32px ${COLORS.shadow}`
+        }}>
+          <div className="text-lg mb-2" style={{ 
+            color: COLORS.text.primary,
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            fontWeight: '500'
+          }}>
             Loading Magenta.js AI Model...
           </div>
-          <div className="text-sm font-light" style={{ color: COLORS.text.tertiary }}>
+          <div className="text-sm" style={{ 
+            color: COLORS.text.tertiary,
+            fontFamily: 'system-ui, -apple-system, sans-serif'
+          }}>
             {modelError ? modelError : 'This may take a moment'}
           </div>
         </div>
@@ -664,33 +694,55 @@ function MelodyMaker() {
   const aiNoteCount = aiMelody.reduce((sum, item) => sum + (item.notes?.length || 0), 0);
 
   return (
-    <div className="min-h-screen bg-white p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen p-6" style={{ background: COLORS.cream }}>
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-12">
-          <h1 className="text-4xl font-light mb-3" style={{ color: COLORS.text.primary }}>
+        <div className="mb-6">
+          <h1 className="text-3xl mb-2" style={{ 
+            color: COLORS.text.primary,
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            fontWeight: '600',
+            letterSpacing: '-0.02em'
+          }}>
             Melody Maker
           </h1>
-          <p className="font-light" style={{ color: COLORS.text.secondary }}>
+          <p style={{ 
+            color: COLORS.text.secondary,
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            fontSize: '0.95rem'
+          }}>
             Create melodies - let AI complete them and add drum accompaniment with Magenta.js
           </p>
         </div>
 
         {/* Current Chord Preview */}
         {currentChord.length > 0 && (
-          <div className="mb-6 bg-white rounded-xl p-6" style={{
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.03)',
-            border: `1px solid ${COLORS.border}`
+          <div className="mb-4 p-5" style={{
+            background: COLORS.white,
+            borderRadius: '24px 24px 8px 24px',
+            boxShadow: `0 4px 16px ${COLORS.shadow}`
           }}>
-            <div className="text-xs font-medium mb-3 tracking-wide uppercase" style={{ color: COLORS.text.secondary }}>
+            <div className="text-xs mb-3 uppercase" style={{ 
+              color: COLORS.text.secondary,
+              letterSpacing: '0.08em',
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+              fontWeight: '500'
+            }}>
               Current Chord (Release keys to record)
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               {currentChord.map((note, idx) => (
                 <div
                   key={idx}
-                  className="px-4 py-2 rounded-lg text-sm font-medium text-white"
-                  style={{ backgroundColor: COLORS.accent }}
+                  className="px-4 py-2 text-sm"
+                  style={{ 
+                    backgroundColor: COLORS.sage,
+                    color: COLORS.white,
+                    borderRadius: idx % 2 === 0 ? '16px 16px 4px 16px' : '16px 4px 16px 16px',
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    fontWeight: '500',
+                    boxShadow: `0 2px 8px ${COLORS.shadow}`
+                  }}
                 >
                   {NOTES.find(n => n.note === note)?.name}
                 </div>
@@ -700,23 +752,37 @@ function MelodyMaker() {
         )}
 
         {/* Piano Roll Visualization */}
-        <div className="mb-12 bg-white rounded-xl p-8" style={{
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.03)',
-          border: `1px solid ${COLORS.border}`
+        <div className="mb-4 p-6" style={{
+          background: COLORS.white,
+          borderRadius: '32px 8px 32px 32px',
+          boxShadow: `0 6px 24px ${COLORS.shadow}`
         }}>
-          <h2 className="text-xs font-medium mb-6 tracking-wide uppercase" style={{ color: COLORS.text.secondary }}>
+          <h2 className="text-xs mb-4 tracking-wide uppercase" style={{ 
+            color: COLORS.text.secondary,
+            letterSpacing: '0.08em',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            fontWeight: '500'
+          }}>
             Melody Timeline
           </h2>
           
           {allMelody.length === 0 ? (
-            <div className="text-center py-16 font-light" style={{ color: COLORS.text.tertiary }}>
+            <div className="text-center py-12" style={{ 
+              color: COLORS.text.tertiary,
+              fontFamily: 'system-ui, -apple-system, sans-serif'
+            }}>
               Press piano keys below or use your keyboard (A-B keys) to start
             </div>
           ) : (
             <div>
               {/* Melody Timeline */}
               <div className="mb-4">
-                <div className="text-xs font-medium mb-2 tracking-wide uppercase" style={{ color: COLORS.text.tertiary }}>
+                <div className="text-xs mb-2 uppercase" style={{ 
+                  color: COLORS.text.tertiary,
+                  letterSpacing: '0.08em',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  fontWeight: '500'
+                }}>
                   Melody
                 </div>
                 <div className="flex items-start gap-2 flex-wrap">
@@ -729,27 +795,36 @@ function MelodyMaker() {
                         {item.notes?.map((note, noteIdx) => (
                           <div
                             key={noteIdx}
-                            className="px-3 py-2 rounded-lg flex items-center justify-center text-xs font-medium text-white"
+                            className="px-3 py-2 flex items-center justify-center text-xs"
                             style={{
-                              backgroundColor: COLORS.userNote,
-                              boxShadow: activeNotes.has(note) ? `0 4px 12px ${COLORS.userNote}40` : 'none',
-                              transform: activeNotes.has(note) ? 'scale(1.05)' : 'scale(1)',
-                              transition: 'all 0.15s',
-                              minWidth: '48px'
+                              backgroundColor: COLORS.sage,
+                              color: COLORS.white,
+                              borderRadius: (idx + noteIdx) % 3 === 0 ? '12px 12px 4px 12px' : (idx + noteIdx) % 3 === 1 ? '12px 4px 12px 12px' : '4px 12px 12px 12px',
+                              boxShadow: activeNotes.has(note) ? `0 4px 16px ${COLORS.sage}80` : `0 2px 6px ${COLORS.shadow}`,
+                              transform: activeNotes.has(note) ? 'scale(1.08)' : 'scale(1)',
+                              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                              minWidth: '46px',
+                              fontFamily: 'system-ui, -apple-system, sans-serif',
+                              fontWeight: '500'
                             }}
                           >
                             {NOTES.find(n => n.note === note)?.name}
                           </div>
                         ))}
                       </div>
-                      <div className="text-xs font-light" style={{ color: COLORS.text.tertiary }}>
+                      <div className="text-xs" style={{ 
+                        color: COLORS.text.tertiary,
+                        fontFamily: 'system-ui, -apple-system, sans-serif'
+                      }}>
                         {item.isChord ? 'Chord' : 'You'}
                       </div>
                     </div>
                   ))}
                   
                   {aiMelody.length > 0 && (
-                    <div className="w-px h-16 mx-2" style={{ backgroundColor: COLORS.border }}></div>
+                    <div className="w-px h-14 mx-2" style={{ 
+                      background: `linear-gradient(to bottom, ${COLORS.creamDark}, transparent, ${COLORS.creamDark})`
+                    }}></div>
                   )}
                   
                   {aiMelody.map((item, idx) => (
@@ -761,20 +836,27 @@ function MelodyMaker() {
                         {item.notes?.map((note, noteIdx) => (
                           <div
                             key={noteIdx}
-                            className="px-3 py-2 rounded-lg flex items-center justify-center text-xs font-medium text-white"
+                            className="px-3 py-2 flex items-center justify-center text-xs"
                             style={{
-                              backgroundColor: COLORS.aiNote,
-                              boxShadow: activeNotes.has(note) ? `0 4px 12px ${COLORS.aiNote}40` : 'none',
-                              transform: activeNotes.has(note) ? 'scale(1.05)' : 'scale(1)',
-                              transition: 'all 0.15s',
-                              minWidth: '48px'
+                              backgroundColor: COLORS.warmBrown,
+                              color: COLORS.white,
+                              borderRadius: (idx + noteIdx) % 3 === 0 ? '12px 4px 12px 12px' : (idx + noteIdx) % 3 === 1 ? '4px 12px 12px 12px' : '12px 12px 4px 12px',
+                              boxShadow: activeNotes.has(note) ? `0 4px 16px ${COLORS.warmBrown}80` : `0 2px 6px ${COLORS.shadow}`,
+                              transform: activeNotes.has(note) ? 'scale(1.08)' : 'scale(1)',
+                              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                              minWidth: '46px',
+                              fontFamily: 'system-ui, -apple-system, sans-serif',
+                              fontWeight: '500'
                             }}
                           >
                             {NOTES.find(n => n.note === note)?.name}
                           </div>
                         ))}
                       </div>
-                      <div className="text-xs font-light" style={{ color: COLORS.text.tertiary }}>
+                      <div className="text-xs" style={{ 
+                        color: COLORS.text.tertiary,
+                        fontFamily: 'system-ui, -apple-system, sans-serif'
+                      }}>
                         AI
                       </div>
                     </div>
@@ -784,8 +866,15 @@ function MelodyMaker() {
 
               {/* Drum Timeline */}
               {aiDrums.length > 0 && (
-                <div className="mt-6 pt-6" style={{ borderTop: `1px solid ${COLORS.border}` }}>
-                  <div className="text-xs font-medium mb-2 tracking-wide uppercase" style={{ color: COLORS.text.tertiary }}>
+                <div className="mt-5 pt-5" style={{ 
+                  borderTop: `2px solid ${COLORS.creamDark}`
+                }}>
+                  <div className="text-xs mb-2 uppercase" style={{ 
+                    color: COLORS.text.tertiary,
+                    letterSpacing: '0.08em',
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    fontWeight: '500'
+                  }}>
                     Drums (AI Generated)
                   </div>
                   <div className="flex items-start gap-2 flex-wrap">
@@ -795,13 +884,18 @@ function MelodyMaker() {
                         className="flex flex-col items-center gap-2"
                       >
                         <div
-                          className="px-3 py-2 rounded-lg flex items-center justify-center text-xs font-bold text-white uppercase"
+                          className="px-3 py-2 flex items-center justify-center text-xs uppercase"
                           style={{
-                            backgroundColor: COLORS.drum,
-                            boxShadow: activeDrums.has(drum.drumType) ? `0 4px 12px ${COLORS.drum}40` : 'none',
-                            transform: activeDrums.has(drum.drumType) ? 'scale(1.05)' : 'scale(1)',
-                            transition: 'all 0.15s',
-                            minWidth: '52px'
+                            backgroundColor: COLORS.terracotta,
+                            color: COLORS.white,
+                            borderRadius: idx % 4 === 0 ? '12px 4px 12px 4px' : idx % 4 === 1 ? '4px 12px 4px 12px' : idx % 4 === 2 ? '12px 12px 4px 4px' : '4px 4px 12px 12px',
+                            boxShadow: activeDrums.has(drum.drumType) ? `0 4px 16px ${COLORS.terracotta}80` : `0 2px 6px ${COLORS.shadow}`,
+                            transform: activeDrums.has(drum.drumType) ? 'scale(1.08)' : 'scale(1)',
+                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                            minWidth: '50px',
+                            fontFamily: 'system-ui, -apple-system, sans-serif',
+                            fontWeight: '600',
+                            letterSpacing: '0.05em'
                           }}
                         >
                           {drum.drumType === 'hihat' ? 'HH' : drum.drumType === 'openhat' ? 'OH' : drum.drumType[0].toUpperCase()}
@@ -809,7 +903,10 @@ function MelodyMaker() {
                       </div>
                     ))}
                     {aiDrums.length > 32 && (
-                      <div className="px-3 py-2 text-xs font-light" style={{ color: COLORS.text.tertiary }}>
+                      <div className="px-3 py-2 text-xs" style={{ 
+                        color: COLORS.text.tertiary,
+                        fontFamily: 'system-ui, -apple-system, sans-serif'
+                      }}>
                         +{aiDrums.length - 32} more
                       </div>
                     )}
@@ -821,95 +918,125 @@ function MelodyMaker() {
         </div>
 
         {/* Control Panel */}
-        <div className="mb-12 bg-white rounded-xl p-8" style={{
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.03)',
-          border: `1px solid ${COLORS.border}`
+        <div className="mb-4 p-6" style={{
+          background: COLORS.white,
+          borderRadius: '8px 32px 32px 32px',
+          boxShadow: `0 6px 24px ${COLORS.shadow}`
         }}>
-          <div className="flex flex-wrap gap-4 items-center justify-between mb-6">
-            <div className="flex gap-3 flex-wrap">
+          <div className="flex flex-wrap gap-3 items-center mb-5">
+            <button
+              onClick={canPlay ? playMelody : stopPlayback}
+              disabled={allMelody.length === 0}
+              className="px-7 py-3 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              style={{
+                backgroundColor: isPlaying ? COLORS.terracotta : COLORS.sage,
+                color: COLORS.white,
+                borderRadius: '20px 20px 4px 20px',
+                boxShadow: `0 4px 12px ${COLORS.shadow}`,
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                fontWeight: '500',
+                fontSize: '0.95rem',
+                border: 'none'
+              }}
+            >
+              {isPlaying ? 'Stop' : 'Play'}
+            </button>
+            
+            <button
+              onClick={generateMelody}
+              disabled={!canGenerate}
+              className="px-7 py-3 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              style={{
+                backgroundColor: COLORS.warmBrown,
+                color: COLORS.white,
+                borderRadius: '20px 4px 20px 20px',
+                boxShadow: `0 4px 12px ${COLORS.shadow}`,
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                fontWeight: '500',
+                fontSize: '0.95rem',
+                border: 'none'
+              }}
+            >
+              {isGenerating ? 'Generating...' : 'Complete Melody'}
+            </button>
+            
+            <button
+              onClick={generateDrums}
+              disabled={!canGenerateDrums}
+              className="px-7 py-3 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              style={{
+                backgroundColor: COLORS.terracotta,
+                color: COLORS.white,
+                borderRadius: '4px 20px 20px 20px',
+                boxShadow: `0 4px 12px ${COLORS.shadow}`,
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                fontWeight: '500',
+                fontSize: '0.95rem',
+                border: 'none'
+              }}
+            >
+              {isGeneratingDrums ? 'Generating...' : aiDrums.length > 0 ? 'Regenerate Drums' : 'Add Drums'}
+            </button>
+            
+            {aiMelody.length > 0 && (
               <button
-                onClick={canPlay ? playMelody : stopPlayback}
-                disabled={allMelody.length === 0}
-                className="px-8 py-3 rounded-xl font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                onClick={regenerateMelody}
+                disabled={isGenerating}
+                className="px-6 py-3 transition-all"
                 style={{
-                  backgroundColor: isPlaying ? '#ef4444' : COLORS.accent,
-                  color: 'white',
-                  boxShadow: `0 10px 30px ${COLORS.accent}20`
+                  background: COLORS.cream,
+                  color: COLORS.text.primary,
+                  borderRadius: '16px 16px 4px 16px',
+                  border: `2px solid ${COLORS.creamDark}`,
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  fontWeight: '500',
+                  fontSize: '0.9rem'
                 }}
               >
-                {isPlaying ? 'Stop' : 'Play'}
+                Regenerate
               </button>
-              
+            )}
+            
+            {aiDrums.length > 0 && (
               <button
-                onClick={generateMelody}
-                disabled={!canGenerate}
-                className="px-8 py-3 rounded-xl font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                onClick={clearDrums}
+                className="px-6 py-3 transition-all"
                 style={{
-                  backgroundColor: COLORS.accentLight,
-                  color: 'white',
-                  boxShadow: `0 10px 30px ${COLORS.accentLight}20`
+                  background: COLORS.cream,
+                  color: COLORS.text.primary,
+                  borderRadius: '16px 4px 16px 16px',
+                  border: `2px solid ${COLORS.creamDark}`,
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  fontWeight: '500',
+                  fontSize: '0.9rem'
                 }}
               >
-                {isGenerating ? 'Generating...' : 'Complete Melody'}
+                Clear Drums
               </button>
-              
-              <button
-                onClick={generateDrums}
-                disabled={!canGenerateDrums}
-                className="px-8 py-3 rounded-xl font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                style={{
-                  backgroundColor: COLORS.drum,
-                  color: 'white',
-                  boxShadow: `0 10px 30px ${COLORS.drum}20`
-                }}
-              >
-                {isGeneratingDrums ? 'Generating...' : aiDrums.length > 0 ? 'Regenerate Drums' : 'Add Drums'}
-              </button>
-              
-              {aiMelody.length > 0 && (
-                <button
-                  onClick={regenerateMelody}
-                  disabled={isGenerating}
-                  className="px-6 py-3 rounded-xl font-medium transition-all"
-                  style={{
-                    border: `1px solid ${COLORS.border}`,
-                    color: COLORS.text.secondary
-                  }}
-                >
-                  Regenerate
-                </button>
-              )}
-              
-              {aiDrums.length > 0 && (
-                <button
-                  onClick={clearDrums}
-                  className="px-6 py-3 rounded-xl font-medium transition-all"
-                  style={{
-                    border: `1px solid ${COLORS.border}`,
-                    color: COLORS.text.secondary
-                  }}
-                >
-                  Clear Drums
-                </button>
-              )}
-              
-              <button
-                onClick={clearAll}
-                className="px-6 py-3 rounded-xl font-medium transition-all"
-                style={{
-                  border: `1px solid ${COLORS.border}`,
-                  color: COLORS.text.secondary
-                }}
-              >
-                Clear All
-              </button>
-            </div>
-
-            {/* Tempo Control - removed for now as we use actual durations */}
+            )}
+            
+            <button
+              onClick={clearAll}
+              className="px-6 py-3 transition-all"
+              style={{
+                background: COLORS.cream,
+                color: COLORS.text.primary,
+                borderRadius: '4px 16px 16px 16px',
+                border: `2px solid ${COLORS.creamDark}`,
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                fontWeight: '500',
+                fontSize: '0.9rem'
+              }}
+            >
+              Clear All
+            </button>
           </div>
 
           {/* Status */}
-          <div className="text-sm font-light" style={{ color: COLORS.text.secondary }}>
+          <div className="text-sm" style={{ 
+            color: COLORS.text.secondary,
+            fontFamily: 'system-ui, -apple-system, sans-serif'
+          }}>
             {userSequence.length === 0 && 'Start by pressing piano keys or using your keyboard (A-B keys)'}
             {userSequence.length > 0 && userSequence.length < 4 && `${userSequence.length} notes/chords recorded - need ${4 - userSequence.length} more for AI completion`}
             {userSequence.length >= 4 && aiMelody.length === 0 && 'Ready for AI melody completion!'}
@@ -918,31 +1045,43 @@ function MelodyMaker() {
           </div>
           
           {musicRNNRef.current && (
-            <div className="mt-3 text-xs font-light" style={{ color: COLORS.text.tertiary }}>
+            <div className="mt-3 text-xs" style={{ 
+              color: COLORS.text.tertiary,
+              fontFamily: 'system-ui, -apple-system, sans-serif'
+            }}>
               {'\u{2713}'} Using Magenta MusicRNN{drumRNNRef.current ? ' and DrumRNN' : ''} for generation
             </div>
           )}
         </div>
 
         {/* Piano Keyboard */}
-        <div className="bg-white rounded-xl p-8" style={{
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.03)',
-          border: `1px solid ${COLORS.border}`
+        <div className="p-6" style={{
+          background: COLORS.white,
+          borderRadius: '32px 32px 8px 8px',
+          boxShadow: `0 6px 24px ${COLORS.shadow}`
         }}>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xs font-medium tracking-wide uppercase" style={{ color: COLORS.text.secondary }}>
+          <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+            <h2 className="text-xs tracking-wide uppercase" style={{ 
+              color: COLORS.text.secondary,
+              letterSpacing: '0.08em',
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+              fontWeight: '500'
+            }}>
               Piano Keyboard
             </h2>
-            <div className="text-xs font-light" style={{ color: COLORS.text.tertiary }}>
+            <div className="text-xs" style={{ 
+              color: COLORS.text.tertiary,
+              fontFamily: 'system-ui, -apple-system, sans-serif'
+            }}>
               Hold multiple keys for chords - hold time matters!
             </div>
           </div>
           
-          <div className="relative flex justify-center mb-4">
+          <div className="relative flex justify-center mb-4 overflow-x-auto pb-2">
             <div className="relative inline-flex">
               {/* White keys */}
               <div className="flex">
-                {NOTES.filter(n => !n.isBlack).map((noteData) => {
+                {NOTES.filter(n => !n.isBlack).map((noteData, whiteIdx) => {
                   const isPressed = pressedKeys.has(noteData.note) || activeNotes.has(noteData.note);
                   return (
                     <button
@@ -955,25 +1094,30 @@ function MelodyMaker() {
                       disabled={isPlaying}
                       className="relative transition-all disabled:cursor-not-allowed"
                       style={{
-                        width: '56px',
-                        height: '240px',
-                        backgroundColor: isPressed ? COLORS.keyPressed : 'white',
+                        width: '52px',
+                        height: '200px',
+                        backgroundColor: isPressed ? COLORS.sageLight : COLORS.white,
                         transform: isPressed ? 'translateY(2px)' : 'none',
-                        boxShadow: isPressed ? 'inset 0 2px 4px rgba(0,0,0,0.1)' : '0 4px 0 rgba(0,0,0,0.05)',
-                        border: `1px solid ${COLORS.border}`,
-                        borderBottom: isPressed ? 'none' : `4px solid ${COLORS.border}`
+                        boxShadow: isPressed ? `inset 0 3px 8px ${COLORS.shadow}` : `0 3px 8px ${COLORS.shadow}`,
+                        border: `2px solid ${COLORS.creamDark}`,
+                        borderBottom: isPressed ? `2px solid ${COLORS.creamDark}` : `4px solid ${COLORS.creamDark}`,
+                        borderRadius: whiteIdx % 3 === 0 ? '8px 8px 8px 8px' : whiteIdx % 3 === 1 ? '8px 8px 4px 8px' : '8px 8px 8px 4px'
                       }}
                     >
                       <div className="absolute top-3 left-0 right-0 text-center">
-                        <div className="text-xs font-bold mb-1" style={{ 
-                          color: isPressed ? COLORS.accent : COLORS.text.tertiary,
-                          textTransform: 'uppercase'
+                        <div className="text-xs mb-1" style={{ 
+                          color: isPressed ? COLORS.sage : COLORS.text.tertiary,
+                          textTransform: 'uppercase',
+                          fontFamily: 'system-ui, -apple-system, sans-serif',
+                          fontWeight: '600'
                         }}>
                           {noteData.key}
                         </div>
                       </div>
-                      <span className="absolute bottom-3 left-0 right-0 text-center text-xs font-medium" style={{
-                        color: COLORS.text.tertiary
+                      <span className="absolute bottom-3 left-0 right-0 text-center text-xs" style={{
+                        color: COLORS.text.tertiary,
+                        fontFamily: 'system-ui, -apple-system, sans-serif',
+                        fontWeight: '500'
                       }}>
                         {noteData.name}
                       </span>
@@ -988,7 +1132,7 @@ function MelodyMaker() {
                   if (!noteData.isBlack) return null;
                   
                   const whiteKeysBefore = NOTES.slice(0, idx).filter(n => !n.isBlack).length;
-                  const leftPos = whiteKeysBefore * 56 - 20;
+                  const leftPos = whiteKeysBefore * 52 - 18;
                   const isPressed = pressedKeys.has(noteData.note) || activeNotes.has(noteData.note);
                   
                   return (
@@ -1002,26 +1146,31 @@ function MelodyMaker() {
                       disabled={isPlaying}
                       className="absolute pointer-events-auto border-none transition-all disabled:cursor-not-allowed"
                       style={{
-                        width: '40px',
-                        height: '150px',
-                        backgroundColor: isPressed ? '#4b5563' : '#1f2937',
+                        width: '36px',
+                        height: '130px',
+                        backgroundColor: isPressed ? COLORS.warmBrown : COLORS.text.primary,
                         left: `${leftPos}px`,
                         transform: isPressed ? 'translateY(2px)' : 'none',
-                        boxShadow: isPressed ? 'inset 0 2px 4px rgba(0,0,0,0.3)' : '0 4px 0 rgba(0,0,0,0.3)',
+                        boxShadow: isPressed ? `inset 0 3px 8px rgba(0,0,0,0.4)` : `0 4px 12px ${COLORS.shadow}, 0 2px 4px rgba(0,0,0,0.3)`,
                         zIndex: 10,
-                        borderRadius: '0 0 4px 4px'
+                        borderRadius: whiteKeysBefore % 3 === 0 ? '4px 4px 8px 4px' : whiteKeysBefore % 3 === 1 ? '4px 4px 4px 8px' : '8px 4px 4px 4px',
+                        border: `2px solid ${COLORS.text.primary}`
                       }}
                     >
                       <div className="absolute top-2 left-0 right-0 text-center">
-                        <div className="text-xs font-bold mb-1" style={{ 
-                          color: isPressed ? COLORS.accentLight : 'rgba(255,255,255,0.4)',
-                          textTransform: 'uppercase'
+                        <div className="text-xs mb-1" style={{ 
+                          color: isPressed ? COLORS.cream : 'rgba(255,255,255,0.5)',
+                          textTransform: 'uppercase',
+                          fontFamily: 'system-ui, -apple-system, sans-serif',
+                          fontWeight: '600'
                         }}>
                           {noteData.key}
                         </div>
                       </div>
-                      <span className="absolute bottom-2 left-0 right-0 text-center text-xs font-medium" style={{
-                        color: 'rgba(255,255,255,0.6)'
+                      <span className="absolute bottom-2 left-0 right-0 text-center text-xs" style={{
+                        color: 'rgba(255,255,255,0.6)',
+                        fontFamily: 'system-ui, -apple-system, sans-serif',
+                        fontWeight: '500'
                       }}>
                         {noteData.name}
                       </span>
@@ -1033,23 +1182,41 @@ function MelodyMaker() {
           </div>
           
           {/* Keyboard mapping hint */}
-          <div className="text-center text-xs font-light mt-6" style={{ color: COLORS.text.tertiary }}>
+          <div className="text-center text-xs mt-5" style={{ 
+            color: COLORS.text.tertiary,
+            fontFamily: 'system-ui, -apple-system, sans-serif'
+          }}>
             Use your keyboard: A-B keys map to piano keys • Hold multiple for chords • Hold time = note duration • Release to record
           </div>
         </div>
 
         {/* Legend */}
-        <div className="mt-8 flex justify-center gap-8 text-sm font-light" style={{ color: COLORS.text.secondary }}>
+        <div className="mt-6 flex justify-center gap-6 text-sm flex-wrap" style={{ 
+          color: COLORS.text.secondary,
+          fontFamily: 'system-ui, -apple-system, sans-serif'
+        }}>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded" style={{ backgroundColor: COLORS.userNote }}></div>
+            <div className="w-5 h-5" style={{ 
+              backgroundColor: COLORS.sage,
+              borderRadius: '8px 8px 2px 8px',
+              boxShadow: `0 2px 4px ${COLORS.shadow}`
+            }}></div>
             <span>Your Melody</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded" style={{ backgroundColor: COLORS.aiNote }}></div>
+            <div className="w-5 h-5" style={{ 
+              backgroundColor: COLORS.warmBrown,
+              borderRadius: '8px 2px 8px 8px',
+              boxShadow: `0 2px 4px ${COLORS.shadow}`
+            }}></div>
             <span>AI Melody</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded" style={{ backgroundColor: COLORS.drum }}></div>
+            <div className="w-5 h-5" style={{ 
+              backgroundColor: COLORS.terracotta,
+              borderRadius: '2px 8px 8px 8px',
+              boxShadow: `0 2px 4px ${COLORS.shadow}`
+            }}></div>
             <span>AI Drums</span>
           </div>
         </div>
