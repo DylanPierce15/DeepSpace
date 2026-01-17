@@ -1,62 +1,19 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { PianoSynth, DrumSynth } from './utils/audioSynth.js';
+import { NOTES, COLORS } from './utils/constants.js';
+import { 
+  convertToQuantizedSequence, 
+  convertFromQuantizedSequence,
+  generateAlgorithmicMelody,
+  smoothMelody,
+  generateNameSuggestion 
+} from './utils/magentaHelpers.js';
 import CurrentChord from './components/CurrentChord.jsx';
 import SaveDialog from './components/SaveDialog.jsx';
 import Library from './components/Library.jsx';
 import MelodyTimeline from './components/MelodyTimeline.jsx';
 import ControlPanel from './components/ControlPanel.jsx';
 import Piano from './components/Piano.jsx';
-
-// Note definitions for 2 octaves (C4 to B5)
-const NOTES = [
-  { note: 60, name: 'C4', isBlack: false, key: 'a' },
-  { note: 61, name: 'C#4', isBlack: true, key: 'w' },
-  { note: 62, name: 'D4', isBlack: false, key: 's' },
-  { note: 63, name: 'D#4', isBlack: true, key: 'e' },
-  { note: 64, name: 'E4', isBlack: false, key: 'd' },
-  { note: 65, name: 'F4', isBlack: false, key: 'f' },
-  { note: 66, name: 'F#4', isBlack: true, key: 't' },
-  { note: 67, name: 'G4', isBlack: false, key: 'g' },
-  { note: 68, name: 'G#4', isBlack: true, key: 'y' },
-  { note: 69, name: 'A4', isBlack: false, key: 'h' },
-  { note: 70, name: 'A#4', isBlack: true, key: 'u' },
-  { note: 71, name: 'B4', isBlack: false, key: 'j' },
-  { note: 72, name: 'C5', isBlack: false, key: 'k' },
-  { note: 73, name: 'C#5', isBlack: true, key: 'o' },
-  { note: 74, name: 'D5', isBlack: false, key: 'l' },
-  { note: 75, name: 'D#5', isBlack: true, key: 'p' },
-  { note: 76, name: 'E5', isBlack: false, key: ';' },
-  { note: 77, name: 'F5', isBlack: false, key: '\'' },
-  { note: 78, name: 'F#5', isBlack: true, key: ']' },
-  { note: 79, name: 'G5', isBlack: false, key: 'z' },
-  { note: 80, name: 'G#5', isBlack: true, key: 'x' },
-  { note: 81, name: 'A5', isBlack: false, key: 'c' },
-  { note: 82, name: 'A#5', isBlack: true, key: 'v' },
-  { note: 83, name: 'B5', isBlack: false, key: 'b' }
-];
-
-// Natural/Organic color palette - darker earth tones
-const COLORS = {
-  sage: '#5a7353', // Deep forest green
-  sageLight: '#6d8765',
-  sageDark: '#475a42',
-  terracotta: '#b05a3c', // Burnt terracotta
-  terracottaLight: '#c97456',
-  warmBrown: '#6b5434', // Rich brown
-  warmBrownLight: '#8b6f47',
-  bg: '#2d2620', // Deep warm brown background
-  bgLight: '#3d362f',
-  cardBg: '#4a4239', // Warm dark card background
-  cream: '#c9b99a', // Warm beige
-  creamDark: '#a89978',
-  text: {
-    primary: '#e8dcc9', // Light cream for text
-    secondary: '#c9b99a',
-    tertiary: '#a89978'
-  },
-  white: '#fdfcfa',
-  shadow: 'rgba(0, 0, 0, 0.3)' // Deeper shadow
-};
 
 function MelodyMaker() {
   const [tailwindLoaded, setTailwindLoaded] = useState(false);
@@ -413,27 +370,7 @@ function MelodyMaker() {
       
       // Always use fallback on error
       console.log('Using fallback algorithm due to error');
-      
-      const lastItem = userSequence[userSequence.length - 1];
-      const lastNote = lastItem.notes ? lastItem.notes[0] : 60;
-      const generated = [];
-      
-      // Better fallback with scale-based movement
-      const scale = [0, 2, 4, 5, 7, 9, 11];
-      
-      for (let i = 0; i < 12; i++) {
-        const direction = Math.random() < 0.6 ? 1 : -1;
-        const interval = scale[Math.floor(Math.random() * scale.length)];
-        const nextNote = Math.max(60, Math.min(83, lastNote + (direction * interval)));
-        
-        generated.push({ 
-          notes: [nextNote], 
-          time: Date.now() + i * 100,
-          duration: 0.3 + Math.random() * 0.4,
-          isChord: false
-        });
-      }
-      
+      const generated = generateAlgorithmicMelody(userSequence, 12);
       setAiMelody(generated);
       setIsGenerating(false);
       console.log('Fallback complete with', generated.length, 'notes');
@@ -730,38 +667,8 @@ function MelodyMaker() {
       if (musicRNNRef.current) {
         try {
           console.log('Attempting polish with MusicRNN...');
-
-          // Convert entire sequence to quantized format
-          const stepsPerQuarter = 4;
-          const qpm = 120;
-          const inputSequence = {
-            notes: [],
-            totalQuantizedSteps: 0,
-            quantizationInfo: {
-              stepsPerQuarter: stepsPerQuarter
-            }
-          };
-
-          let currentStep = 0;
-          allMelody.forEach((item) => {
-            const noteDuration = item.duration || 0.5;
-            const durationInSteps = Math.max(1, Math.round((noteDuration * qpm * stepsPerQuarter) / 60));
-
-            if (item.notes) {
-              item.notes.forEach(noteNumber => {
-                inputSequence.notes.push({
-                  pitch: noteNumber,
-                  quantizedStartStep: currentStep,
-                  quantizedEndStep: currentStep + durationInSteps,
-                  velocity: 80
-                });
-              });
-            }
-
-            currentStep += durationInSteps;
-          });
-
-          inputSequence.totalQuantizedSteps = currentStep;
+          
+          const inputSequence = convertToQuantizedSequence(allMelody);
           console.log('Polish input has', inputSequence.notes.length, 'notes');
 
           const result = await musicRNNRef.current.continueSequence(
@@ -774,18 +681,7 @@ function MelodyMaker() {
 
           // Only use MusicRNN result if it's reasonable
           if (result.notes.length >= 3) {
-            result.notes.forEach((note) => {
-              const durationInSteps = note.quantizedEndStep - note.quantizedStartStep;
-              const duration = (durationInSteps * 60) / (qpm * stepsPerQuarter);
-              const relativeTime = (note.quantizedStartStep * 60) / (qpm * stepsPerQuarter);
-
-              polished.push({
-                notes: [note.pitch],
-                time: Date.now() + relativeTime * 1000,
-                duration,
-                isChord: false
-              });
-            });
+            polished = convertFromQuantizedSequence(result, 0);
             useMusicRNN = true;
             console.log('MusicRNN polish successful with', polished.length, 'notes');
           } else {
@@ -799,36 +695,7 @@ function MelodyMaker() {
       // If MusicRNN didn't work or isn't available, use algorithmic smoothing
       if (!useMusicRNN) {
         console.log('Using algorithmic polish...');
-        
-        for (let i = 0; i < allMelody.length; i++) {
-          const current = allMelody[i];
-          const prev = i > 0 ? allMelody[i - 1] : null;
-          const next = i < allMelody.length - 1 ? allMelody[i + 1] : null;
-
-          // Smooth large jumps
-          if (prev && next) {
-            const prevNote = prev.notes[0];
-            const currentNote = current.notes[0];
-            const nextNote = next.notes[0];
-            
-            const jumpToPrev = Math.abs(currentNote - prevNote);
-            const jumpToNext = Math.abs(currentNote - nextNote);
-
-            // If jumps are too large, adjust slightly
-            if (jumpToPrev > 7 || jumpToNext > 7) {
-              const target = Math.round((prevNote + nextNote) / 2);
-              const smoothed = Math.round((currentNote + target) / 2);
-              
-              polished.push({
-                ...current,
-                notes: [Math.max(60, Math.min(83, smoothed))]
-              });
-              continue;
-            }
-          }
-
-          polished.push({ ...current });
-        }
+        polished = smoothMelody(allMelody);
         console.log('Algorithmic polish complete with', polished.length, 'notes');
       }
 
@@ -878,38 +745,6 @@ function MelodyMaker() {
     }
   }, [prePolishBackup]);
 
-  // Generate name suggestions based on melody characteristics
-  const generateNameSuggestion = useCallback(() => {
-    const allMelody = [...userSequence, ...aiMelody];
-    if (allMelody.length === 0) return 'My Melody';
-    
-    // Analyze melody characteristics
-    const noteCount = allMelody.reduce((sum, item) => sum + (item.notes?.length || 0), 0);
-    const hasDrums = aiDrums.length > 0;
-    const avgPitch = allMelody.reduce((sum, item) => sum + (item.notes?.[0] || 60), 0) / allMelody.length;
-    const totalDuration = allMelody.reduce((sum, item) => sum + (item.duration || 0.5), 0);
-    
-    // Descriptive words based on characteristics
-    const tempoWords = totalDuration > 10 ? ['Long', 'Extended', 'Epic'] : totalDuration > 5 ? ['Medium', 'Flowing'] : ['Short', 'Quick', 'Brief'];
-    const pitchWords = avgPitch > 72 ? ['High', 'Bright', 'Soprano'] : avgPitch < 66 ? ['Low', 'Deep', 'Bass'] : ['Mid', 'Balanced'];
-    const styleWords = hasDrums ? ['Rhythmic', 'Groovy', 'Beat'] : ['Melodic', 'Pure', 'Simple'];
-    const moodWords = ['Calm', 'Happy', 'Dreamy', 'Jazzy', 'Peaceful', 'Upbeat', 'Smooth', 'Gentle'];
-    
-    // Random selection
-    const tempo = tempoWords[Math.floor(Math.random() * tempoWords.length)];
-    const mood = moodWords[Math.floor(Math.random() * moodWords.length)];
-    const style = styleWords[Math.floor(Math.random() * styleWords.length)];
-    
-    const suggestions = [
-      `${mood} ${style}`,
-      `${tempo} ${mood} Melody`,
-      `${style} Composition`,
-      `${mood} ${pitchWords[0]} Notes`,
-      `${tempo} ${style}`
-    ];
-    
-    return suggestions[Math.floor(Math.random() * suggestions.length)];
-  }, [userSequence, aiMelody, aiDrums]);
 
   // Save current melody to library
   const saveMelody = useCallback(() => {
@@ -1121,7 +956,7 @@ function MelodyMaker() {
             <button
               onClick={() => {
                 setShowSaveDialog(true);
-                setSaveName(generateNameSuggestion());
+                setSaveName(generateNameSuggestion(userSequence, aiMelody, aiDrums));
               }}
               disabled={userSequence.length === 0}
               className="px-5 py-2 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
@@ -1164,7 +999,7 @@ function MelodyMaker() {
             setSaveName={setSaveName}
             onSave={saveMelody}
             onCancel={() => { setShowSaveDialog(false); setSaveName(''); }}
-            onSuggestName={() => setSaveName(generateNameSuggestion())}
+            onSuggestName={() => setSaveName(generateNameSuggestion(userSequence, aiMelody, aiDrums))}
             onFocus={() => setIsTyping(true)}
             onBlur={() => setIsTyping(false)}
             colors={COLORS}
@@ -1190,481 +1025,63 @@ function MelodyMaker() {
         />
 
         {/* Control Panel */}
-        <div className="mb-4 p-6" style={{
-          background: COLORS.cardBg,
-          borderRadius: '8px 32px 32px 32px',
-          boxShadow: `0 6px 24px ${COLORS.shadow}`
-        }}>
-          {/* Volume Controls */}
-          <div className="mb-5 flex gap-6 items-center flex-wrap">
-            <div className="flex items-center gap-3 flex-1 min-w-[200px]">
-              <div className="text-xs uppercase" style={{ 
-                color: COLORS.text.tertiary,
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                fontWeight: '500',
-                minWidth: '60px'
-              }}>
-                Piano
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={pianoVolume}
-                onChange={(e) => setPianoVolume(parseFloat(e.target.value))}
-                className="flex-1"
-                style={{
-                  accentColor: COLORS.sage
-                }}
-              />
-              <div className="text-xs" style={{ 
-                color: COLORS.text.tertiary,
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                minWidth: '30px',
-                textAlign: 'right'
-              }}>
-                {Math.round(pianoVolume * 100)}%
-              </div>
-            </div>
-            <div className="flex items-center gap-3 flex-1 min-w-[200px]">
-              <div className="text-xs uppercase" style={{ 
-                color: COLORS.text.tertiary,
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                fontWeight: '500',
-                minWidth: '60px'
-              }}>
-                Drums
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={drumVolume}
-                onChange={(e) => setDrumVolume(parseFloat(e.target.value))}
-                className="flex-1"
-                style={{
-                  accentColor: COLORS.terracotta
-                }}
-              />
-              <div className="text-xs" style={{ 
-                color: COLORS.text.tertiary,
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                minWidth: '30px',
-                textAlign: 'right'
-              }}>
-                {Math.round(drumVolume * 100)}%
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-3 items-center mb-5">
-            <button
-              onClick={() => {
-                if (isPlaying) {
-                  stopPlayback();
-                } else if (playFromIndex !== null) {
-                  playMelody(playFromIndex);
-                } else {
-                  playMelody(0);
-                }
-              }}
-              disabled={allMelody.length === 0}
-              className="px-7 py-3 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-              style={{
-                backgroundColor: isPlaying ? COLORS.terracotta : COLORS.sage,
-                color: COLORS.white,
-                borderRadius: '20px 20px 4px 20px',
-                boxShadow: `0 4px 12px ${COLORS.shadow}`,
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                fontWeight: '500',
-                fontSize: '0.95rem',
-                border: 'none'
-              }}
-            >
-              {isPlaying ? 'Stop' : playFromIndex !== null ? 'Play from Note' : 'Play'}
-            </button>
-            
-            <button
-              onClick={generateMelody}
-              disabled={!canGenerate}
-              className="px-7 py-3 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-              style={{
-                backgroundColor: COLORS.warmBrown,
-                color: COLORS.white,
-                borderRadius: '20px 4px 20px 20px',
-                boxShadow: `0 4px 12px ${COLORS.shadow}`,
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                fontWeight: '500',
-                fontSize: '0.95rem',
-                border: 'none'
-              }}
-            >
-              {isGenerating ? 'Generating...' : 'Complete Melody'}
-            </button>
-            
-            <button
-              onClick={generateDrums}
-              disabled={!canGenerateDrums}
-              className="px-7 py-3 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-              style={{
-                backgroundColor: COLORS.terracotta,
-                color: COLORS.white,
-                borderRadius: '4px 20px 20px 20px',
-                boxShadow: `0 4px 12px ${COLORS.shadow}`,
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                fontWeight: '500',
-                fontSize: '0.95rem',
-                border: 'none'
-              }}
-            >
-              {isGeneratingDrums ? 'Generating...' : aiDrums.length > 0 ? 'Regenerate Drums' : 'Add Drums'}
-            </button>
-            
-            <button
-              onClick={polishMelody}
-              disabled={!canPolish}
-              className="px-7 py-3 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-              style={{
-                backgroundColor: COLORS.sageLight,
-                color: COLORS.white,
-                borderRadius: '20px 20px 20px 4px',
-                boxShadow: `0 4px 12px ${COLORS.shadow}`,
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                fontWeight: '500',
-                fontSize: '0.95rem',
-                border: 'none'
-              }}
-            >
-              {isPolishing ? 'Polishing...' : 'Polish with AI'}
-            </button>
-            
-            {prePolishBackup && (
-              <button
-                onClick={undoPolish}
-                className="px-6 py-3 transition-all"
-                style={{
-                  background: COLORS.bgLight,
-                  color: COLORS.text.secondary,
-                  borderRadius: '16px 16px 16px 4px',
-                  border: `2px solid ${COLORS.bg}`,
-                  fontFamily: 'system-ui, -apple-system, sans-serif',
-                  fontWeight: '500',
-                  fontSize: '0.9rem'
-                }}
-              >
-                Undo Polish
-              </button>
-            )}
-            
-            {aiMelody.length > 0 && (
-              <button
-                onClick={regenerateMelody}
-                disabled={isGenerating}
-                className="px-6 py-3 transition-all"
-              style={{
-                background: COLORS.bgLight,
-                color: COLORS.text.secondary,
-                borderRadius: '16px 16px 4px 16px',
-                border: `2px solid ${COLORS.bg}`,
-                  fontFamily: 'system-ui, -apple-system, sans-serif',
-                  fontWeight: '500',
-                  fontSize: '0.9rem'
-                }}
-              >
-                Regenerate
-              </button>
-            )}
-            
-            {aiDrums.length > 0 && (
-              <button
-                onClick={clearDrums}
-                className="px-6 py-3 transition-all"
-              style={{
-                background: COLORS.bgLight,
-                color: COLORS.text.secondary,
-                borderRadius: '16px 4px 16px 16px',
-                border: `2px solid ${COLORS.bg}`,
-                  fontFamily: 'system-ui, -apple-system, sans-serif',
-                  fontWeight: '500',
-                  fontSize: '0.9rem'
-                }}
-              >
-                Clear Drums
-              </button>
-            )}
-            
-            <button
-              onClick={clearAll}
-              className="px-6 py-3 transition-all"
-              style={{
-                background: COLORS.bgLight,
-                color: COLORS.text.secondary,
-                borderRadius: '4px 16px 16px 16px',
-                border: `2px solid ${COLORS.bg}`,
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                fontWeight: '500',
-                fontSize: '0.9rem'
-              }}
-            >
-              Clear All
-            </button>
-          </div>
-
-          {/* Status */}
-          <div className="text-sm" style={{ 
-            color: COLORS.text.secondary,
-            fontFamily: 'system-ui, -apple-system, sans-serif'
-          }}>
-            {userSequence.length === 0 && 'Start by pressing piano keys or using your keyboard (A-B keys)'}
-            {userSequence.length > 0 && userSequence.length < 4 && `${userSequence.length} notes/chords recorded - need ${4 - userSequence.length} more for AI completion`}
-            {userSequence.length >= 4 && aiMelody.length === 0 && 'Ready for AI melody completion!'}
-            {aiMelody.length > 0 && !prePolishBackup && !aiDrums.length && 'Melody complete! Try "Polish with AI" for smoother flow, or "Add Drums" for accompaniment'}
-            {aiMelody.length > 0 && prePolishBackup && 'Polished version active - click "Undo Polish" to restore original'}
-            {aiMelody.length > 0 && aiDrums.length > 0 && `Complete composition: ${userNoteCount} user notes + ${aiNoteCount} AI notes + ${aiDrums.length} drum hits`}
-          </div>
-          
-          {musicRNNRef.current && (
-            <div className="mt-3 text-xs" style={{ 
-              color: COLORS.text.tertiary,
-              fontFamily: 'system-ui, -apple-system, sans-serif'
-            }}>
-              {'\u{2713}'} Using Magenta MusicRNN{drumRNNRef.current ? ' and DrumRNN' : ''} for generation
-            </div>
-          )}
-        </div>
+        <ControlPanel
+          pianoVolume={pianoVolume}
+          drumVolume={drumVolume}
+          setPianoVolume={setPianoVolume}
+          setDrumVolume={setDrumVolume}
+          isPlaying={isPlaying}
+          isGenerating={isGenerating}
+          isGeneratingDrums={isGeneratingDrums}
+          isPolishing={isPolishing}
+          canPlay={canPlay}
+          canGenerate={canGenerate}
+          canGenerateDrums={canGenerateDrums}
+          canPolish={canPolish}
+          playFromIndex={playFromIndex}
+          prePolishBackup={prePolishBackup}
+          aiMelody={aiMelody}
+          aiDrums={aiDrums}
+          userNoteCount={userNoteCount}
+          aiNoteCount={aiNoteCount}
+          userSequence={userSequence}
+          musicRNNRef={musicRNNRef}
+          drumRNNRef={drumRNNRef}
+          onPlay={() => {
+            if (playFromIndex !== null) {
+              playMelody(playFromIndex);
+            } else {
+              playMelody(0);
+            }
+          }}
+          onStopPlayback={stopPlayback}
+          onGenerateMelody={generateMelody}
+          onGenerateDrums={generateDrums}
+          onPolishMelody={polishMelody}
+          onUndoPolish={undoPolish}
+          onRegenerateMelody={regenerateMelody}
+          onClearDrums={clearDrums}
+          onClearAll={clearAll}
+          colors={COLORS}
+        />
 
         {/* Tab Content */}
         {activeTab === 'piano' ? (
-          /* Piano Keyboard */
-          <div className="p-6" style={{
-            background: COLORS.cardBg,
-            borderRadius: '32px 32px 8px 8px',
-            boxShadow: `0 6px 24px ${COLORS.shadow}`
-          }}>
-          <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
-            <h2 className="text-xs tracking-wide uppercase" style={{ 
-              color: COLORS.text.secondary,
-              letterSpacing: '0.08em',
-              fontFamily: 'system-ui, -apple-system, sans-serif',
-              fontWeight: '500'
-            }}>
-              Piano Keyboard
-            </h2>
-            <div className="text-xs" style={{ 
-              color: COLORS.text.tertiary,
-              fontFamily: 'system-ui, -apple-system, sans-serif'
-            }}>
-              Hold multiple keys for chords - hold time matters!
-            </div>
-          </div>
-          
-          <div className="relative flex justify-center mb-4 overflow-x-auto pb-2">
-            <div className="relative inline-flex">
-              {/* White keys */}
-              <div className="flex">
-                {NOTES.filter(n => !n.isBlack).map((noteData, whiteIdx) => {
-                  const isPressed = pressedKeys.has(noteData.note) || activeNotes.has(noteData.note);
-                  return (
-                    <button
-                      key={noteData.note}
-                      onMouseDown={() => handleKeyDown(noteData.note)}
-                      onMouseUp={() => handleKeyUp(noteData.note)}
-                      onMouseLeave={() => handleKeyUp(noteData.note)}
-                      onTouchStart={(e) => { e.preventDefault(); handleKeyDown(noteData.note); }}
-                      onTouchEnd={(e) => { e.preventDefault(); handleKeyUp(noteData.note); }}
-                      disabled={isPlaying}
-                      className="relative transition-all disabled:cursor-not-allowed"
-                      style={{
-                        width: '52px',
-                        height: '200px',
-                        backgroundColor: isPressed ? COLORS.sageLight : COLORS.cream,
-                        transform: isPressed ? 'translateY(2px)' : 'none',
-                        boxShadow: isPressed ? `inset 0 3px 8px ${COLORS.shadow}` : `0 3px 8px ${COLORS.shadow}`,
-                        border: `2px solid ${COLORS.creamDark}`,
-                        borderBottom: isPressed ? `2px solid ${COLORS.creamDark}` : `4px solid ${COLORS.creamDark}`,
-                        borderRadius: whiteIdx % 3 === 0 ? '8px 8px 8px 8px' : whiteIdx % 3 === 1 ? '8px 8px 4px 8px' : '8px 8px 8px 4px'
-                      }}
-                    >
-                      <div className="absolute top-3 left-0 right-0 text-center">
-                        <div className="text-xs mb-1" style={{ 
-                          color: isPressed ? COLORS.white : COLORS.warmBrown,
-                          textTransform: 'uppercase',
-                          fontFamily: 'system-ui, -apple-system, sans-serif',
-                          fontWeight: '600'
-                        }}>
-                          {noteData.key}
-                        </div>
-                      </div>
-                      <span className="absolute bottom-3 left-0 right-0 text-center text-xs" style={{
-                        color: COLORS.warmBrown,
-                        fontFamily: 'system-ui, -apple-system, sans-serif',
-                        fontWeight: '500'
-                      }}>
-                        {noteData.name}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              
-              {/* Black keys */}
-              <div className="absolute top-0 left-0 right-0 flex pointer-events-none">
-                {NOTES.map((noteData, idx) => {
-                  if (!noteData.isBlack) return null;
-                  
-                  const whiteKeysBefore = NOTES.slice(0, idx).filter(n => !n.isBlack).length;
-                  const leftPos = whiteKeysBefore * 52 - 18;
-                  const isPressed = pressedKeys.has(noteData.note) || activeNotes.has(noteData.note);
-                  
-                  return (
-                    <button
-                      key={noteData.note}
-                      onMouseDown={() => handleKeyDown(noteData.note)}
-                      onMouseUp={() => handleKeyUp(noteData.note)}
-                      onMouseLeave={() => handleKeyUp(noteData.note)}
-                      onTouchStart={(e) => { e.preventDefault(); handleKeyDown(noteData.note); }}
-                      onTouchEnd={(e) => { e.preventDefault(); handleKeyUp(noteData.note); }}
-                      disabled={isPlaying}
-                      className="absolute pointer-events-auto border-none transition-all disabled:cursor-not-allowed"
-                      style={{
-                        width: '36px',
-                        height: '130px',
-                        backgroundColor: isPressed ? COLORS.warmBrownLight : '#1a1612',
-                        left: `${leftPos}px`,
-                        transform: isPressed ? 'translateY(2px)' : 'none',
-                        boxShadow: isPressed ? `inset 0 3px 8px rgba(0,0,0,0.4)` : `0 4px 12px ${COLORS.shadow}, 0 2px 4px rgba(0,0,0,0.3)`,
-                        zIndex: 10,
-                        borderRadius: whiteKeysBefore % 3 === 0 ? '4px 4px 8px 4px' : whiteKeysBefore % 3 === 1 ? '4px 4px 4px 8px' : '8px 4px 4px 4px',
-                        border: `2px solid #0d0a08`
-                      }}
-                    >
-                      <div className="absolute top-2 left-0 right-0 text-center">
-                        <div className="text-xs mb-1" style={{ 
-                          color: isPressed ? COLORS.cream : 'rgba(255,255,255,0.5)',
-                          textTransform: 'uppercase',
-                          fontFamily: 'system-ui, -apple-system, sans-serif',
-                          fontWeight: '600'
-                        }}>
-                          {noteData.key}
-                        </div>
-                      </div>
-                      <span className="absolute bottom-2 left-0 right-0 text-center text-xs" style={{
-                        color: 'rgba(255,255,255,0.6)',
-                        fontFamily: 'system-ui, -apple-system, sans-serif',
-                        fontWeight: '500'
-                      }}>
-                        {noteData.name}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-          
-            {/* Keyboard mapping hint */}
-            <div className="text-center text-xs mt-5" style={{ 
-              color: COLORS.text.tertiary,
-              fontFamily: 'system-ui, -apple-system, sans-serif'
-            }}>
-              Use your keyboard: A-B keys map to piano keys • Hold multiple for chords • Hold time = note duration • Release to record
-            </div>
-          </div>
+          <Piano
+            pressedKeys={pressedKeys}
+            activeNotes={activeNotes}
+            isPlaying={isPlaying}
+            onKeyDown={handleKeyDown}
+            onKeyUp={handleKeyUp}
+            colors={COLORS}
+          />
         ) : (
-          /* Melody Library */
-          <div className="p-6" style={{
-            background: COLORS.cardBg,
-            borderRadius: '32px 32px 8px 8px',
-            boxShadow: `0 6px 24px ${COLORS.shadow}`
-          }}>
-            <h2 className="text-xs mb-5 tracking-wide uppercase" style={{ 
-              color: COLORS.text.secondary,
-              letterSpacing: '0.08em',
-              fontFamily: 'system-ui, -apple-system, sans-serif',
-              fontWeight: '500'
-            }}>
-              Saved Melodies ({savedMelodies.length})
-            </h2>
-            
-            {savedMelodies.length === 0 ? (
-              <div className="text-center py-16" style={{ 
-                color: COLORS.text.tertiary,
-                fontFamily: 'system-ui, -apple-system, sans-serif'
-              }}>
-                No saved melodies yet. Create and save your first melody!
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {savedMelodies.map((melody) => (
-                  <div
-                    key={melody.id}
-                    className="p-4 flex items-center justify-between gap-4"
-                    style={{
-                      background: COLORS.bgLight,
-                      borderRadius: '16px 16px 4px 16px',
-                      border: `2px solid ${COLORS.bg}`
-                    }}
-                  >
-                    <div className="flex-1">
-                      <div className="text-sm mb-1" style={{
-                        color: COLORS.text.primary,
-                        fontFamily: 'system-ui, -apple-system, sans-serif',
-                        fontWeight: '500'
-                      }}>
-                        {melody.name}
-                      </div>
-                      <div className="text-xs" style={{
-                        color: COLORS.text.tertiary,
-                        fontFamily: 'system-ui, -apple-system, sans-serif'
-                      }}>
-                        {melody.noteCount} notes • {melody.drumCount} drums • {new Date(melody.createdAt).toLocaleDateString()}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => loadMelody(melody.id)}
-                        className="px-4 py-2"
-                        style={{
-                          background: COLORS.sage,
-                          color: COLORS.white,
-                          borderRadius: '10px 10px 2px 10px',
-                          border: 'none',
-                          fontFamily: 'system-ui, -apple-system, sans-serif',
-                          fontWeight: '500',
-                          fontSize: '0.85rem',
-                          boxShadow: `0 2px 6px ${COLORS.shadow}`
-                        }}
-                      >
-                        Load
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm(`Delete "${melody.name}"?`)) {
-                            deleteMelody(melody.id);
-                          }
-                        }}
-                        className="px-4 py-2"
-                        style={{
-                          background: COLORS.terracotta,
-                          color: COLORS.white,
-                          borderRadius: '10px 2px 10px 10px',
-                          border: 'none',
-                          fontFamily: 'system-ui, -apple-system, sans-serif',
-                          fontWeight: '500',
-                          fontSize: '0.85rem',
-                          boxShadow: `0 2px 6px ${COLORS.shadow}`
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <Library
+            savedMelodies={savedMelodies}
+            onLoad={loadMelody}
+            onDelete={deleteMelody}
+            colors={COLORS}
+          />
         )}
 
         {/* Legend */}
