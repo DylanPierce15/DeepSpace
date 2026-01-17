@@ -255,12 +255,15 @@ function MelodyMaker() {
 
   // Generate AI melody continuation using Magenta MusicRNN
   const generateMelody = useCallback(async () => {
+    console.log('Generate melody called, userSequence length:', userSequence.length);
+    
     if (userSequence.length < 4) {
       alert('Please input at least 4 notes/chords before generating AI continuation');
       return;
     }
     
     setIsGenerating(true);
+    console.log('Starting generation...');
     
     try {
       if (musicRNNRef.current) {
@@ -331,7 +334,7 @@ function MelodyMaker() {
           });
         
         setAiMelody(generated);
-        console.log('Generated', generated.length, 'notes with MusicRNN');
+        console.log('Successfully generated', generated.length, 'notes with MusicRNN');
       } else {
         // Fallback to algorithmic generation
         console.log('MusicRNN not available, using fallback algorithm...');
@@ -340,49 +343,69 @@ function MelodyMaker() {
         const lastNote = lastItem.notes ? lastItem.notes[0] : 60;
         const generated = [];
         
+        // Create a more musical fallback with scale-based movement
+        const scale = [0, 2, 4, 5, 7, 9, 11]; // Major scale intervals
         const numNotes = 8 + Math.floor(Math.random() * 5);
         let currentNote = lastNote;
         
         for (let i = 0; i < numNotes; i++) {
-          const interval = Math.random() < 0.7 
-            ? (Math.random() < 0.5 ? 2 : -2)
-            : (Math.random() < 0.5 ? 5 : -5);
+          // Move by scale degrees
+          const direction = Math.random() < 0.6 ? 1 : -1;
+          const steps = Math.random() < 0.7 ? 1 : 2;
           
-          currentNote = Math.max(60, Math.min(83, currentNote + interval));
+          // Add some melodic jumps occasionally
+          if (Math.random() < 0.2) {
+            currentNote += direction * (scale[Math.floor(Math.random() * scale.length)]);
+          } else {
+            currentNote += direction * steps;
+          }
+          
+          currentNote = Math.max(60, Math.min(83, currentNote));
+          
           generated.push({ 
             notes: [currentNote], 
             time: Date.now() + i * 100,
-            duration: 0.5,
+            duration: 0.3 + Math.random() * 0.4, // Vary duration
             isChord: false
           });
         }
         
         setAiMelody(generated);
+        console.log('Fallback algorithm generated', generated.length, 'notes');
       }
       
       setIsGenerating(false);
+      console.log('Generation complete');
     } catch (error) {
       console.error('Melody generation error:', error);
-      alert(`Failed to generate melody: ${error.message}. Using fallback algorithm.`);
+      console.error('Error stack:', error.stack);
       
-      // Fallback
+      // Always use fallback on error
+      console.log('Using fallback algorithm due to error');
+      
       const lastItem = userSequence[userSequence.length - 1];
       const lastNote = lastItem.notes ? lastItem.notes[0] : 60;
       const generated = [];
       
+      // Better fallback with scale-based movement
+      const scale = [0, 2, 4, 5, 7, 9, 11];
+      
       for (let i = 0; i < 12; i++) {
-        const interval = Math.random() < 0.7 ? 2 : 5;
-        const nextNote = Math.max(60, Math.min(83, lastNote + interval * (Math.random() < 0.5 ? 1 : -1)));
+        const direction = Math.random() < 0.6 ? 1 : -1;
+        const interval = scale[Math.floor(Math.random() * scale.length)];
+        const nextNote = Math.max(60, Math.min(83, lastNote + (direction * interval)));
+        
         generated.push({ 
           notes: [nextNote], 
           time: Date.now() + i * 100,
-          duration: 0.5,
+          duration: 0.3 + Math.random() * 0.4,
           isChord: false
         });
       }
       
       setAiMelody(generated);
       setIsGenerating(false);
+      console.log('Fallback complete with', generated.length, 'notes');
     }
   }, [userSequence]);
 
