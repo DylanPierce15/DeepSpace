@@ -43,6 +43,8 @@ function MelodyMaker() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [playFromIndex, setPlayFromIndex] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [pressedKeys, setPressedKeys] = useState(new Set());
   const [activeNotes, setActiveNotes] = useState(new Set());
   const [currentChord, setCurrentChord] = useState([]);
@@ -760,7 +762,8 @@ function MelodyMaker() {
       tempo,
       createdAt: new Date().toISOString(),
       noteCount: allMelody.reduce((sum, item) => sum + (item.notes?.length || 0), 0),
-      drumCount: aiDrums.length
+      drumCount: aiDrums.length,
+      favorite: false
     };
 
     // Generate a unique ID
@@ -793,11 +796,42 @@ function MelodyMaker() {
     console.log('Deleted melody:', id);
   }, [melodiesFiles]);
 
-  // Get all saved melodies
+  // Toggle favorite status
+  const toggleFavorite = useCallback((id) => {
+    const melody = melodiesFiles.read(id);
+    if (melody) {
+      melodiesFiles.write(id, { ...melody, favorite: !melody.favorite });
+      console.log('Toggled favorite for:', melody.name);
+    }
+  }, [melodiesFiles]);
+
+  // Get all saved melodies with filtering
   const savedMelodies = useMemo(() => {
-    return melodiesFiles.list()
+    let melodies = melodiesFiles.list()
       .map(id => ({ id, ...melodiesFiles.read(id) }))
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      melodies = melodies.filter(m => 
+        m.name?.toLowerCase().includes(query)
+      );
+    }
+    
+    // Filter by favorites
+    if (showFavoritesOnly) {
+      melodies = melodies.filter(m => m.favorite);
+    }
+    
+    return melodies;
+  }, [melodiesFiles, searchQuery, showFavoritesOnly]);
+
+  // Count favorites
+  const favoritesCount = useMemo(() => {
+    return melodiesFiles.list()
+      .map(id => melodiesFiles.read(id))
+      .filter(m => m.favorite).length;
   }, [melodiesFiles]);
 
   // Handle mouse/touch down on piano key
@@ -1071,8 +1105,16 @@ function MelodyMaker() {
         ) : (
           <Library
             savedMelodies={savedMelodies}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            showFavoritesOnly={showFavoritesOnly}
+            setShowFavoritesOnly={setShowFavoritesOnly}
+            favoritesCount={favoritesCount}
             onLoad={loadMelody}
             onDelete={deleteMelody}
+            onToggleFavorite={toggleFavorite}
+            onFocusSearch={() => setIsTyping(true)}
+            onBlurSearch={() => setIsTyping(false)}
             colors={COLORS}
           />
         )}
