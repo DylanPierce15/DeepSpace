@@ -23,7 +23,7 @@
             "height": 1080
           }
         },
-        "lastUpdated": 1768620462231
+        "lastUpdated": 1768620602096
       }
     },
     "id": "document:document",
@@ -39,7 +39,7 @@
       "name": "Page 1",
       "index": "a1",
       "typeName": "page",
-      "lastChangedClock": 2427
+      "lastChangedClock": 2434
     }
   ],
   "schema": {
@@ -84,9 +84,9 @@
       "com.tldraw.binding.arrow": 1
     }
   },
-  "generatedAt": "2026-01-17T03:28:05.591Z",
-  "clock": 2433,
-  "documentClock": 2433,
+  "generatedAt": "2026-01-17T03:30:10.232Z",
+  "clock": 2444,
+  "documentClock": 2444,
   "tombstones": {
     "shape:Mc763fzC5WkvmnejB1phG": 1693,
     "shape:journal-mental-health-zZs0ya50NX4ze8Io": 656,
