@@ -15,6 +15,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { generateStylingMd } = require('./styling-utils');
 
 class CanvasStateUnpacker {
   constructor(rootDir = process.cwd()) {
@@ -298,6 +299,10 @@ class CanvasStateUnpacker {
       lastChangedClock
     };
     fs.writeFileSync(path.join(widgetDir, 'properties.json'), JSON.stringify(properties, null, 2), 'utf8');
+
+    // Write styling.md with style information
+    const stylingMd = generateStylingMd(state.props?.style);
+    fs.writeFileSync(path.join(widgetDir, 'styling.md'), stylingMd, 'utf8');
 
     // Write template files
     fs.writeFileSync(path.join(widgetDir, 'template.jsx'), state.props?.jsxContent || '', 'utf8');

@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { IndexValidator } = require('./index-validator');
 const { defaultSizeForTemplate, computePlacement, collectRoomWidgetRectangles } = require('./widget-positioning');
+const { generateStylingMd } = require('./styling-utils');
 
 /**
  * Generate a random shape ID similar to tldraw's format with template handle prefix
@@ -116,10 +117,22 @@ function generateWidget(templateHandle, roomPath) {
     process.exit(1);
   }
 
+  // Read container vars for room and style info
+  let containerVars = {};
+  try {
+    containerVars = JSON.parse(fs.readFileSync('/app/container_vars.json', 'utf8'));
+  } catch (error) {
+    // File may not exist yet, that's ok if roomPath is provided
+  }
+
+  // Get current style from container vars (may be null)
+  const currentStyle = containerVars.currentStyle || null;
+  if (currentStyle) {
+    console.log(`🎨 Using style: ${currentStyle.name} (${currentStyle.id})`);
+  }
+
   // If no roomPath provided, try to find it using current room from container vars
   if (!roomPath) {
-    // Get current room from container vars
-    const containerVars = JSON.parse(fs.readFileSync('/app/container_vars.json', 'utf8'));
     const currentRoom = containerVars.currentRoom;
     if (!currentRoom) {
       console.error('Error: No roomPath provided and no current room set in container vars');
@@ -129,7 +142,7 @@ function generateWidget(templateHandle, roomPath) {
 
     console.log(`🔍 Searching for room: ${currentRoom}`);
     roomPath = findRoomPath(currentRoom);
-    
+
     if (!roomPath) {
       console.error(`Error: Could not find room directory for: ${currentRoom}`);
       console.log('Searched in: /app/workspace/repo');
@@ -268,11 +281,11 @@ export default ${toComponentName(templateHandle)};
   // Create storage.json with widget config
   const widgetConfig = {
     roomId: roomId,
-    pageId: pageId, 
+    pageId: pageId,
     shapeId: shapeId,
     templateHandle: templateHandle
   };
-  
+
   const storageJson = {
     "__widget_config": JSON.stringify(widgetConfig)
   };
@@ -313,11 +326,16 @@ export default ${toComponentName(templateHandle)};
     fs.writeFileSync(path.join(dirPath, 'storage.json'), JSON.stringify(storageJson, null, 2));
     fs.writeFileSync(path.join(dirPath, 'properties.json'), JSON.stringify(propertiesJson, null, 2));
 
+    // Create styling.md with style information
+    const stylingMd = generateStylingMd(currentStyle);
+    fs.writeFileSync(path.join(dirPath, 'styling.md'), stylingMd);
+
     console.log('\n✅ Widget files created successfully:');
     console.log(`📁 Directory: ${dirPath}`);
     console.log(`📄 template.jsx - React component ${usedLibrary ? '(from library)' : '(skeleton)'} `);
     console.log(`📄 storage.json - Widget storage configuration`);
     console.log(`📄 properties.json - Widget properties and metadata`);
+    console.log(`📄 styling.md - Widget style configuration`);
     console.log(`\n🎯 Next steps:`);
     console.log(`1. Edit template.jsx to implement your widget logic.`);
     console.log(`2. Commit changes. Hooks will bundle and update canvas-state automatically.`);

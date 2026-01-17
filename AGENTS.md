@@ -20,6 +20,7 @@ Make sure you read the full content of AGENTS.md (this file) as well as all the 
 - ImageAssets.md — working with images on the canvas
 - Hooks.md — quick reference for all available hooks
 - McAPI.md — miyagiAPI usage patterns and examples
+- Styling.md — rules for when to apply or preserve widget styling
 
 ---
 
@@ -43,6 +44,8 @@ For simple requests (single widget changes, small fixes), skip steps 1-3 and jus
 ## Guidelines
 
 - **CRITICAL**: Before you start working on the user request, read DO_DONT.md
+
+- **CRITICAL**: Before modifying widget styling, read Styling.md
 
 - **Room scope only**:
   - Active room ID is stored at `/app/container_vars.json` under `currentRoom`.

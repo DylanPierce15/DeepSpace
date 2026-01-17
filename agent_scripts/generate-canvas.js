@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { IndexValidator } = require('./index-validator');
+const { parseStylingMd } = require('./styling-utils');
 
 class CanvasStateGenerator {
   constructor(rootDir = process.cwd()) {
@@ -326,9 +327,17 @@ class CanvasStateGenerator {
         ? fs.readFileSync(htmlPath, 'utf8') 
         : '';
       
-      const storage = fs.existsSync(storagePath) 
-        ? JSON.parse(fs.readFileSync(storagePath, 'utf8')) 
+      const storage = fs.existsSync(storagePath)
+        ? JSON.parse(fs.readFileSync(storagePath, 'utf8'))
         : {};
+
+      // Read styling.md if it exists
+      const stylingPath = path.join(widgetDir, 'styling.md');
+      let styleFromMd = null;
+      if (fs.existsSync(stylingPath)) {
+        const stylingContent = fs.readFileSync(stylingPath, 'utf8');
+        styleFromMd = parseStylingMd(stylingContent);
+      }
 
       // Collect additional source files (preserving directory structure)
       // Scans the widget directory for any .jsx, .tsx, .js, .ts files
@@ -376,6 +385,7 @@ class CanvasStateGenerator {
         console.log(`      📦 Collected ${Object.keys(sources).length} source files: ${Object.keys(sources).join(', ')}`);
       }
 
+      // Properties, jsxContent, htmlContent is required
       if (!properties || !jsxContent || !htmlContent) {
         console.log(`⚠️ Skipping incomplete widget: ${shapeDir}`);
         return null;
@@ -387,7 +397,8 @@ class CanvasStateGenerator {
         jsxContent,
         htmlContent,
         storage,
-        ...(sources ? { sources } : {})
+        ...(sources ? { sources } : {}),
+        ...(styleFromMd ? { style: styleFromMd } : {})
       };
 
     } catch (error) {
@@ -645,7 +656,8 @@ class CanvasStateGenerator {
             jsxContent: widget.jsxContent,
             ...(widget.sources ? { sources: widget.sources } : {}),
             color: props.color || 'black',
-            zoomScale: props.zoomScale || 1
+            zoomScale: props.zoomScale || 1,
+            ...(widget.style ? { style: widget.style } : {})
           }
         },
         lastChangedClock: props.lastChangedClock || (shapeIndex + 2)
