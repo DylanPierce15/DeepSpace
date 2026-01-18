@@ -50,6 +50,8 @@ function MelodyMaker() {
   const [currentChord, setCurrentChord] = useState([]);
   const [noteStartTimes, setNoteStartTimes] = useState(new Map());
   const [activeDrums, setActiveDrums] = useState(new Set());
+  const [selectedNotes, setSelectedNotes] = useState(new Set());
+  const [shiftKeyPressed, setShiftKeyPressed] = useState(false);
   
   // Refs
   const audioContextRef = useRef(null);
@@ -596,8 +598,13 @@ function MelodyMaker() {
       playbackTimeoutRef.current.forEach(t => clearTimeout(t));
       playbackTimeoutRef.current = [];
     }
+    // Stop all active piano notes
+    if (pianoSynthRef.current) {
+      pianoSynthRef.current.stopAllNotes();
+    }
     setIsPlaying(false);
     setActiveNotes(new Set());
+    setActiveDrums(new Set());
   }, []);
 
   // Clear all notes
@@ -739,6 +746,107 @@ function MelodyMaker() {
       console.log('Restored pre-polished version');
     }
   }, [prePolishBackup]);
+
+  // Toggle note selection (for duplication and transposition)
+  const toggleNoteSelection = useCallback((index, isAi = false) => {
+    setSelectedNotes(prev => {
+      const next = new Set(prev);
+      const key = isAi ? `ai-${index}` : `user-${index}`;
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }, []);
+
+  // Clear selection
+  const clearSelection = useCallback(() => {
+    setSelectedNotes(new Set());
+  }, []);
+
+  // Duplicate selected notes
+  const duplicateSelected = useCallback(() => {
+    if (selectedNotes.size === 0) {
+      alert('Select notes first by Ctrl/Cmd+Click');
+      return;
+    }
+
+    const userIndices = Array.from(selectedNotes)
+      .filter(key => key.startsWith('user-'))
+      .map(key => parseInt(key.replace('user-', '')))
+      .sort((a, b) => a - b);
+
+    const aiIndices = Array.from(selectedNotes)
+      .filter(key => key.startsWith('ai-'))
+      .map(key => parseInt(key.replace('ai-', '')))
+      .sort((a, b) => a - b);
+
+    if (userIndices.length > 0) {
+      const toDuplicate = userIndices.map(idx => ({ ...userSequence[idx] }));
+      setUserSequence(prev => [...prev, ...toDuplicate]);
+    }
+
+    if (aiIndices.length > 0) {
+      const toDuplicate = aiIndices.map(idx => ({ ...aiMelody[idx] }));
+      setAiMelody(prev => [...prev, ...toDuplicate]);
+    }
+
+    clearSelection();
+  }, [selectedNotes, userSequence, aiMelody, clearSelection]);
+
+  // Shift entire melody up or down by semitones
+  const shiftMelody = useCallback((semitones) => {
+    const shiftNote = (note) => Math.max(60, Math.min(83, note + semitones));
+
+    setUserSequence(prev => prev.map(item => ({
+      ...item,
+      notes: item.notes.map(shiftNote)
+    })));
+
+    setAiMelody(prev => prev.map(item => ({
+      ...item,
+      notes: item.notes.map(shiftNote)
+    })));
+  }, []);
+
+  // Shift selected notes
+  const shiftSelected = useCallback((semitones) => {
+    if (selectedNotes.size === 0) {
+      // If nothing selected, shift entire melody
+      shiftMelody(semitones);
+      return;
+    }
+
+    const shiftNote = (note) => Math.max(60, Math.min(83, note + semitones));
+
+    const userIndices = Array.from(selectedNotes)
+      .filter(key => key.startsWith('user-'))
+      .map(key => parseInt(key.replace('user-', '')));
+
+    const aiIndices = Array.from(selectedNotes)
+      .filter(key => key.startsWith('ai-'))
+      .map(key => parseInt(key.replace('ai-', '')));
+
+    if (userIndices.length > 0) {
+      setUserSequence(prev => prev.map((item, idx) => {
+        if (userIndices.includes(idx)) {
+          return { ...item, notes: item.notes.map(shiftNote) };
+        }
+        return item;
+      }));
+    }
+
+    if (aiIndices.length > 0) {
+      setAiMelody(prev => prev.map((item, idx) => {
+        if (aiIndices.includes(idx)) {
+          return { ...item, notes: item.notes.map(shiftNote) };
+        }
+        return item;
+      }));
+    }
+  }, [selectedNotes, shiftMelody]);
 
 
   // Save current melody to library
@@ -1066,9 +1174,11 @@ function MelodyMaker() {
           activeNotes={activeNotes}
           activeDrums={activeDrums}
           playFromIndex={playFromIndex}
+          selectedNotes={selectedNotes}
           onNoteClick={(idx) => setPlayFromIndex(idx)}
           onNoteDoubleClick={deleteNote}
           onAiNoteDoubleClick={deleteAiNote}
+          onToggleSelection={toggleNoteSelection}
           colors={COLORS}
         />
 
@@ -1095,6 +1205,7 @@ function MelodyMaker() {
           userSequence={userSequence}
           musicRNNRef={musicRNNRef}
           drumRNNRef={drumRNNRef}
+          selectedNotes={selectedNotes}
           onPlay={() => {
             if (playFromIndex !== null) {
               playMelody(playFromIndex);
@@ -1110,6 +1221,10 @@ function MelodyMaker() {
           onRegenerateMelody={regenerateMelody}
           onClearDrums={clearDrums}
           onClearAll={clearAll}
+          onShiftUp={() => shiftSelected(1)}
+          onShiftDown={() => shiftSelected(-1)}
+          onDuplicateSelected={duplicateSelected}
+          onClearSelection={clearSelection}
           colors={COLORS}
         />
 

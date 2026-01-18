@@ -98,42 +98,117 @@ export function generateAlgorithmicMelody(userSequence, numNotes = 12) {
 }
 
 /**
- * Algorithmically smooth large melodic jumps
+ * Algorithmically smooth and improve melodic flow
+ * Enhanced version with multiple passes and better musical logic
  */
 export function smoothMelody(allMelody) {
-  const polished = [];
+  if (allMelody.length === 0) return [];
+  
+  let polished = allMelody.map(item => ({ ...item }));
 
-  for (let i = 0; i < allMelody.length; i++) {
-    const current = allMelody[i];
-    const prev = i > 0 ? allMelody[i - 1] : null;
-    const next = i < allMelody.length - 1 ? allMelody[i + 1] : null;
+  // Pass 1: Smooth large melodic jumps
+  for (let i = 1; i < polished.length - 1; i++) {
+    const prev = polished[i - 1];
+    const current = polished[i];
+    const next = polished[i + 1];
 
-    // Smooth large jumps
-    if (prev && next) {
-      const prevNote = prev.notes[0];
-      const currentNote = current.notes[0];
-      const nextNote = next.notes[0];
+    const prevNote = prev.notes[0];
+    const currentNote = current.notes[0];
+    const nextNote = next.notes[0];
 
-      const jumpToPrev = Math.abs(currentNote - prevNote);
-      const jumpToNext = Math.abs(currentNote - nextNote);
+    const jumpToPrev = Math.abs(currentNote - prevNote);
+    const jumpToNext = Math.abs(currentNote - nextNote);
 
-      // If jumps are too large, adjust slightly
-      if (jumpToPrev > 7 || jumpToNext > 7) {
-        const target = Math.round((prevNote + nextNote) / 2);
-        const smoothed = Math.round((currentNote + target) / 2);
-
-        polished.push({
-          ...current,
-          notes: [Math.max(60, Math.min(83, smoothed))]
-        });
-        continue;
-      }
+    // If both jumps are large (>7 semitones), smooth the current note
+    if (jumpToPrev > 7 && jumpToNext > 7) {
+      const target = Math.round((prevNote + nextNote) / 2);
+      const smoothed = Math.round((currentNote * 0.3 + target * 0.7));
+      polished[i] = {
+        ...current,
+        notes: [Math.max(60, Math.min(83, smoothed))]
+      };
     }
-
-    polished.push({ ...current });
   }
 
-  return polished;
+  // Pass 2: Add stepwise motion where there are large gaps
+  const expanded = [];
+  for (let i = 0; i < polished.length; i++) {
+    expanded.push(polished[i]);
+    
+    if (i < polished.length - 1) {
+      const currentNote = polished[i].notes[0];
+      const nextNote = polished[i + 1].notes[0];
+      const gap = nextNote - currentNote;
+      
+      // If gap is very large (>12 semitones = octave), add a passing note
+      if (Math.abs(gap) > 12) {
+        const direction = gap > 0 ? 1 : -1;
+        const passingNote = currentNote + direction * Math.floor(Math.abs(gap) / 2);
+        const avgDuration = (polished[i].duration + polished[i + 1].duration) / 2;
+        
+        expanded.push({
+          notes: [passingNote],
+          time: Date.now(),
+          duration: avgDuration * 0.7,
+          isChord: false
+        });
+      }
+    }
+  }
+  
+  // Pass 3: Smooth duration variations (make rhythm more consistent)
+  for (let i = 0; i < expanded.length; i++) {
+    if (i > 0 && i < expanded.length - 1) {
+      const prevDur = expanded[i - 1].duration || 0.5;
+      const currentDur = expanded[i].duration || 0.5;
+      const nextDur = expanded[i + 1].duration || 0.5;
+      
+      // If current duration is very different from neighbors, smooth it
+      const avgNeighborDur = (prevDur + nextDur) / 2;
+      if (Math.abs(currentDur - avgNeighborDur) > 0.3) {
+        expanded[i].duration = currentDur * 0.5 + avgNeighborDur * 0.5;
+      }
+    }
+  }
+
+  // Pass 4: Snap to scale (C major for simplicity)
+  const cMajorScale = [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83]; // C4 to B5 in C major
+  
+  for (let i = 0; i < expanded.length; i++) {
+    const currentNote = expanded[i].notes[0];
+    
+    // Find closest scale note
+    let closestNote = cMajorScale[0];
+    let minDist = Math.abs(currentNote - closestNote);
+    
+    for (const scaleNote of cMajorScale) {
+      const dist = Math.abs(currentNote - scaleNote);
+      if (dist < minDist) {
+        minDist = dist;
+        closestNote = scaleNote;
+      }
+    }
+    
+    // Only snap if within 2 semitones of a scale note
+    if (minDist <= 2) {
+      expanded[i].notes = [closestNote];
+    }
+  }
+
+  // Pass 5: Add slight variation to prevent monotony
+  for (let i = 2; i < expanded.length - 2; i++) {
+    const prev = expanded[i - 1].notes[0];
+    const current = expanded[i].notes[0];
+    const next = expanded[i + 1].notes[0];
+    
+    // If three consecutive notes are the same, add slight variation to middle
+    if (prev === current && current === next) {
+      const variation = Math.random() < 0.5 ? 2 : -2; // +/- 2 semitones
+      expanded[i].notes = [Math.max(60, Math.min(83, current + variation))];
+    }
+  }
+
+  return expanded;
 }
 
 /**

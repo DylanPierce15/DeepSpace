@@ -6,6 +6,31 @@ export class PianoSynth {
     this.activeNotes = new Map();
   }
 
+  // Stop all playing notes immediately
+  stopAllNotes() {
+    const now = this.ctx.currentTime;
+    
+    this.activeNotes.forEach((note, noteNumber) => {
+      // Quick release envelope
+      note.gains.forEach(gain => {
+        gain.gain.cancelScheduledValues(now);
+        gain.gain.setValueAtTime(gain.gain.value, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05); // 50ms quick release
+      });
+      
+      // Stop oscillators after quick release
+      note.oscillators.forEach(osc => {
+        try {
+          osc.stop(now + 0.05);
+        } catch (e) {
+          // Oscillator might already be stopped
+        }
+      });
+    });
+    
+    this.activeNotes.clear();
+  }
+
   // Create a more realistic piano sound using multiple oscillators and ADSR envelope
 startNote(noteNumber, velocity = 0.7) {
   if (this.activeNotes.has(noteNumber)) return;

@@ -1,15 +1,48 @@
 import React from 'react';
 
 const NOTES = [
-  { note: 60, name: 'C4' }, { note: 61, name: 'C#4' }, { note: 62, name: 'D4' },
-  { note: 63, name: 'D#4' }, { note: 64, name: 'E4' }, { note: 65, name: 'F4' },
-  { note: 66, name: 'F#4' }, { note: 67, name: 'G4' }, { note: 68, name: 'G#4' },
-  { note: 69, name: 'A4' }, { note: 70, name: 'A#4' }, { note: 71, name: 'B4' },
-  { note: 72, name: 'C5' }, { note: 73, name: 'C#5' }, { note: 74, name: 'D5' },
-  { note: 75, name: 'D#5' }, { note: 76, name: 'E5' }, { note: 77, name: 'F5' },
-  { note: 78, name: 'F#5' }, { note: 79, name: 'G5' }, { note: 80, name: 'G#5' },
-  { note: 81, name: 'A5' }, { note: 82, name: 'A#5' }, { note: 83, name: 'B5' }
+  { note: 60, name: 'C4', isBlack: false }, { note: 61, name: 'C#4', isBlack: true }, { note: 62, name: 'D4', isBlack: false },
+  { note: 63, name: 'D#4', isBlack: true }, { note: 64, name: 'E4', isBlack: false }, { note: 65, name: 'F4', isBlack: false },
+  { note: 66, name: 'F#4', isBlack: true }, { note: 67, name: 'G4', isBlack: false }, { note: 68, name: 'G#4', isBlack: true },
+  { note: 69, name: 'A4', isBlack: false }, { note: 70, name: 'A#4', isBlack: true }, { note: 71, name: 'B4', isBlack: false },
+  { note: 72, name: 'C5', isBlack: false }, { note: 73, name: 'C#5', isBlack: true }, { note: 74, name: 'D5', isBlack: false },
+  { note: 75, name: 'D#5', isBlack: true }, { note: 76, name: 'E5', isBlack: false }, { note: 77, name: 'F5', isBlack: false },
+  { note: 78, name: 'F#5', isBlack: true }, { note: 79, name: 'G5', isBlack: false }, { note: 80, name: 'G#5', isBlack: true },
+  { note: 81, name: 'A5', isBlack: false }, { note: 82, name: 'A#5', isBlack: true }, { note: 83, name: 'B5', isBlack: false }
 ];
+
+// Helper to darken color based on note position (matches Piano.jsx)
+const darkenColor = (hex, amount) => {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const r = Math.max(0, ((num >> 16) & 0xff) * (1 - amount));
+  const g = Math.max(0, ((num >> 8) & 0xff) * (1 - amount));
+  const b = Math.max(0, (num & 0xff) * (1 - amount));
+  return `rgb(${r}, ${g}, ${b})`;
+};
+
+// Get color for a note based on its position on the keyboard
+const getNoteColor = (noteNumber, baseColor, baseColorLight, colors) => {
+  const noteData = NOTES.find(n => n.note === noteNumber);
+  if (!noteData) return baseColor;
+  
+  // Calculate position from left to right
+  const whiteNotes = NOTES.filter(n => !n.isBlack);
+  const isBlack = noteData.isBlack;
+  
+  if (isBlack) {
+    // For black keys, find their position relative to white keys
+    const whiteKeysBefore = NOTES.filter(n => n.note < noteNumber && !n.isBlack).length;
+    const totalWhiteKeys = whiteNotes.length;
+    const darkness = whiteKeysBefore / (totalWhiteKeys - 1);
+    return darkenColor(baseColorLight, darkness * 0.35);
+  } else {
+    // For white keys, use their direct index
+    const whiteIdx = whiteNotes.findIndex(n => n.note === noteNumber);
+    const totalWhiteKeys = whiteNotes.length;
+    const darkness = whiteIdx / (totalWhiteKeys - 1);
+    return darkenColor(baseColor, darkness * 0.25);
+  }
+};
 
 export default function MelodyTimeline({ 
   userSequence, 
@@ -18,9 +51,11 @@ export default function MelodyTimeline({
   activeNotes,
   activeDrums,
   playFromIndex,
+  selectedNotes,
   onNoteClick,
   onNoteDoubleClick,
   onAiNoteDoubleClick,
+  onToggleSelection,
   colors 
 }) {
   const allMelody = [...userSequence, ...aiMelody];
@@ -31,14 +66,22 @@ export default function MelodyTimeline({
       borderRadius: '32px 8px 32px 32px',
       boxShadow: `0 6px 24px ${colors.shadow}`
     }}>
-      <h2 className="text-xs mb-4 tracking-wide uppercase" style={{ 
-        color: colors.text.secondary,
-        letterSpacing: '0.08em',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        fontWeight: '500'
-      }}>
-        Melody Timeline
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xs tracking-wide uppercase" style={{ 
+          color: colors.text.secondary,
+          letterSpacing: '0.08em',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          fontWeight: '500'
+        }}>
+          Melody Timeline
+        </h2>
+        <div className="text-xs" style={{ 
+          color: colors.text.tertiary,
+          fontFamily: 'system-ui, -apple-system, sans-serif'
+        }}>
+          Ctrl/Cmd+Click to select notes
+        </div>
+      </div>
       
       {allMelody.length === 0 ? (
         <div className="text-center py-12" style={{ 
@@ -68,29 +111,40 @@ export default function MelodyTimeline({
                   <div 
                     className="flex flex-col gap-1 relative cursor-pointer"
                     onDoubleClick={() => onNoteDoubleClick(idx)}
-                    onClick={() => onNoteClick(idx)}
-                    title="Click to play from here, double-click to delete"
+                    onClick={(e) => {
+                      if (e.ctrlKey || e.metaKey) {
+                        onToggleSelection(idx, false);
+                      } else {
+                        onNoteClick(idx);
+                      }
+                    }}
+                    title="Click to play from here, Ctrl/Cmd+Click to select, double-click to delete"
                   >
-                    {item.notes?.map((note, noteIdx) => (
-                      <div
-                        key={noteIdx}
-                        className="px-3 py-2 flex items-center justify-center text-xs"
-                        style={{
-                          backgroundColor: colors.sage,
-                          color: colors.white,
-                          borderRadius: (idx + noteIdx) % 3 === 0 ? '12px 12px 4px 12px' : (idx + noteIdx) % 3 === 1 ? '12px 4px 12px 12px' : '4px 12px 12px 12px',
-                          boxShadow: activeNotes.has(note) ? `0 4px 16px ${colors.sage}80` : `0 2px 6px ${colors.shadow}`,
-                          transform: activeNotes.has(note) ? 'scale(1.08)' : 'scale(1)',
-                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                          minWidth: '46px',
-                          fontFamily: 'system-ui, -apple-system, sans-serif',
-                          fontWeight: '500',
-                          opacity: playFromIndex === idx ? 0.7 : 1
-                        }}
-                      >
-                        {NOTES.find(n => n.note === note)?.name}
-                      </div>
-                    ))}
+                    {item.notes?.map((note, noteIdx) => {
+                      const noteColor = getNoteColor(note, colors.sage, colors.sageLight, colors);
+                      const isSelected = selectedNotes && selectedNotes.has(`user-${idx}`);
+                      return (
+                        <div
+                          key={noteIdx}
+                          className="px-3 py-2 flex items-center justify-center text-xs"
+                          style={{
+                            backgroundColor: noteColor,
+                            color: colors.white,
+                            borderRadius: (idx + noteIdx) % 3 === 0 ? '12px 12px 4px 12px' : (idx + noteIdx) % 3 === 1 ? '12px 4px 12px 12px' : '4px 12px 12px 12px',
+                            boxShadow: activeNotes.has(note) ? `0 4px 16px ${noteColor}80` : `0 2px 6px ${colors.shadow}`,
+                            transform: activeNotes.has(note) ? 'scale(1.08)' : 'scale(1)',
+                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                            minWidth: '46px',
+                            fontFamily: 'system-ui, -apple-system, sans-serif',
+                            fontWeight: '500',
+                            opacity: playFromIndex === idx ? 0.7 : 1,
+                            border: isSelected ? `3px solid ${colors.terracotta}` : 'none'
+                          }}
+                        >
+                          {NOTES.find(n => n.note === note)?.name}
+                        </div>
+                      );
+                    })}
                     {playFromIndex === idx && (
                       <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full" style={{
                         backgroundColor: colors.terracotta,
@@ -123,29 +177,40 @@ export default function MelodyTimeline({
                     <div 
                       className="flex flex-col gap-1 relative cursor-pointer"
                       onDoubleClick={() => onAiNoteDoubleClick(idx)}
-                      onClick={() => onNoteClick(actualIndex)}
-                      title="Click to play from here, double-click to delete"
+                      onClick={(e) => {
+                        if (e.ctrlKey || e.metaKey) {
+                          onToggleSelection(idx, true);
+                        } else {
+                          onNoteClick(actualIndex);
+                        }
+                      }}
+                      title="Click to play from here, Ctrl/Cmd+Click to select, double-click to delete"
                     >
-                      {item.notes?.map((note, noteIdx) => (
-                        <div
-                          key={noteIdx}
-                          className="px-3 py-2 flex items-center justify-center text-xs"
-                          style={{
-                            backgroundColor: colors.warmBrown,
-                            color: colors.white,
-                            borderRadius: (idx + noteIdx) % 3 === 0 ? '12px 4px 12px 12px' : (idx + noteIdx) % 3 === 1 ? '4px 12px 12px 12px' : '12px 12px 4px 12px',
-                            boxShadow: activeNotes.has(note) ? `0 4px 16px ${colors.warmBrown}80` : `0 2px 6px ${colors.shadow}`,
-                            transform: activeNotes.has(note) ? 'scale(1.08)' : 'scale(1)',
-                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                            minWidth: '46px',
-                            fontFamily: 'system-ui, -apple-system, sans-serif',
-                            fontWeight: '500',
-                            opacity: playFromIndex === actualIndex ? 0.7 : 1
-                          }}
-                        >
-                          {NOTES.find(n => n.note === note)?.name}
-                        </div>
-                      ))}
+                      {item.notes?.map((note, noteIdx) => {
+                        const noteColor = getNoteColor(note, colors.warmBrown, colors.warmBrownLight, colors);
+                        const isSelected = selectedNotes && selectedNotes.has(`ai-${idx}`);
+                        return (
+                          <div
+                            key={noteIdx}
+                            className="px-3 py-2 flex items-center justify-center text-xs"
+                            style={{
+                              backgroundColor: noteColor,
+                              color: colors.white,
+                              borderRadius: (idx + noteIdx) % 3 === 0 ? '12px 4px 12px 12px' : (idx + noteIdx) % 3 === 1 ? '4px 12px 12px 12px' : '12px 12px 4px 12px',
+                              boxShadow: activeNotes.has(note) ? `0 4px 16px ${noteColor}80` : `0 2px 6px ${colors.shadow}`,
+                              transform: activeNotes.has(note) ? 'scale(1.08)' : 'scale(1)',
+                              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                              minWidth: '46px',
+                              fontFamily: 'system-ui, -apple-system, sans-serif',
+                              fontWeight: '500',
+                              opacity: playFromIndex === actualIndex ? 0.7 : 1,
+                              border: isSelected ? `3px solid ${colors.terracotta}` : 'none'
+                            }}
+                          >
+                            {NOTES.find(n => n.note === note)?.name}
+                          </div>
+                        );
+                      })}
                       {playFromIndex === actualIndex && (
                         <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full" style={{
                           backgroundColor: colors.terracotta,

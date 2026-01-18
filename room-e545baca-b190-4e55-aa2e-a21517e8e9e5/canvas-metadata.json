@@ -11,9 +11,19 @@
         "config": {
           "type": "dock",
           "name": "Dock Space",
-          "description": "Dock mode with macOS-style dock bar for widgets (zoom locked at 50% via DOCK_MODE_ZOOM constant)"
+          "description": "Dock mode with macOS-style dock bar for widgets (zoom locked at 50% via DOCK_MODE_ZOOM constant)",
+          "canvasBounds": {
+            "x": 0,
+            "y": 0,
+            "w": 2209.7216274089938,
+            "h": 1080
+          },
+          "canvasSize": {
+            "width": 2209.7216274089938,
+            "height": 1080
+          }
         },
-        "lastUpdated": 1768706979192
+        "lastUpdated": 1768709551593
       }
     },
     "id": "document:document",
@@ -29,7 +39,7 @@
       "name": "Page 1",
       "index": "a1",
       "typeName": "page",
-      "lastChangedClock": 2796
+      "lastChangedClock": 3248
     }
   ],
   "schema": {
@@ -74,9 +84,9 @@
       "com.tldraw.binding.arrow": 1
     }
   },
-  "generatedAt": "2026-01-18T03:29:50.614Z",
-  "clock": 3247,
-  "documentClock": 3247,
+  "generatedAt": "2026-01-18T04:14:54.729Z",
+  "clock": 3298,
+  "documentClock": 3298,
   "tombstones": {
     "shape:snack-store-finder-AKhWG2ITY64tSuHA1E6oy": 3123,
     "shape:Mc763fzC5WkvmnejB1phG": 1693,

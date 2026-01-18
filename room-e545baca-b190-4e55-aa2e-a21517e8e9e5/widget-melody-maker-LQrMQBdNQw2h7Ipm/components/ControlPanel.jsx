@@ -22,6 +22,7 @@ export default function ControlPanel({
   userSequence,
   musicRNNRef,
   drumRNNRef,
+  selectedNotes,
   onPlay,
   onStopPlayback,
   onGenerateMelody,
@@ -31,6 +32,10 @@ export default function ControlPanel({
   onRegenerateMelody,
   onClearDrums,
   onClearAll,
+  onShiftUp,
+  onShiftDown,
+  onDuplicateSelected,
+  onClearSelection,
   colors
 }) {
   return (
@@ -102,6 +107,94 @@ export default function ControlPanel({
           </div>
         </div>
       </div>
+
+      {/* Transpose and Selection Controls */}
+      {(userSequence.length > 0 || aiMelody.length > 0) && (
+        <div className="mb-4 flex flex-wrap gap-2 items-center">
+          <div className="text-xs uppercase mr-2" style={{ 
+            color: colors.text.tertiary,
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            fontWeight: '500'
+          }}>
+            Transpose:
+          </div>
+          <button
+            onClick={onShiftUp}
+            className="px-4 py-2 transition-all"
+            style={{
+              background: colors.bgLight,
+              color: colors.text.secondary,
+              borderRadius: '12px 12px 4px 12px',
+              border: `2px solid ${colors.bg}`,
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+              fontWeight: '500',
+              fontSize: '0.85rem'
+            }}
+            title={selectedNotes.size > 0 ? "Shift selected notes up" : "Shift entire melody up"}
+          >
+            ↑ Up
+          </button>
+          <button
+            onClick={onShiftDown}
+            className="px-4 py-2 transition-all"
+            style={{
+              background: colors.bgLight,
+              color: colors.text.secondary,
+              borderRadius: '12px 4px 12px 12px',
+              border: `2px solid ${colors.bg}`,
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+              fontWeight: '500',
+              fontSize: '0.85rem'
+            }}
+            title={selectedNotes.size > 0 ? "Shift selected notes down" : "Shift entire melody down"}
+          >
+            ↓ Down
+          </button>
+          
+          {selectedNotes.size > 0 && (
+            <>
+              <div className="w-px h-6 mx-2" style={{ background: colors.creamDark }}></div>
+              <div className="text-xs" style={{ 
+                color: colors.text.tertiary,
+                fontFamily: 'system-ui, -apple-system, sans-serif'
+              }}>
+                {selectedNotes.size} selected
+              </div>
+              <button
+                onClick={onDuplicateSelected}
+                className="px-4 py-2 transition-all"
+                style={{
+                  background: colors.sage,
+                  color: colors.white,
+                  borderRadius: '12px 12px 4px 12px',
+                  border: 'none',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  fontWeight: '500',
+                  fontSize: '0.85rem',
+                  boxShadow: `0 2px 6px ${colors.shadow}`
+                }}
+              >
+                Duplicate
+              </button>
+              <button
+                onClick={onClearSelection}
+                className="px-4 py-2 transition-all"
+                style={{
+                  background: colors.bgLight,
+                  color: colors.text.secondary,
+                  borderRadius: '12px 4px 12px 12px',
+                  border: `2px solid ${colors.bg}`,
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  fontWeight: '500',
+                  fontSize: '0.85rem'
+                }}
+              >
+                Clear Selection
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-3 items-center mb-5">
         <button
