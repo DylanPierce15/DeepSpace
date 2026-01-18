@@ -1,0 +1,34 @@
+{
+  "shapeId": "shape:webgl-fluid-simulation-B-HuZ_BPFnJTAfRuo4x2T",
+  "widgetId": "shape:webgl-fluid-simulation-B-HuZ_BPFnJTAfRuo4x2T",
+  "templateHandle": "webgl-fluid-simulation-dylanreidpierce",
+  "templateName": "Webgl Fluid Simulation",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiPackage"
+  },
+  "position": {
+    "x": 283.86586417816807,
+    "y": 215.00509723964853
+  },
+  "size": {
+    "w": 120,
+    "h": 120
+  },
+  "rotation": 0,
+  "opacity": 1,
+  "isLocked": false,
+  "color": "black",
+  "zoomScale": 1,
+  "isFullscreen": false,
+  "savedJsxContentHash": "gl3nh",
+  "meta": {
+    "justCreated": false,
+    "createdAt": 1768714434436,
+    "dockOrder": 8,
+    "showDefaultHandles": false
+  },
+  "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
+  "index": "b0KhImo4V",
+  "lastChangedClock": 4442
+}

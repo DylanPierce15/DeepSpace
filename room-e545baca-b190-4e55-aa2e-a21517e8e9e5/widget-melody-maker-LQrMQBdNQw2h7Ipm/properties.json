@@ -5,15 +5,15 @@
   "templateName": "Melody Maker",
   "icon": {
     "type": "react-icon",
-    "value": "Fi:FiPackage"
+    "value": "Bs:BsMusicNoteList"
   },
   "position": {
-    "x": 212.62965069593156,
-    "y": 52.94590682344198
+    "x": 286.55227277612244,
+    "y": 346.021800501882
   },
   "size": {
-    "w": 1338.8125179412052,
-    "h": 971.0376317204552
+    "w": 879.6988707653702,
+    "h": 605.9723964868256
   },
   "rotation": 0,
   "opacity": 1,
@@ -30,6 +30,6 @@
     "showDefaultHandles": false
   },
   "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
-  "index": "b02MxqWZV",
-  "lastChangedClock": 3429
+  "index": "b0LUcpqLG",
+  "lastChangedClock": 4751
 }

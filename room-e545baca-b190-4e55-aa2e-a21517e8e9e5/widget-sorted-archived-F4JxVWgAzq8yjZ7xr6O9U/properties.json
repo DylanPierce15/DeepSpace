@@ -1,0 +1,34 @@
+{
+  "shapeId": "shape:sorted-archived-F4JxVWgAzq8yjZ7xr6O9U",
+  "widgetId": "shape:sorted-archived-F4JxVWgAzq8yjZ7xr6O9U",
+  "templateHandle": "sorted-archived-dylanreidpierce",
+  "templateName": "Sorted Archived",
+  "icon": {
+    "type": "react-icon",
+    "value": "Fi:FiGlobe"
+  },
+  "position": {
+    "x": 168.65162327478043,
+    "y": 210.43385351317448
+  },
+  "size": {
+    "w": 120,
+    "h": 120
+  },
+  "rotation": 0,
+  "opacity": 1,
+  "isLocked": false,
+  "color": "black",
+  "zoomScale": 1,
+  "isFullscreen": false,
+  "savedJsxContentHash": "1itq1ay",
+  "meta": {
+    "justCreated": false,
+    "createdAt": 1768713683184,
+    "dockOrder": 7,
+    "showDefaultHandles": false
+  },
+  "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
+  "index": "b0E9tK9QV",
+  "lastChangedClock": 4198
+}

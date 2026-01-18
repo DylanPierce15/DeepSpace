@@ -3,12 +3,12 @@
   "widgetId": "journal-notebook_1767476850725",
   "templateHandle": "journal-notebook",
   "position": {
-    "x": 186.87480395232114,
-    "y": 580.5093318695108
+    "x": 161.01272584524668,
+    "y": 345.1690075823015
   },
   "size": {
-    "w": 397.8168130489336,
-    "h": 345.2446675031367
+    "w": 120,
+    "h": 120
   },
   "rotation": 0,
   "opacity": 1,
@@ -25,6 +25,6 @@
     "showDefaultHandles": false
   },
   "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
-  "index": "aVkFEFrV",
-  "lastChangedClock": 3429
+  "index": "b0IYQCeJV",
+  "lastChangedClock": 4371
 }

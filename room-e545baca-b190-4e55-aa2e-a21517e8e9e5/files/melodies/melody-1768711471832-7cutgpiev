@@ -1,0 +1,369 @@
+{
+  "name": "Epic Rhythmic",
+  "userSequence": [
+    {
+      "notes": [
+        60
+      ],
+      "time": 1768711379606,
+      "duration": 1.42,
+      "isChord": true
+    },
+    {
+      "notes": [
+        60
+      ],
+      "time": 1768711382990,
+      "duration": 1.029,
+      "isChord": true
+    },
+    {
+      "notes": [
+        60
+      ],
+      "time": 1768711385028,
+      "duration": 1.332,
+      "isChord": false
+    },
+    {
+      "notes": [
+        71
+      ],
+      "time": 1768711386572,
+      "duration": 1.14,
+      "isChord": false
+    },
+    {
+      "notes": [
+        72
+      ],
+      "time": 1768711387546,
+      "duration": 0.89675,
+      "isChord": false
+    },
+    {
+      "notes": [
+        69
+      ],
+      "time": 1768711388998,
+      "duration": 0.8795465625205855,
+      "isChord": true
+    }
+  ],
+  "aiMelody": [
+    {
+      "notes": [
+        67
+      ],
+      "time": 1768711448577,
+      "duration": 0.600985258292388,
+      "isChord": false
+    },
+    {
+      "notes": [
+        68
+      ],
+      "time": 1768711448677,
+      "duration": 0.6555134077189041,
+      "isChord": false
+    },
+    {
+      "notes": [
+        69
+      ],
+      "time": 1768711448777,
+      "duration": 0.6881956049998716,
+      "isChord": false
+    },
+    {
+      "notes": [
+        67
+      ],
+      "time": 1768711448877,
+      "duration": 0.899526929383963,
+      "isChord": false
+    },
+    {
+      "notes": [
+        68,
+        72,
+        75
+      ],
+      "time": 1768711448977,
+      "duration": 0.7535711632433806,
+      "isChord": true
+    },
+    {
+      "notes": [
+        69,
+        72,
+        76
+      ],
+      "time": 1768711449077,
+      "duration": 0.6741142120003614,
+      "isChord": true
+    }
+  ],
+  "aiDrums": [
+    {
+      "drumType": "kick",
+      "time": 1768711400248,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711400248,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711400498,
+      "duration": 0.25
+    },
+    {
+      "drumType": "snare",
+      "time": 1768711400748,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711400998,
+      "duration": 0.25
+    },
+    {
+      "drumType": "kick",
+      "time": 1768711401248,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711401248,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711401498,
+      "duration": 0.25
+    },
+    {
+      "drumType": "snare",
+      "time": 1768711401748,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711401998,
+      "duration": 0.25
+    },
+    {
+      "drumType": "kick",
+      "time": 1768711402248,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711402248,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711402498,
+      "duration": 0.25
+    },
+    {
+      "drumType": "snare",
+      "time": 1768711402748,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711402998,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711403248,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711403498,
+      "duration": 0.25
+    },
+    {
+      "drumType": "snare",
+      "time": 1768711403748,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711403998,
+      "duration": 0.25
+    },
+    {
+      "drumType": "kick",
+      "time": 1768711404248,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711404248,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711404498,
+      "duration": 0.25
+    },
+    {
+      "drumType": "snare",
+      "time": 1768711404748,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711404998,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711405248,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711405498,
+      "duration": 0.25
+    },
+    {
+      "drumType": "snare",
+      "time": 1768711405748,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711405998,
+      "duration": 0.25
+    },
+    {
+      "drumType": "kick",
+      "time": 1768711406248,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711406248,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711406498,
+      "duration": 0.25
+    },
+    {
+      "drumType": "snare",
+      "time": 1768711406748,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711406998,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711407248,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711407498,
+      "duration": 0.25
+    },
+    {
+      "drumType": "snare",
+      "time": 1768711407748,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711407998,
+      "duration": 0.25
+    },
+    {
+      "drumType": "kick",
+      "time": 1768711408248,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711408248,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711408498,
+      "duration": 0.25
+    },
+    {
+      "drumType": "snare",
+      "time": 1768711408748,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711408998,
+      "duration": 0.25
+    },
+    {
+      "drumType": "kick",
+      "time": 1768711409248,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711409248,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711409498,
+      "duration": 0.25
+    },
+    {
+      "drumType": "snare",
+      "time": 1768711409748,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711409998,
+      "duration": 0.25
+    },
+    {
+      "drumType": "kick",
+      "time": 1768711410248,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711410248,
+      "duration": 0.25
+    },
+    {
+      "drumType": "hihat",
+      "time": 1768711410498,
+      "duration": 0.25
+    },
+    {
+      "drumType": "snare",
+      "time": 1768711410748,
+      "duration": 0.25
+    }
+  ],
+  "tempo": 115,
+  "createdAt": "2026-01-18T04:44:31.832Z",
+  "noteCount": 16,
+  "drumCount": 51,
+  "favorite": false
+}
