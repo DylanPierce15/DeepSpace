@@ -17,17 +17,19 @@ export default function SaveDialog({
       boxShadow: `0 4px 16px ${colors.shadow}`
     }}>
       <div className="flex items-center justify-between mb-3">
-        <div className="text-sm uppercase" style={{ 
+        <label htmlFor="melody-name-input" className="text-sm uppercase" style={{ 
           color: colors.text.secondary,
           letterSpacing: '0.08em',
           fontFamily: 'system-ui, -apple-system, sans-serif',
           fontWeight: '500'
         }}>
           Save Melody
-        </div>
+        </label>
         <button
           onClick={onSuggestName}
           className="px-3 py-1 text-xs"
+          type="button"
+          aria-label="Suggest a name for the melody"
           style={{
             background: colors.bgLight,
             color: colors.text.tertiary,
@@ -43,6 +45,8 @@ export default function SaveDialog({
       <div className="flex gap-2">
         <input
           type="text"
+          id="melody-name-input"
+          name="melodyName"
           value={saveName}
           onChange={(e) => setSaveName(e.target.value)}
           onFocus={onFocus}
@@ -51,6 +55,7 @@ export default function SaveDialog({
           placeholder="Enter melody name..."
           className="flex-1 px-4 py-2"
           autoFocus
+          aria-label="Melody name"
           style={{
             background: colors.bgLight,
             color: colors.text.primary,
@@ -62,7 +67,9 @@ export default function SaveDialog({
         />
         <button
           onClick={onSave}
+          type="button"
           className="px-5 py-2"
+          aria-label="Save melody"
           style={{
             background: colors.sage,
             color: colors.white,
@@ -77,7 +84,9 @@ export default function SaveDialog({
         </button>
         <button
           onClick={onCancel}
+          type="button"
           className="px-5 py-2"
+          aria-label="Cancel saving"
           style={{
             background: colors.bgLight,
             color: colors.text.secondary,

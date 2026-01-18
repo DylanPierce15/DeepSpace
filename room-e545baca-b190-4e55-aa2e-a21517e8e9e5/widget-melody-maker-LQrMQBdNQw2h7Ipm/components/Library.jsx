@@ -49,14 +49,18 @@ export default function Library({
 
       {/* Search Bar */}
       <div className="mb-5">
+        <label htmlFor="melody-search-input" className="sr-only">Search melodies</label>
         <input
           type="text"
+          id="melody-search-input"
+          name="melodySearch"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onFocus={onFocusSearch}
           onBlur={onBlurSearch}
           placeholder="Search melodies..."
           className="w-full px-4 py-3"
+          aria-label="Search melodies"
           style={{
             background: colors.bgLight,
             color: colors.text.primary,

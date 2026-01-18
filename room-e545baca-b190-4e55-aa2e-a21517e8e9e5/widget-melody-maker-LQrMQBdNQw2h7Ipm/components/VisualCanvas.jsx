@@ -1,10 +1,13 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 function VisualCanvas({ activeNotes, activeDrums, isPlaying, colors }) {
   const canvasRef = useRef(null);
   const particlesRef = useRef([]);
   const animationRef = useRef(null);
   const drumEffectsRef = useRef([]);
+  const [debugInfo, setDebugInfo] = useState({ particles: 0, drums: 0, notes: 0 });
+  const widthRef = useRef(0);
+  const heightRef = useRef(0);
 
   // Map MIDI note to color (hue in HSL)
   const noteToColor = (noteNumber) => {
@@ -17,17 +20,17 @@ function VisualCanvas({ activeNotes, activeDrums, isPlaying, colors }) {
 
   // Create particle for a note
   const createNoteParticle = (noteNumber) => {
-    if (!canvasRef.current) return null;
+    const width = widthRef.current;
+    const height = heightRef.current;
     
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
+    if (width === 0 || height === 0) return null;
     
     const hue = noteToColor(noteNumber);
     const size = 20 + Math.random() * 30;
     const x = (width / 2) + (Math.random() - 0.5) * 200;
     const y = (height / 2) + (Math.random() - 0.5) * 200;
+    
+    console.log(`[VisualCanvas] Creating particle for note ${noteNumber} at (${x.toFixed(0)}, ${y.toFixed(0)}) with hue ${hue.toFixed(0)}`);
     
     return {
       x,
@@ -39,8 +42,8 @@ function VisualCanvas({ activeNotes, activeDrums, isPlaying, colors }) {
       alpha: 1,
       vx: (Math.random() - 0.5) * 2,
       vy: (Math.random() - 0.5) * 2,
-      life: 1,
-      maxLife: isPlaying ? 60 : 120, // Longer life when playing live
+      life: 120, // 2 seconds at 60fps
+      maxLife: 120,
       noteNumber,
       pulsePhase: Math.random() * Math.PI * 2,
       rotationSpeed: (Math.random() - 0.5) * 0.05
@@ -49,12 +52,10 @@ function VisualCanvas({ activeNotes, activeDrums, isPlaying, colors }) {
 
   // Create drum effect
   const createDrumEffect = (drumType) => {
-    if (!canvasRef.current) return null;
+    const width = widthRef.current;
+    const height = heightRef.current;
     
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
+    if (width === 0 || height === 0) return null;
     
     // Different visual effects for different drum types
     let color, size, pattern;
@@ -85,13 +86,15 @@ function VisualCanvas({ activeNotes, activeDrums, isPlaying, colors }) {
         pattern = 'ring';
     }
     
+    console.log(`[VisualCanvas] Creating ${drumType} drum effect`);
+    
     return {
       x: width / 2,
       y: height / 2,
       size,
       color,
       alpha: 0.8,
-      life: 1,
+      life: 30,
       maxLife: 30,
       pattern,
       rotation: 0
@@ -100,28 +103,30 @@ function VisualCanvas({ activeNotes, activeDrums, isPlaying, colors }) {
 
   // Handle active notes changes
   useEffect(() => {
-    if (!canvasRef.current) return;
+    console.log('[VisualCanvas] Active notes changed:', Array.from(activeNotes));
     
     activeNotes.forEach(noteNumber => {
       // Check if we already have a particle for this note
-      const exists = particlesRef.current.some(p => p.noteNumber === noteNumber && p.life > 0.5);
+      const exists = particlesRef.current.some(p => p.noteNumber === noteNumber && p.life > 60);
       if (!exists) {
         const particle = createNoteParticle(noteNumber);
         if (particle) {
           particlesRef.current.push(particle);
+          console.log('[VisualCanvas] Added particle. Total particles:', particlesRef.current.length);
         }
       }
     });
-  }, [activeNotes, isPlaying]);
+  }, [activeNotes]);
 
   // Handle drum hits
   useEffect(() => {
-    if (!canvasRef.current) return;
+    console.log('[VisualCanvas] Active drums changed:', Array.from(activeDrums));
     
     activeDrums.forEach(drumType => {
       const effect = createDrumEffect(drumType);
       if (effect) {
         drumEffectsRef.current.push(effect);
+        console.log('[VisualCanvas] Added drum effect. Total effects:', drumEffectsRef.current.length);
       }
     });
   }, [activeDrums]);
@@ -129,23 +134,36 @@ function VisualCanvas({ activeNotes, activeDrums, isPlaying, colors }) {
   // Animation loop
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      console.log('[VisualCanvas] Canvas ref not available');
+      return;
+    }
 
     const ctx = canvas.getContext('2d');
+    console.log('[VisualCanvas] Animation loop starting. Canvas:', canvas.width, 'x', canvas.height);
     
     // Set canvas size
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
       canvas.width = rect.width * window.devicePixelRatio;
       canvas.height = rect.height * window.devicePixelRatio;
+      widthRef.current = rect.width;
+      heightRef.current = rect.height;
       ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      console.log('[VisualCanvas] Canvas resized to:', rect.width, 'x', rect.height);
     };
     resize();
     window.addEventListener('resize', resize);
 
+    let frameCount = 0;
     const animate = () => {
-      const width = canvas.width / window.devicePixelRatio;
-      const height = canvas.height / window.devicePixelRatio;
+      const width = widthRef.current;
+      const height = heightRef.current;
+      
+      frameCount++;
+      if (frameCount % 60 === 0) {
+        console.log('[VisualCanvas] Frame', frameCount, '- Particles:', particlesRef.current.length, 'Drums:', drumEffectsRef.current.length);
+      }
       
       // Clear with fade effect
       ctx.fillStyle = 'rgba(26, 24, 23, 0.15)';
@@ -276,18 +294,29 @@ function VisualCanvas({ activeNotes, activeDrums, isPlaying, colors }) {
         return effect.life > 0;
       });
       
+      // Update debug info every 60 frames
+      if (frameCount % 60 === 0) {
+        setDebugInfo({
+          particles: particlesRef.current.length,
+          drums: drumEffectsRef.current.length,
+          notes: activeNotes.size
+        });
+      }
+      
       animationRef.current = requestAnimationFrame(animate);
     };
 
     animate();
+    console.log('[VisualCanvas] Animation started');
 
     return () => {
+      console.log('[VisualCanvas] Cleaning up animation');
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
       window.removeEventListener('resize', resize);
     };
-  }, []);
+  }, [activeNotes]);
 
   return (
     <div style={{
@@ -371,6 +400,14 @@ function VisualCanvas({ activeNotes, activeDrums, isPlaying, colors }) {
             boxShadow: '0 0 8px hsla(0, 80%, 50%, 0.6)'
           }}></div>
           <span>Drum hits create percussive visual effects</span>
+        </div>
+        <div style={{
+          marginLeft: 'auto',
+          fontSize: '0.7rem',
+          opacity: 0.6,
+          fontFamily: 'monospace'
+        }}>
+          P:{debugInfo.particles} D:{debugInfo.drums} N:{debugInfo.notes}
         </div>
       </div>
     </div>
