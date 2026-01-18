@@ -61,40 +61,135 @@ export function convertFromQuantizedSequence(result, filterFromStep = 0, stepsPe
 }
 
 /**
- * Generate algorithmic melody continuation
+ * Musical style configurations
  */
-export function generateAlgorithmicMelody(userSequence, numNotes = 12) {
+const MUSIC_STYLES = {
+  balanced: {
+    name: 'Balanced',
+    scale: [0, 2, 4, 5, 7, 9, 11], // Major scale
+    chordProbability: 0.25,
+    jumpProbability: 0.2,
+    stepwiseProbability: 0.7,
+    temperature: 1.1,
+    minDuration: 0.3,
+    maxDuration: 0.7
+  },
+  classical: {
+    name: 'Classical',
+    scale: [0, 2, 4, 5, 7, 9, 11], // Major scale
+    chordProbability: 0.4,
+    jumpProbability: 0.15,
+    stepwiseProbability: 0.8,
+    temperature: 0.9,
+    minDuration: 0.4,
+    maxDuration: 0.8
+  },
+  jazz: {
+    name: 'Jazz',
+    scale: [0, 2, 3, 5, 7, 9, 10, 11], // Jazz scale with flattened 7th
+    chordProbability: 0.5,
+    jumpProbability: 0.35,
+    stepwiseProbability: 0.5,
+    temperature: 1.3,
+    minDuration: 0.2,
+    maxDuration: 0.6
+  },
+  pop: {
+    name: 'Pop',
+    scale: [0, 2, 4, 5, 7, 9, 11], // Major scale
+    chordProbability: 0.35,
+    jumpProbability: 0.25,
+    stepwiseProbability: 0.65,
+    temperature: 1.0,
+    minDuration: 0.35,
+    maxDuration: 0.6
+  },
+  electronic: {
+    name: 'Electronic',
+    scale: [0, 2, 3, 5, 7, 9, 10], // Minor pentatonic-ish
+    chordProbability: 0.15,
+    jumpProbability: 0.4,
+    stepwiseProbability: 0.4,
+    temperature: 1.4,
+    minDuration: 0.2,
+    maxDuration: 0.5
+  },
+  ambient: {
+    name: 'Ambient',
+    scale: [0, 2, 4, 7, 9], // Pentatonic
+    chordProbability: 0.6,
+    jumpProbability: 0.1,
+    stepwiseProbability: 0.9,
+    temperature: 0.8,
+    minDuration: 0.6,
+    maxDuration: 1.2
+  }
+};
+
+/**
+ * Generate algorithmic melody continuation with style support
+ */
+export function generateAlgorithmicMelody(userSequence, numNotes = 12, style = 'balanced') {
+  const styleConfig = MUSIC_STYLES[style] || MUSIC_STYLES.balanced;
   const lastItem = userSequence[userSequence.length - 1];
   const lastNote = lastItem.notes ? lastItem.notes[0] : 60;
+  const hasChords = userSequence.some(item => item.isChord);
   const generated = [];
 
-  // Create a more musical fallback with scale-based movement
-  const scale = [0, 2, 4, 5, 7, 9, 11]; // Major scale intervals
   let currentNote = lastNote;
 
   for (let i = 0; i < numNotes; i++) {
-    // Move by scale degrees
+    const shouldBeChord = hasChords && Math.random() < styleConfig.chordProbability;
+    
+    // Determine melodic movement
     const direction = Math.random() < 0.6 ? 1 : -1;
-    const steps = Math.random() < 0.7 ? 1 : 2;
-
-    // Add some melodic jumps occasionally
-    if (Math.random() < 0.2) {
-      currentNote += direction * (scale[Math.floor(Math.random() * scale.length)]);
+    const useStepwise = Math.random() < styleConfig.stepwiseProbability;
+    
+    if (useStepwise) {
+      // Stepwise motion (1-2 semitones)
+      currentNote += direction * (Math.random() < 0.7 ? 1 : 2);
+    } else if (Math.random() < styleConfig.jumpProbability) {
+      // Melodic jump using scale intervals
+      const interval = styleConfig.scale[Math.floor(Math.random() * styleConfig.scale.length)];
+      currentNote += direction * interval;
     } else {
-      currentNote += direction * steps;
+      // Small leap (3-5 semitones)
+      currentNote += direction * (3 + Math.floor(Math.random() * 3));
     }
 
     currentNote = Math.max(60, Math.min(83, currentNote));
+    
+    // Generate chord or single note
+    let notes = [currentNote];
+    if (shouldBeChord) {
+      // Build a triad (root, third, fifth)
+      const third = Math.random() < 0.6 ? 4 : 3; // Major or minor third
+      const fifth = 7; // Perfect fifth
+      notes = [
+        currentNote,
+        Math.min(83, currentNote + third),
+        Math.min(83, currentNote + fifth)
+      ];
+    }
+
+    const duration = styleConfig.minDuration + Math.random() * (styleConfig.maxDuration - styleConfig.minDuration);
 
     generated.push({
-      notes: [currentNote],
+      notes,
       time: Date.now() + i * 100,
-      duration: 0.3 + Math.random() * 0.4, // Vary duration
-      isChord: false
+      duration,
+      isChord: shouldBeChord
     });
   }
 
   return generated;
+}
+
+/**
+ * Get style configuration for MusicRNN temperature
+ */
+export function getStyleConfig(style) {
+  return MUSIC_STYLES[style] || MUSIC_STYLES.balanced;
 }
 
 /**

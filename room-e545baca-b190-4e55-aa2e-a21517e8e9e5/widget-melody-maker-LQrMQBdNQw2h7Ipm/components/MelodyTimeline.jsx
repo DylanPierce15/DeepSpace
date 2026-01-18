@@ -21,11 +21,12 @@ const darkenColor = (hex, amount) => {
 };
 
 // Get color for a note based on its position on the keyboard
-const getNoteColor = (noteNumber, baseColor, baseColorLight, colors) => {
+// Matches the gradient used in Piano.jsx where colors get darker from left to right
+const getNoteColor = (noteNumber, baseColorLight, colors) => {
   const noteData = NOTES.find(n => n.note === noteNumber);
-  if (!noteData) return baseColor;
+  if (!noteData) return baseColorLight;
   
-  // Calculate position from left to right
+  // Calculate position from left to right (same as Piano.jsx)
   const whiteNotes = NOTES.filter(n => !n.isBlack);
   const isBlack = noteData.isBlack;
   
@@ -40,7 +41,7 @@ const getNoteColor = (noteNumber, baseColor, baseColorLight, colors) => {
     const whiteIdx = whiteNotes.findIndex(n => n.note === noteNumber);
     const totalWhiteKeys = whiteNotes.length;
     const darkness = whiteIdx / (totalWhiteKeys - 1);
-    return darkenColor(baseColor, darkness * 0.25);
+    return darkenColor(baseColorLight, darkness * 0.35);
   }
 };
 
@@ -121,7 +122,7 @@ export default function MelodyTimeline({
                     title="Click to play from here, Ctrl/Cmd+Click to select, double-click to delete"
                   >
                     {item.notes?.map((note, noteIdx) => {
-                      const noteColor = getNoteColor(note, colors.sage, colors.sageLight, colors);
+                      const noteColor = getNoteColor(note, colors.sageLight, colors);
                       const isSelected = selectedNotes && selectedNotes.has(`user-${idx}`);
                       return (
                         <div
@@ -187,7 +188,7 @@ export default function MelodyTimeline({
                       title="Click to play from here, Ctrl/Cmd+Click to select, double-click to delete"
                     >
                       {item.notes?.map((note, noteIdx) => {
-                        const noteColor = getNoteColor(note, colors.warmBrown, colors.warmBrownLight, colors);
+                        const noteColor = getNoteColor(note, colors.warmBrownLight, colors);
                         const isSelected = selectedNotes && selectedNotes.has(`ai-${idx}`);
                         return (
                           <div
