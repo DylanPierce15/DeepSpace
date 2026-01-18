@@ -132,10 +132,17 @@ function MelodyMaker() {
   useEffect(() => {
     if (magentaLoaded && !audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      pianoSynthRef.current = new PianoSynth(audioContextRef.current);
+      pianoSynthRef.current = new PianoSynth(audioContextRef.current, musicStyle);
       drumSynthRef.current = new DrumSynth(audioContextRef.current);
     }
-  }, [magentaLoaded]);
+  }, [magentaLoaded, musicStyle]);
+
+  // Update synth style when music style changes
+  useEffect(() => {
+    if (pianoSynthRef.current) {
+      pianoSynthRef.current.setStyle(musicStyle);
+    }
+  }, [musicStyle]);
 
   // Initialize Magenta models (MusicRNN and DrumRNN)
   useEffect(() => {
@@ -1191,14 +1198,51 @@ function MelodyMaker() {
           </div>
           <div className="mt-3 text-xs" style={{ 
             color: COLORS.text.tertiary,
-            fontFamily: 'system-ui, -apple-system, sans-serif'
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            lineHeight: '1.5'
           }}>
-            {musicStyle === 'classical' && 'Smooth, stepwise motion with rich chords'}
-            {musicStyle === 'jazz' && 'Complex harmonies, syncopation, and melodic jumps'}
-            {musicStyle === 'pop' && 'Catchy, memorable melodies with moderate chord use'}
-            {musicStyle === 'electronic' && 'Energetic, rhythmic patterns with fewer chords'}
-            {musicStyle === 'ambient' && 'Slow, atmospheric with sustained chords'}
-            {musicStyle === 'balanced' && 'Versatile style suitable for most melodies'}
+            {musicStyle === 'classical' && (
+              <>
+                <strong style={{ color: COLORS.text.secondary }}>Sound:</strong> Rich grand piano with resonant harmonics and long sustain
+                <br />
+                <strong style={{ color: COLORS.text.secondary }}>Style:</strong> Smooth, stepwise motion with rich chords (40% chord probability)
+              </>
+            )}
+            {musicStyle === 'jazz' && (
+              <>
+                <strong style={{ color: COLORS.text.secondary }}>Sound:</strong> Mellow piano with soft attack and warm tone
+                <br />
+                <strong style={{ color: COLORS.text.secondary }}>Style:</strong> Complex harmonies with syncopation and frequent chords (50%)
+              </>
+            )}
+            {musicStyle === 'pop' && (
+              <>
+                <strong style={{ color: COLORS.text.secondary }}>Sound:</strong> Bright, punchy piano with crisp attack
+                <br />
+                <strong style={{ color: COLORS.text.secondary }}>Style:</strong> Catchy melodies with moderate chord use (35%)
+              </>
+            )}
+            {musicStyle === 'electronic' && (
+              <>
+                <strong style={{ color: COLORS.text.secondary }}>Sound:</strong> Sharp synth lead with fast attack and bright harmonics
+                <br />
+                <strong style={{ color: COLORS.text.secondary }}>Style:</strong> Energetic, rhythmic patterns with fewer chords (15%)
+              </>
+            )}
+            {musicStyle === 'ambient' && (
+              <>
+                <strong style={{ color: COLORS.text.secondary }}>Sound:</strong> Soft pad with slow attack, heavy sustain and reverberant tone
+                <br />
+                <strong style={{ color: COLORS.text.secondary }}>Style:</strong> Atmospheric with sustained chords (60%) and gentle motion
+              </>
+            )}
+            {musicStyle === 'balanced' && (
+              <>
+                <strong style={{ color: COLORS.text.secondary }}>Sound:</strong> Versatile piano tone suitable for most styles
+                <br />
+                <strong style={{ color: COLORS.text.secondary }}>Style:</strong> Moderate chord use (25%) and balanced melodic motion
+              </>
+            )}
           </div>
         </div>
 
