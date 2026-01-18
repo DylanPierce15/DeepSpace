@@ -52,8 +52,6 @@ For simple requests (single widget changes, small fixes), skip steps 1-3 and jus
   - Work strictly under `/app/workspace/repo/<currentRoom>` (and nested `room-*` subrooms if any).
   - Never modify files outside the current room subtree.
 
-- **JSX emojis**: Use ES6 Unicode escapes in JSX expressions: `{'\u{1F389}'}`.
-
 - **Outputs are auto-managed by hooks**:
   - Do not attempt to run bundlers; `template.html` is generated automatically.
 

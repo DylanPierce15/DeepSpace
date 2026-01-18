@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const sharp = require('sharp');
 
 /**
  * Fetch image from main API and save to .chat-attachments for agent vision
@@ -95,8 +96,39 @@ async function inspectImage(assetId) {
       process.exit(1);
     }
 
-    // Determine file extension from content type
-    const ext = getExtensionFromMime(response.contentType);
+    // Decode base64
+    let buffer = Buffer.from(response.base64, 'base64');
+    let contentType = response.contentType;
+    let ext = getExtensionFromMime(contentType);
+    let wasCompressed = false;
+    
+    // Compress large images to stay under Claude's 5MB limit
+    const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB
+    const isCompressibleImage = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'].includes(contentType);
+    
+    if (isCompressibleImage && buffer.length > MAX_IMAGE_SIZE) {
+      try {
+        console.log(`🗜️ Compressing large image: ${(buffer.length / 1024 / 1024).toFixed(2)} MB`);
+        
+        const compressed = await sharp(buffer)
+          .resize(2048, 2048, { 
+            fit: 'inside', 
+            withoutEnlargement: true 
+          })
+          .jpeg({ quality: 85 })
+          .toBuffer();
+        
+        const originalSize = buffer.length;
+        buffer = compressed;
+        ext = '.jpg';
+        contentType = 'image/jpeg';
+        wasCompressed = true;
+        
+        console.log(`✅ Compressed: ${(originalSize / 1024 / 1024).toFixed(2)} MB → ${(buffer.length / 1024).toFixed(1)} KB`);
+      } catch (compressErr) {
+        console.warn(`⚠️ Compression failed, using original:`, compressErr.message);
+      }
+    }
     
     // Save to .canvas-images
     const imagesDir = path.join(roomPath, '.canvas-images');
@@ -105,13 +137,11 @@ async function inspectImage(assetId) {
     const filename = `${assetId}${ext}`;
     const filepath = path.join(imagesDir, filename);
     
-    // Decode base64 and save
-    const buffer = Buffer.from(response.base64, 'base64');
     fs.writeFileSync(filepath, buffer);
 
     console.log(`✅ Image saved to: ${filepath}`);
-    console.log(`📐 Size: ${(buffer.length / 1024).toFixed(1)} KB`);
-    console.log(`📄 Type: ${response.contentType}`);
+    console.log(`📐 Size: ${(buffer.length / 1024).toFixed(1)} KB${wasCompressed ? ' [compressed]' : ''}`);
+    console.log(`📄 Type: ${contentType}`);
     console.log('');
     console.log(`💡 To view the image contents, use: Read ${filepath}`);
 
