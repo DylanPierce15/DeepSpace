@@ -20,8 +20,9 @@ function VisualCanvas({ activeNotes, activeDrums, isPlaying, colors }) {
     if (!canvasRef.current) return null;
     
     const canvas = canvasRef.current;
-    const width = canvas.width;
-    const height = canvas.height;
+    const rect = canvas.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
     
     const hue = noteToColor(noteNumber);
     const size = 20 + Math.random() * 30;
@@ -51,8 +52,9 @@ function VisualCanvas({ activeNotes, activeDrums, isPlaying, colors }) {
     if (!canvasRef.current) return null;
     
     const canvas = canvasRef.current;
-    const width = canvas.width;
-    const height = canvas.height;
+    const rect = canvas.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
     
     // Different visual effects for different drum types
     let color, size, pattern;
@@ -74,7 +76,7 @@ function VisualCanvas({ activeNotes, activeDrums, isPlaying, colors }) {
         break;
       case 'openhat':
         color = { h: 120, s: 80, l: 65 }; // Green
-        size: 50;
+        size = 50;
         pattern = 'wave';
         break;
       default:

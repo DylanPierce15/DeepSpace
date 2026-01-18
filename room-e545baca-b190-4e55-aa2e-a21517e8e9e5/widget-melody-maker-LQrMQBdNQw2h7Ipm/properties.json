@@ -8,12 +8,12 @@
     "value": "Bs:BsMusicNoteList"
   },
   "position": {
-    "x": 286.55227277612244,
-    "y": 346.021800501882
+    "x": 83.63884096612287,
+    "y": 83.13597867001249
   },
   "size": {
-    "w": 879.6988707653702,
-    "h": 605.9723964868256
+    "w": 1243.6288097899242,
+    "h": 946.8640213299875
   },
   "rotation": 0,
   "opacity": 1,
@@ -31,5 +31,5 @@
   },
   "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
   "index": "b0LUcpqLG",
-  "lastChangedClock": 4752
+  "lastChangedClock": 4854
 }
