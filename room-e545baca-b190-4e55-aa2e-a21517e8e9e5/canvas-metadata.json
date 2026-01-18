@@ -39,7 +39,7 @@
       "name": "Page 1",
       "index": "a1",
       "typeName": "page",
-      "lastChangedClock": 3455
+      "lastChangedClock": 4752
     }
   ],
   "schema": {
@@ -84,9 +84,9 @@
       "com.tldraw.binding.arrow": 1
     }
   },
-  "generatedAt": "2026-01-18T19:37:25.109Z",
-  "clock": 4751,
-  "documentClock": 4751,
+  "generatedAt": "2026-01-18T19:38:57.034Z",
+  "clock": 4753,
+  "documentClock": 4752,
   "tombstones": {
     "shape:1gglhDinNlSuoCyq": 3641,
     "shape:snack-store-finder-AKhWG2ITY64tSuHA1E6oy": 3123,

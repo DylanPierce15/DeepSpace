@@ -15,6 +15,7 @@ import Library from './components/Library.jsx';
 import MelodyTimeline from './components/MelodyTimeline.jsx';
 import ControlPanel from './components/ControlPanel.jsx';
 import Piano from './components/Piano.jsx';
+import VisualCanvas from './components/VisualCanvas.jsx';
 
 function MelodyMaker() {
   const [tailwindLoaded, setTailwindLoaded] = useState(false);
@@ -1244,6 +1245,16 @@ function MelodyMaker() {
               </>
             )}
           </div>
+        </div>
+
+        {/* Visual Art Canvas */}
+        <div className="mb-5">
+          <VisualCanvas
+            activeNotes={activeNotes}
+            activeDrums={activeDrums}
+            isPlaying={isPlaying}
+            colors={COLORS}
+          />
         </div>
 
         {/* Current Chord Preview */}
