@@ -27,6 +27,17 @@ const NOTES = [
   { note: 83, name: 'B5', isBlack: false, key: 'b' }
 ];
 
+const lerp = (a, b, t) => a + (b - a) * t;
+
+//Simple function to darken color as values increase, used for coloring pressed keys
+const darkenColor = (hex, amount) => {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const r = Math.max(0, ((num >> 16) & 0xff) * (1 - amount));
+  const g = Math.max(0, ((num >> 8) & 0xff) * (1 - amount));
+  const b = Math.max(0, (num & 0xff) * (1 - amount));
+  return `rgb(${r}, ${g}, ${b})`;
+};
+
 export default function Piano({ 
   pressedKeys, 
   activeNotes, 
@@ -64,6 +75,8 @@ export default function Piano({
           <div className="flex">
             {NOTES.filter(n => !n.isBlack).map((noteData, whiteIdx) => {
               const isPressed = pressedKeys.has(noteData.note) || activeNotes.has(noteData.note);
+              const totalWhiteKeys = NOTES.filter(n => !n.isBlack).length;
+              const darkness = whiteIdx / (totalWhiteKeys - 1); 
               return (
                 <button
                   key={noteData.note}
@@ -77,7 +90,9 @@ export default function Piano({
                   style={{
                     width: '52px',
                     height: '200px',
-                    backgroundColor: isPressed ? colors.sageLight : colors.cream,
+                    backgroundColor: isPressed
+                      ? darkenColor(colors.sageLight, darkness * 0.35)
+                      : colors.cream,
                     transform: isPressed ? 'translateY(2px)' : 'none',
                     boxShadow: isPressed ? `inset 0 3px 8px ${colors.shadow}` : `0 3px 8px ${colors.shadow}`,
                     border: `2px solid ${colors.creamDark}`,
@@ -113,6 +128,8 @@ export default function Piano({
               if (!noteData.isBlack) return null;
               
               const whiteKeysBefore = NOTES.slice(0, idx).filter(n => !n.isBlack).length;
+              const totalWhiteKeys = NOTES.filter(n => !n.isBlack).length;
+              const darkness = whiteKeysBefore / (totalWhiteKeys - 1);
               const leftPos = whiteKeysBefore * 52 - 18;
               const isPressed = pressedKeys.has(noteData.note) || activeNotes.has(noteData.note);
               
@@ -129,7 +146,9 @@ export default function Piano({
                   style={{
                     width: '36px',
                     height: '130px',
-                    backgroundColor: isPressed ? colors.warmBrownLight : '#1a1612',
+                    backgroundColor: isPressed
+                      ? darkenColor(colors.warmBrownLight, darkness * 0.35)
+                      : darkenColor('#1a1612', darkness * 0.2),
                     left: `${leftPos}px`,
                     transform: isPressed ? 'translateY(2px)' : 'none',
                     boxShadow: isPressed ? `inset 0 3px 8px rgba(0,0,0,0.4)` : `0 4px 12px ${colors.shadow}, 0 2px 4px rgba(0,0,0,0.3)`,

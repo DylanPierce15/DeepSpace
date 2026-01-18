@@ -8,12 +8,12 @@
     "value": "Fi:FiPackage"
   },
   "position": {
-    "x": 117.93501611170785,
-    "y": 61.30571965628375
+    "x": 50,
+    "y": 58.96236827954476
   },
   "size": {
-    "w": 1473.7486573576798,
-    "h": 958.4532760472608
+    "w": 1338.8125179412052,
+    "h": 971.0376317204552
   },
   "rotation": 0,
   "opacity": 1,
@@ -21,7 +21,7 @@
   "color": "black",
   "zoomScale": 1,
   "isFullscreen": false,
-  "savedJsxContentHash": "initial",
+  "savedJsxContentHash": "1i3l3ni",
   "meta": {
     "initializationState": "ready",
     "justCreated": false,
@@ -30,6 +30,6 @@
     "showDefaultHandles": false
   },
   "parentId": "page:YgYpHG-EIx5izyxJ-Cj_3",
-  "index": "avwUaWDl",
-  "lastChangedClock": 2792
+  "index": "b02MxqWZV",
+  "lastChangedClock": 3203
 }

@@ -11,19 +11,9 @@
         "config": {
           "type": "dock",
           "name": "Dock Space",
-          "description": "Dock mode with macOS-style dock bar for widgets (zoom locked at 50% via DOCK_MODE_ZOOM constant)",
-          "canvasBounds": {
-            "x": 0,
-            "y": 0,
-            "w": 2227.282491944146,
-            "h": 1080
-          },
-          "canvasSize": {
-            "width": 2227.282491944146,
-            "height": 1080
-          }
+          "description": "Dock mode with macOS-style dock bar for widgets (zoom locked at 50% via DOCK_MODE_ZOOM constant)"
         },
-        "lastUpdated": 1768627382161
+        "lastUpdated": 1768706979192
       }
     },
     "id": "document:document",
@@ -39,7 +29,7 @@
       "name": "Page 1",
       "index": "a1",
       "typeName": "page",
-      "lastChangedClock": 2792
+      "lastChangedClock": 2796
     }
   ],
   "schema": {
@@ -84,13 +74,16 @@
       "com.tldraw.binding.arrow": 1
     }
   },
-  "generatedAt": "2026-01-17T05:41:04.789Z",
-  "clock": 2795,
-  "documentClock": 2795,
+  "generatedAt": "2026-01-18T03:29:50.614Z",
+  "clock": 3247,
+  "documentClock": 3247,
   "tombstones": {
+    "shape:snack-store-finder-AKhWG2ITY64tSuHA1E6oy": 3123,
     "shape:Mc763fzC5WkvmnejB1phG": 1693,
+    "shape:webgl-fluid-simulation-Tuc96SxLj6IITpaIJOHxf": 3027,
     "shape:journal-mental-health-zZs0ya50NX4ze8Io": 656,
     "shape:quantum-simulator-D6Ott8IvYXgdBa9H3sSKD": 1854,
+    "shape:black-hole-simulation-AFBHlmuapmMpkiRg8Bm_N": 2949,
     "shape:google-drive--KhPqF7Zvsmiis2jEmQPG": 173,
     "shape:plant-tracker-react-53Zjk2K_TibmjC_ab3uIR": 1865,
     "shape:MoxIKEpgXx3el3cY": 728,
@@ -100,6 +93,8 @@
     "shape:webgl-planets-1K_Jl8c9xLA487dPA8wzF": 1884,
     "shape:news-without-doom-library-BneJOZSDFDFmnBzplrwCt": 1268,
     "shape:68VUPQtbzn7tYNJq": 967,
+    "shape:f1-race-viz-react-DY0AZfOeGZ-lASnop8bsd": 3015,
+    "shape:3d-space-planner-_RMW2GXD1VZ_XKR0R84nu": 3089,
     "shape:ml-network-architect-B_rCK71klSWc-h-L3C4Bc": 1857,
     "shape:journal-school-mtgDRTRxa3HKF3qR": 656,
     "shape:wFfcqv2M5Zf8Sa4c": 721,
