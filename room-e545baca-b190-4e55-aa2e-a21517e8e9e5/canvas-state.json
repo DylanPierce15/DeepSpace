@@ -1,6 +1,6 @@
 {
-  "clock": 4877,
-  "documentClock": 4877,
+  "clock": 4879,
+  "documentClock": 4879,
   "tombstones": {
     "shape:1gglhDinNlSuoCyq": 3641,
     "shape:snack-store-finder-AKhWG2ITY64tSuHA1E6oy": 3123,
@@ -307,21 +307,21 @@
               "canvasBounds": {
                 "x": 0,
                 "y": 0,
-                "w": 1920,
-                "h": 1460.7194244604318
+                "w": 1991.969887076537,
+                "h": 1080
               },
               "canvasSize": {
-                "width": 1920,
-                "height": 1460.7194244604318
+                "width": 1991.969887076537,
+                "height": 1080
               }
             },
-            "lastUpdated": 1768765748605
+            "lastUpdated": 1768765796590
           }
         },
         "id": "document:document",
         "typeName": "document"
       },
-      "lastChangedClock": 4877
+      "lastChangedClock": 4879
     },
     {
       "state": {
