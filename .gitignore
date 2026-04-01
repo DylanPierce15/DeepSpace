@@ -36,3 +36,13 @@ coverage/
 
 # Doppler
 .doppler/
+
+# E2E artifacts
+e2e/.auth-state.json
+e2e/.app-name
+e2e/.build/
+e2e/test-results/
+e2e/playwright-report/
+
+# DeepSpace local auth
+.deepspace/
