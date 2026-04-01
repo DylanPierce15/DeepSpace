@@ -8,30 +8,6 @@
 // Schema Types
 // ============================================================================
 
-export type FieldType = 'string' | 'number' | 'boolean' | 'json' | 'object' | 'array' | 'yjs'
-
-export interface FieldSchema {
-  type: FieldType
-  required?: boolean
-  /** Must equal current user's ID (auto-set on create) */
-  userBound?: boolean
-  /** Cannot change after creation */
-  immutable?: boolean
-  /** Default value auto-set on create */
-  default?: unknown
-  /** System-managed field — not writable by client mutations */
-  systemManaged?: boolean
-  /**
-   * Trigger-based timestamp: auto-set to current ISO timestamp when trigger fires.
-   * - { field: 'claimedByUserId' } — sets when claimedByUserId becomes truthy
-   * - { field: 'submitted', value: true } — sets when submitted becomes true
-   */
-  timestampTrigger?: {
-    field: string
-    value?: unknown
-  }
-}
-
 export type PermissionRule = boolean | 'own' | 'unclaimed-or-own' | 'collaborator' | 'team' | 'access' | 'published' | 'shared'
 
 export interface SchemaPermissions {
@@ -39,29 +15,18 @@ export interface SchemaPermissions {
   create: PermissionRule
   update: PermissionRule
   delete: PermissionRule
-  /** Field-level write permissions — only these fields can be updated by this role */
   writableFields?: string[]
 }
 
 export interface CollectionSchema {
   name: string
-  /** Field definitions for validation (document-mode collections) */
-  fields?: Record<string, FieldSchema>
-  /** Column definitions for table-mode storage */
-  columns?: Array<{ name: string; storage: string; interpretation: string | Record<string, unknown> }>
-  /** Composite uniqueness constraint */
+  columns: Array<{ name: string; storage: string; interpretation: string | Record<string, unknown> }>
   uniqueOn?: string[]
-  /** Permissions per role */
   permissions: Record<string, SchemaPermissions>
-  /** Field name used for ownership checks */
   ownerField?: string
-  /** Field name for collaborator arrays */
   collaboratorsField?: string
-  /** Field name for team-based access */
   teamField?: string
-  /** Field name for visibility-based access */
   visibilityField?: string | { field: string; value: unknown }
-  /** Default role for new users (only on 'users' collection) */
   defaultRole?: string
 }
 

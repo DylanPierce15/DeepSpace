@@ -204,7 +204,7 @@ function executeTool(
         data: {
           schemas: schemas.map(s => ({
             name: s.name,
-            fields: s.fields || {},
+            columns: s.columns,
             permissions: s.permissions,
             ...(s.ownerField ? { ownerField: s.ownerField } : {}),
             ...(s.collaboratorsField ? { collaboratorsField: s.collaboratorsField } : {}),

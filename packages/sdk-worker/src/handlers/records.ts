@@ -15,13 +15,12 @@ import { MSG_ERROR, MSG_ACK, MSG_RESUBSCRIBE } from '../constants'
 import {
   type CollectionSchema,
   type ResolvedColumn,
-  validateRecordData,
   canCreate,
   canUpdate,
   canDelete,
   canRead,
   checkFieldPermissions,
-  stripSystemManagedFields,
+  SYSTEM_MANAGED_COLUMNS,
   resolveColumn,
   collectionTableName,
   rowToData,
@@ -222,7 +221,6 @@ export function putRecord(
     return { success: false, error: `Schema not registered for collection: ${collection}` }
   }
 
-  // All collections use table-mode — schema is guaranteed to have columns via ensureColumns()
   if (!schema) {
     return { success: false, error: `Schema not registered for collection: ${collection}` }
   }
@@ -231,53 +229,35 @@ export function putRecord(
   const existing = getRecord(ctx.sql, collection, recordId, schema)
   const isUpdate = existing !== null
 
-  const mergedData = isUpdate
-    ? { ...existing!.data, ...data }
-    : data
+  const mergedData = isUpdate ? { ...existing!.data, ...data } : data
 
-  // Schema validation for collections with fields defined
+  // Strip system-managed columns (email, name, role, etc.) unless this is a system update
   let finalData = mergedData
-  if (schema.fields && Object.keys(schema.fields).length > 0) {
-    const cleanedData = systemUpdate ? mergedData : stripSystemManagedFields(schema, mergedData, existing?.data)
-
-    if (!skipUserRbac) {
-      const permCtx = ctx.getPermissionContext()
-      if (isUpdate) {
-        if (!canUpdate(schema, userRole, { ...existing, recordId }, userId, permCtx)) {
-          return { success: false, error: `UPDATE DENIED: role=${userRole}, collection=${collection}` }
-        }
-        const fieldError = checkFieldPermissions(schema, userRole, cleanedData, existing.data)
-        if (fieldError) {
-          return { success: false, error: `FIELD ERROR: ${fieldError}` }
-        }
+  if (!systemUpdate && schema.name === 'users') {
+    finalData = { ...mergedData }
+    for (const key of SYSTEM_MANAGED_COLUMNS) {
+      if (existing?.data[key] !== undefined) {
+        finalData[key] = existing.data[key] // preserve existing
       } else {
-        if (!canCreate(schema, userRole)) {
-          return { success: false, error: `CREATE DENIED: role=${userRole}, collection=${collection}` }
-        }
+        delete finalData[key]
       }
     }
+  }
 
-    const validation = validateRecordData(schema, cleanedData, userId, userRole, existing?.data)
-    if (!validation.valid) {
-      return { success: false, error: validation.error }
-    }
-    finalData = validation.data!
-  } else {
-    // No fields — just RBAC checks
-    if (!skipUserRbac) {
-      const permCtx = ctx.getPermissionContext()
-      if (isUpdate) {
-        if (!canUpdate(schema, userRole, { ...existing, recordId }, userId, permCtx)) {
-          return { success: false, error: `UPDATE DENIED: role=${userRole}, collection=${collection}` }
-        }
-        const fieldError = checkFieldPermissions(schema, userRole, mergedData, existing.data)
-        if (fieldError) {
-          return { success: false, error: `FIELD ERROR: ${fieldError}` }
-        }
-      } else {
-        if (!canCreate(schema, userRole)) {
-          return { success: false, error: `CREATE DENIED: role=${userRole}, collection=${collection}` }
-        }
+  // RBAC checks
+  if (!skipUserRbac) {
+    const permCtx = ctx.getPermissionContext()
+    if (isUpdate) {
+      if (!canUpdate(schema, userRole, { ...existing, recordId }, userId, permCtx)) {
+        return { success: false, error: `UPDATE DENIED: role=${userRole}, collection=${collection}` }
+      }
+      const fieldError = checkFieldPermissions(schema, userRole, finalData, existing.data)
+      if (fieldError) {
+        return { success: false, error: `FIELD ERROR: ${fieldError}` }
+      }
+    } else {
+      if (!canCreate(schema, userRole)) {
+        return { success: false, error: `CREATE DENIED: role=${userRole}, collection=${collection}` }
       }
     }
   }

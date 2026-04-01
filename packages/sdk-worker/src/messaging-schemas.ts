@@ -2,13 +2,12 @@
  * Messaging Schemas
  *
  * Pre-built collection schemas for messaging functionality.
- * Any miniapp can import these to add channels, messages, reactions, etc.
+ * Any app can import these to add channels, messages, reactions, etc.
  *
  * @example
  * ```typescript
- * import { CHANNELS_SCHEMA, MESSAGES_SCHEMA, REACTIONS_SCHEMA, CHANNEL_MEMBERS_SCHEMA, READ_RECEIPTS_SCHEMA } from '@deepspace/sdk-worker'
- *
- * export const schemas = [usersSchema, CHANNELS_SCHEMA, MESSAGES_SCHEMA, REACTIONS_SCHEMA, CHANNEL_MEMBERS_SCHEMA, READ_RECEIPTS_SCHEMA]
+ * import { CHANNELS_SCHEMA, MESSAGES_SCHEMA, REACTIONS_SCHEMA } from '@deepspace/sdk-worker'
+ * export const schemas = [usersSchema, CHANNELS_SCHEMA, MESSAGES_SCHEMA, REACTIONS_SCHEMA]
  * ```
  */
 
@@ -16,13 +15,13 @@ import type { CollectionSchema } from './schemas'
 
 export const CHANNELS_SCHEMA: CollectionSchema = {
   name: 'channels',
-  fields: {
-    name: { type: 'string', required: true },
-    description: { type: 'string' },
-    type: { type: 'string', required: true }, // 'public' | 'private' | 'dm'
-    createdBy: { type: 'string', userBound: true, immutable: true },
-    archived: { type: 'boolean', default: false },
-  },
+  columns: [
+    { name: 'name', storage: 'text', interpretation: 'plain' },
+    { name: 'description', storage: 'text', interpretation: 'plain' },
+    { name: 'type', storage: 'text', interpretation: { kind: 'select', options: ['public', 'private', 'dm'] } },
+    { name: 'createdBy', storage: 'text', interpretation: 'plain' },
+    { name: 'archived', storage: 'number', interpretation: { kind: 'boolean' } },
+  ],
   ownerField: 'createdBy',
   permissions: {
     admin: { read: true, create: true, update: true, delete: true },
@@ -33,14 +32,14 @@ export const CHANNELS_SCHEMA: CollectionSchema = {
 
 export const MESSAGES_SCHEMA: CollectionSchema = {
   name: 'messages',
-  fields: {
-    channelId: { type: 'string', required: true, immutable: true },
-    content: { type: 'string', required: true },
-    authorId: { type: 'string', userBound: true, immutable: true },
-    parentMessageId: { type: 'string' }, // for threads
-    edited: { type: 'boolean', default: false },
-    editedAt: { type: 'string', timestampTrigger: { field: 'edited', value: true } },
-  },
+  columns: [
+    { name: 'channelId', storage: 'text', interpretation: 'plain' },
+    { name: 'content', storage: 'text', interpretation: 'plain' },
+    { name: 'authorId', storage: 'text', interpretation: 'plain' },
+    { name: 'parentMessageId', storage: 'text', interpretation: 'plain' },
+    { name: 'edited', storage: 'number', interpretation: { kind: 'boolean' } },
+    { name: 'editedAt', storage: 'text', interpretation: { kind: 'datetime' } },
+  ],
   ownerField: 'authorId',
   permissions: {
     admin: { read: true, create: true, update: true, delete: true },
@@ -51,12 +50,12 @@ export const MESSAGES_SCHEMA: CollectionSchema = {
 
 export const REACTIONS_SCHEMA: CollectionSchema = {
   name: 'reactions',
-  fields: {
-    messageId: { type: 'string', required: true, immutable: true },
-    channelId: { type: 'string', required: true, immutable: true },
-    emoji: { type: 'string', required: true, immutable: true },
-    userId: { type: 'string', userBound: true, immutable: true },
-  },
+  columns: [
+    { name: 'messageId', storage: 'text', interpretation: 'plain' },
+    { name: 'channelId', storage: 'text', interpretation: 'plain' },
+    { name: 'emoji', storage: 'text', interpretation: 'plain' },
+    { name: 'userId', storage: 'text', interpretation: 'plain' },
+  ],
   ownerField: 'userId',
   uniqueOn: ['messageId', 'emoji', 'userId'],
   permissions: {
@@ -68,11 +67,11 @@ export const REACTIONS_SCHEMA: CollectionSchema = {
 
 export const CHANNEL_MEMBERS_SCHEMA: CollectionSchema = {
   name: 'channel-members',
-  fields: {
-    channelId: { type: 'string', required: true, immutable: true },
-    userId: { type: 'string', userBound: true, immutable: true },
-    joinedAt: { type: 'string' },
-  },
+  columns: [
+    { name: 'channelId', storage: 'text', interpretation: 'plain' },
+    { name: 'userId', storage: 'text', interpretation: 'plain' },
+    { name: 'joinedAt', storage: 'text', interpretation: { kind: 'datetime' } },
+  ],
   ownerField: 'userId',
   uniqueOn: ['channelId', 'userId'],
   permissions: {
@@ -84,11 +83,11 @@ export const CHANNEL_MEMBERS_SCHEMA: CollectionSchema = {
 
 export const READ_RECEIPTS_SCHEMA: CollectionSchema = {
   name: 'read-receipts',
-  fields: {
-    channelId: { type: 'string', required: true, immutable: true },
-    userId: { type: 'string', userBound: true, immutable: true },
-    lastReadAt: { type: 'string', required: true },
-  },
+  columns: [
+    { name: 'channelId', storage: 'text', interpretation: 'plain' },
+    { name: 'userId', storage: 'text', interpretation: 'plain' },
+    { name: 'lastReadAt', storage: 'text', interpretation: { kind: 'datetime' } },
+  ],
   ownerField: 'userId',
   uniqueOn: ['channelId', 'userId'],
   permissions: {

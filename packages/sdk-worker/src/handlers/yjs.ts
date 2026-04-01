@@ -176,11 +176,6 @@ export async function handleYjsJoin(
       ctx.send(ws, { type: MSG_ERROR, payload: { error: `Schema not registered for collection: ${collection}` } })
       return
     }
-    const fieldSchema = schema.fields?.[fieldName]
-    if (fieldSchema && fieldSchema.type !== 'yjs') {
-      ctx.send(ws, { type: MSG_ERROR, payload: { error: `Field '${fieldName}' is not a Yjs field` } })
-      return
-    }
     if (!record) {
       ctx.send(ws, { type: MSG_ERROR, payload: { error: 'Record not found' } })
       return

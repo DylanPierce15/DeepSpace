@@ -34,10 +34,10 @@ export type Role = (typeof ROLES)[keyof typeof ROLES]
  */
 export const ADMIN_SETTINGS_SCHEMA: CollectionSchema = {
   name: 'settings',
-  fields: {
-    key: { type: 'string', required: true },
-    value: { type: 'string', required: true },
-  },
+  columns: [
+    { name: 'key', storage: 'text', interpretation: 'plain' },
+    { name: 'value', storage: 'text', interpretation: 'plain' },
+  ],
   permissions: {
     viewer: { read: false, create: false, update: false, delete: false },
     member: { read: false, create: false, update: false, delete: false },
