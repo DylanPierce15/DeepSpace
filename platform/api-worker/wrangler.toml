@@ -1,0 +1,16 @@
+# DeepSpace API Worker
+# Billing, Stripe integration, user profiles, integration proxying
+
+name = "deepspace-api"
+main = "src/worker.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "BILLING_DB"
+database_name = "deepspace-billing"
+database_id = "41ed5cfb-8b56-4c83-a818-7facae038d71"
+
+[dev]
+port = 8795
+inspector_port = 9236

@@ -1,0 +1,27 @@
+# DeepSpace Dispatch Worker
+# Routes *.app.space requests to per-app user workers via Workers for Platforms
+
+name = "deepspace-dispatch"
+main = "src/worker.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Workers for Platforms dispatch namespace
+[[dispatch_namespaces]]
+binding = "USER_APPS"
+namespace = "deepspace-apps"
+
+[[kv_namespaces]]
+binding = "HOSTNAME_MAP"
+id = "" # Set in production env
+
+[[kv_namespaces]]
+binding = "CRON_TASKS"
+id = "" # Set in production env
+
+[dev]
+port = 8793
+inspector_port = 9234
+
+[triggers]
+crons = ["* * * * *"]

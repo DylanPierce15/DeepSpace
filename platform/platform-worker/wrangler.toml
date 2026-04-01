@@ -1,0 +1,30 @@
+# DeepSpace Platform Worker
+# Universal DO: RecordRoom (SharedRecordRoom) + GatewaySession
+# All data keyed by scopeId: app:{id}, conv:{id}, user:{id}, org:{id}
+
+name = "deepspace-platform-worker"
+main = "src/worker.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SharedRecordRoom"]
+
+[[migrations]]
+tag = "v2"
+new_classes = ["GatewaySession"]
+
+[[r2_buckets]]
+binding = "SCHEMA_REGISTRY"
+bucket_name = "deepspace-schema-registry"
+
+[durable_objects]
+bindings = [
+  { name = "RECORD_ROOMS", class_name = "SharedRecordRoom" },
+  { name = "GATEWAY_SESSIONS", class_name = "GatewaySession" },
+]
+
+[dev]
+port = 8792
+inspector_port = 9233

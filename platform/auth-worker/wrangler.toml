@@ -1,0 +1,16 @@
+# DeepSpace Auth Worker
+# Better Auth + D1 for user authentication, session management, JWT issuance
+
+name = "deepspace-auth"
+main = "src/worker.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "AUTH_DB"
+database_name = "deepspace-auth"
+database_id = "6224afa9-ad09-409c-bfd6-dde64ddc3f03"
+
+[dev]
+port = 8794
+inspector_port = 9235

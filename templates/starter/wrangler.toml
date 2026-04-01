@@ -1,0 +1,23 @@
+name = "__APP_NAME__"
+compatibility_date = "2025-01-01"
+main = "worker.ts"
+
+[assets]
+directory = "dist"
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "__APP_NAME__-files"
+
+[[services]]
+binding = "PLATFORM_WORKER"
+service = "platform-worker"
+
+[vars]
+APP_NAME = "__APP_NAME__"
+
+# Secrets (set via `wrangler secret put`):
+#   AUTH_JWT_PUBLIC_KEY
+#   AUTH_JWT_ISSUER
+#   OWNER_USER_ID
+#   INTERNAL_STORAGE_HMAC_SECRET

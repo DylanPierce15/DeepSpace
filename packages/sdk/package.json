@@ -1,0 +1,39 @@
+{
+  "name": "@deepspace/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./storage": "./src/storage/index.ts",
+    "./auth": "./src/auth/index.ts",
+    "./theme": "./src/theme/index.ts",
+    "./config": "./src/config/index.ts",
+    "./client": "./src/client/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@deepspace/types": "workspace:*",
+    "@deepspace/config": "workspace:*",
+    "@deepspace/auth": "workspace:*",
+    "better-auth": "^1.2.0",
+    "hono": "^4.6.0",
+    "yjs": "^13.6.0",
+    "zustand": "^5.0.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.7.0"
+  }
+}
