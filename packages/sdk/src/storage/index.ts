@@ -56,8 +56,6 @@ export {
 
 // Multi-scope composition
 export { RecordScope } from './RecordScope'
-export { MultiplexProvider, useMultiplex } from './MultiplexProvider'
-export type { ScopeHandle, MultiplexContextValue } from './MultiplexProvider'
 export { ScopeRegistryProvider } from './ScopeRegistry'
 export type { ScopeEntry } from './ScopeRegistry'
 
@@ -66,6 +64,11 @@ export { useUserLookup, type UserInfo } from './hooks/useUserLookup'
 
 // Presence hook
 export { usePresence } from './hooks/usePresence'
+
+// Directory hooks (dir:{appName} scope)
+export { useConversations } from './hooks/useConversations'
+export { useCommunities } from './hooks/useCommunities'
+export { usePosts } from './hooks/usePosts'
 
 // Connection status utilities (for platform provider hooks)
 export { type ConnectionStatus, toConnectionStatus } from './connection-status'

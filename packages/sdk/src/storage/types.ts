@@ -39,32 +39,27 @@ export interface UserKarma {
 }
 
 export interface UserCredits {
-  /** Total remaining credits across all sources */
   total: number
-  /** Remaining credits from subscription tier allocation */
   subscription: number
-  /** Remaining bonus credits (time-limited) */
   bonus: number
-  /** Remaining purchased credits */
   purchased: number
 }
 
 /**
- * User profile from API (/api/users/me)
- * 
- * Contains global user data from the main API.
+ * User profile. Core fields (id, name, email, imageUrl) come from the JWT.
+ * Optional fields (billing, karma) can be loaded by the app separately.
  */
 export interface UserProfile {
   id: string
   name: string
   email: string
   imageUrl?: string
-  isAdmin: boolean
-  publicUsername: string | null
-  subscriptionTier: string | null
-  subscriptionStatus: string | null
-  karma: UserKarma | null
-  credits: UserCredits | null
+  isAdmin?: boolean
+  publicUsername?: string | null
+  subscriptionTier?: string | null
+  subscriptionStatus?: string | null
+  karma?: UserKarma | null
+  credits?: UserCredits | null
 }
 
 /**

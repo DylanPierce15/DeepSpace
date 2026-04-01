@@ -1,34 +1,21 @@
 /**
  * RecordScope
  *
- * Opens one WebSocket connection to one RecordRoom DO.
- * Manages its own RecordStore, subscriptions, and reconnect logic.
- * Registers its collections in ScopeRegistry so hooks resolve correctly.
- *
- * Must be rendered inside a RecordProvider (which provides auth context
- * and ScopeRegistry).
- *
- * When a MultiplexProvider ancestor exists (deployed apps), RecordScope
- * delegates transport to the shared multiplexed WS instead of opening
- * its own connection. All internal state (RecordStore, subscriptionMap,
- * binaryHandlers, yjsJoinHandlers, pendingRequests, ScopeRegistry
- * registration) works identically in both modes.
+ * Opens a direct WebSocket connection to a RecordRoom DO.
+ * Manages subscriptions, reconnection, and state via RecordStore.
+ * Registers collections in ScopeRegistry so hooks resolve to the right scope.
  *
  * @example
  * ```tsx
- * // Nested scope (wraps children — useQuery resolves via React context)
  * <RecordProvider>
- *   <RecordScope roomId="app:slack-clone" schemas={appSchemas} appId="slack-clone">
- *     <RecordScope roomId={`conv:${channelId}`} schemas={convSchemas} appId="slack-clone">
- *       <ChannelView />
- *     </RecordScope>
- *   </RecordScope>
- * </RecordProvider>
- *
- * // Headless scope (no children — registers collections in ScopeRegistry only)
- * <RecordProvider>
- *   <RecordScope roomId="app:finance" schemas={appSchemas} appId="finance">
- *     <RecordScope roomId="workspace:default" schemas={workspaceSchemas} appId="finance" />
+ *   <RecordScope
+ *     roomId="app:my-app"
+ *     schemas={appSchemas}
+ *     appId="my-app"
+ *     sharedScopes={[
+ *       { roomId: 'workspace:default', schemas: workspaceSchemas },
+ *     ]}
+ *   >
  *     <App />
  *   </RecordScope>
  * </RecordProvider>
@@ -50,7 +37,6 @@ import { RecordStore } from './store'
 import { useScopeRegistry, type ScopeEntry } from './ScopeRegistry'
 import { getAuthToken } from '../auth'
 import { parseServerError } from './serverErrors'
-import { useMultiplex, type ScopeHandle } from './MultiplexProvider'
 import type { RoomUser, ConnectionStatus, RecordData } from './types'
 import {
   MSG_SUBSCRIBE,
@@ -81,69 +67,79 @@ function recordMatchesWhere(
 }
 
 // ============================================================================
-// Props
+// Types
 // ============================================================================
+
+interface SharedScopeConfig {
+  roomId: string
+  schemas: CollectionSchema[]
+}
 
 interface RecordScopeProps {
   roomId: string
   schemas: CollectionSchema[]
-  /**
-   * Child components that can use useQuery/useMutations for this scope's
-   * collections. Optional — omit for **headless scopes** (shared DOs like
-   * `workspace:default`) that only need to open a WS connection and
-   * register their collections in the ScopeRegistry. Hooks in
-   * sibling/parent scopes can still resolve these collections.
-   */
   children?: ReactNode
-  /**
-   * WebSocket base URL override. If not set, derived from window.location.
-   * The path will be `${wsPathPrefix}/${roomId}`.
-   */
-  wsUrl?: string
-  /**
-   * Path prefix for the WebSocket route.
-   * Default: '/platform/ws' (routes through platform worker).
-   * RecordProvider backward-compat mode sets this to '/ws'.
-   */
-  wsPathPrefix?: string
-  /**
-   * App ID for server-side schema resolution via R2.
-   * The server fetches schemas from R2 using this ID.
-   * For "app:slack-clone" scopes, this is typically the app name.
-   * For "conv:xyz" scopes, pass the parent app's ID.
-   */
+  /** App ID passed to the server for schema resolution. */
   appId: string
-  /**
-   * When true, this scope provides local RecordContext (useQuery,
-   * useMutations preferLocal, useYjsField all work) but does NOT
-   * register its collections in the global ScopeRegistry.
-   * Use this to prevent collection name collisions when a nested scope
-   * has overlapping collection names with an ancestor scope.
-   */
+  /** Additional scopes to connect (headless — no children, just register collections). */
+  sharedScopes?: SharedScopeConfig[]
+  /** WebSocket base URL override. Derived from window.location if omitted. */
+  wsUrl?: string
+  /** Path prefix for WebSocket route. Default: '/ws'. */
+  wsPathPrefix?: string
+  /** Don't register collections in ScopeRegistry (prevents name collisions). */
   isolated?: boolean
 }
 
 // ============================================================================
-// Component
+// Headless scope — opens a WS connection and registers collections only
 // ============================================================================
 
-export function RecordScope({
+function HeadlessScope({ roomId, schemas, appId, wsUrl, wsPathPrefix }: {
+  roomId: string
+  schemas: CollectionSchema[]
+  appId: string
+  wsUrl?: string
+  wsPathPrefix?: string
+}) {
+  return (
+    <ScopeConnection
+      roomId={roomId}
+      schemas={schemas}
+      appId={appId}
+      wsUrl={wsUrl}
+      wsPathPrefix={wsPathPrefix}
+    />
+  )
+}
+
+// ============================================================================
+// Core WebSocket connection logic (shared by primary + headless scopes)
+// ============================================================================
+
+function ScopeConnection({
   roomId,
   schemas,
+  appId,
   children,
   wsUrl,
-  wsPathPrefix = '/platform/ws',
-  appId,
+  wsPathPrefix = '/ws',
   isolated = false,
-}: RecordScopeProps) {
+}: {
+  roomId: string
+  schemas: CollectionSchema[]
+  appId: string
+  children?: ReactNode
+  wsUrl?: string
+  wsPathPrefix?: string
+  isolated?: boolean
+}) {
   const auth = useRecordAuth()
   const registry = useScopeRegistry()
-  const multiplex = useMultiplex()
 
-  // Stable scope ID for ScopeRegistry ownership tracking
   const scopeIdRef = useRef(`scope-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
 
-  // Room state from WebSocket
+  // Room state
   const [roomRole, setRoomRole] = useState<string | null>(null)
   const [allUsers, setAllUsers] = useState<RoomUser[]>([])
   const [usersLoaded, setUsersLoaded] = useState(false)
@@ -154,659 +150,340 @@ export function RecordScope({
   // Refs
   const storeRef = useRef<RecordStore>(new RecordStore())
   const wsRef = useRef<WebSocket | null>(null)
-  const muxHandleRef = useRef<ScopeHandle | null>(null)
   const subscriptionMapRef = useRef<Map<string, string>>(new Map())
   const binaryHandlersRef = useRef<Set<(data: ArrayBuffer) => void>>(new Set())
-  const yjsJoinHandlersRef = useRef<
-    Map<string, Set<(canWrite: boolean) => void>>
-  >(new Map())
-  const pendingRequestsRef = useRef<
-    Map<
-      string,
-      {
-        resolve: (data?: unknown) => void
-        reject: (error: Error) => void
-        timer: ReturnType<typeof setTimeout>
-      }
-    >
-  >(new Map())
+  const yjsJoinHandlersRef = useRef<Map<string, Set<(canWrite: boolean) => void>>>(new Map())
+  const pendingRequestsRef = useRef<Map<string, {
+    resolve: (data?: unknown) => void
+    reject: (error: Error) => void
+    timer: ReturnType<typeof setTimeout>
+  }>>(new Map())
   const reconnectAttemptRef = useRef(0)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const hasEverBeenReadyRef = useRef(false)
-  const preConnectMsgCountRef = useRef(0)
-  const connectedWithProfileRef = useRef(false)
 
-  // Auth refs (avoid re-renders triggering reconnects / stale closures)
+  // Auth refs (stable across renders)
   const userProfileRef = useRef(auth?.userProfile ?? null)
   userProfileRef.current = auth?.userProfile ?? null
-
   const getAuthTokenRef = useRef(auth?.getAuthToken ?? null)
   getAuthTokenRef.current = auth?.getAuthToken ?? null
-
   const authCallbacksRef = useRef({
     onPermissionError: auth?.onPermissionError,
     onValidationError: auth?.onValidationError,
   })
   authCallbacksRef.current.onPermissionError = auth?.onPermissionError
   authCallbacksRef.current.onValidationError = auth?.onValidationError
-
   const allowAnonymous = auth?.allowAnonymous ?? false
 
-  // ── Transport-agnostic message handler ─────────────────────────────
-  // Processes parsed {type, payload} from either direct-WS or multiplex.
+  // ── Message handler ──────────────────────────────────────────────────
 
-  const handleParsedMessage = useCallback(
-    (msg: { type: number; payload: unknown }) => {
-      const { type, payload } = msg
+  const handleMessage = useCallback((event: MessageEvent) => {
+    if (event.data instanceof ArrayBuffer) {
+      binaryHandlersRef.current.forEach((h) => h(event.data as ArrayBuffer))
+      return
+    }
 
-      switch (type) {
-        case MSG_USER_INFO: {
-          const serverUser = payload as { role: string }
-          console.log('[WS] Ready:', { roomId, role: serverUser.role })
-          setRoomRole(serverUser.role)
-          setReady(true)
-          hasEverBeenReadyRef.current = true
-          reconnectAttemptRef.current = 0
-          // Auto-request user list — use whichever transport is active
-          const mux = muxHandleRef.current
-          if (mux) {
-            mux.sendMessage({ type: MSG_USER_LIST, payload: {} })
-            // In mux mode, re-subscribe all queries after (re)connect since
-            // the gateway may have re-established the DO connection.
-            for (const [subscriptionId, queryKey] of subscriptionMapRef.current) {
-              try {
-                const query = JSON.parse(queryKey)
-                mux.sendMessage({ type: MSG_SUBSCRIBE, payload: { subscriptionId, query } })
-              } catch { /* skip invalid */ }
-            }
-          } else {
-            const ws = wsRef.current
-            if (ws && ws.readyState === WebSocket.OPEN) {
-              ws.send(JSON.stringify({ type: MSG_USER_LIST, payload: {} }))
-            }
-          }
-          break
+    let msg: { type: number; payload: unknown }
+    try {
+      msg = JSON.parse(event.data as string)
+    } catch {
+      console.error('[RecordScope] Failed to parse message')
+      return
+    }
+
+    const { type, payload } = msg
+
+    switch (type) {
+      case MSG_USER_INFO: {
+        const { role } = payload as { role: string }
+        setRoomRole(role)
+        setReady(true)
+        reconnectAttemptRef.current = 0
+        const ws = wsRef.current
+        if (ws?.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: MSG_USER_LIST, payload: {} }))
         }
+        break
+      }
 
-        case MSG_USER_LIST:
-          setAllUsers((payload as { users: RoomUser[] }).users)
-          setUsersLoaded(true)
-          break
+      case MSG_USER_LIST:
+        setAllUsers((payload as { users: RoomUser[] }).users)
+        setUsersLoaded(true)
+        break
 
-        case MSG_QUERY_RESULT: {
-          const { subscriptionId, records } = payload as {
-            subscriptionId: string
-            records: RecordData[]
+      case MSG_QUERY_RESULT: {
+        const { subscriptionId, records } = payload as { subscriptionId: string; records: RecordData[] }
+        for (const [subId, queryKey] of subscriptionMapRef.current) {
+          if (subId === subscriptionId) {
+            storeRef.current.setQueryResult(queryKey, records)
+            break
           }
+        }
+        break
+      }
+
+      case MSG_RECORD_CHANGE: {
+        const { collection, record, changeType } = payload as {
+          collection: string; record: RecordData; changeType: 'create' | 'update' | 'delete'
+        }
+        for (const [, queryKey] of subscriptionMapRef.current) {
+          try {
+            const query = JSON.parse(queryKey) as { collection: string; where?: Record<string, unknown> }
+            if (query.collection !== collection) continue
+            const matches = recordMatchesWhere(record, query.where)
+            const exists = storeRef.current.hasRecord(queryKey, record.recordId)
+            if (changeType === 'delete') {
+              if (exists) storeRef.current.applyChange(queryKey, record, 'delete')
+            } else if (changeType === 'create') {
+              if (matches) storeRef.current.applyChange(queryKey, record, 'create')
+            } else {
+              if (matches && exists) storeRef.current.applyChange(queryKey, record, 'update')
+              else if (matches && !exists) storeRef.current.applyChange(queryKey, record, 'create')
+              else if (!matches && exists) storeRef.current.applyChange(queryKey, record, 'delete')
+            }
+          } catch { /* skip invalid query keys */ }
+        }
+        break
+      }
+
+      case MSG_ERROR: {
+        const { subscriptionId, error } = payload as { subscriptionId?: string; error: string }
+        if (subscriptionId) {
           for (const [subId, queryKey] of subscriptionMapRef.current) {
             if (subId === subscriptionId) {
-              storeRef.current.setQueryResult(queryKey, records)
+              storeRef.current.setError(queryKey, error)
               break
             }
           }
-          break
-        }
-
-        case MSG_RECORD_CHANGE: {
-          const { collection, record, changeType } = payload as {
-            collection: string
-            record: RecordData
-            changeType: 'create' | 'update' | 'delete'
+        } else {
+          const parsed = parseServerError(error)
+          if (parsed.isPermissionError) {
+            authCallbacksRef.current.onPermissionError?.(parsed.title, parsed.detail)
+          } else {
+            authCallbacksRef.current.onValidationError?.(parsed.title, parsed.detail)
           }
+        }
+        break
+      }
 
-          for (const [_subId, queryKey] of subscriptionMapRef.current) {
+      case MSG_YJS_JOIN: {
+        const { collection, recordId, fieldName, canWrite } = payload as {
+          collection: string; recordId: string; fieldName: string; canWrite: boolean
+        }
+        const docKey = `${collection}:${recordId}:${fieldName}`
+        yjsJoinHandlersRef.current.get(docKey)?.forEach((h) => h(canWrite))
+        break
+      }
+
+      case MSG_ACK: {
+        const { requestId, success, error, ...rest } = payload as {
+          requestId: string; success: boolean; error?: string; [key: string]: unknown
+        }
+        const pending = pendingRequestsRef.current.get(requestId)
+        if (pending) {
+          clearTimeout(pending.timer)
+          pendingRequestsRef.current.delete(requestId)
+          success ? pending.resolve(rest) : pending.reject(new Error(error || 'Mutation rejected'))
+        }
+        break
+      }
+
+      case MSG_LIST_SCHEMAS: {
+        const { schemas: list } = payload as { schemas: CollectionSchema[] }
+        setDiscoveredSchemas(list ?? [])
+        break
+      }
+
+      case MSG_RESUBSCRIBE: {
+        const ws = wsRef.current
+        if (ws?.readyState === WebSocket.OPEN) {
+          for (const [subscriptionId, queryKey] of subscriptionMapRef.current) {
             try {
-              const query = JSON.parse(queryKey) as {
-                collection: string
-                where?: Record<string, unknown>
-              }
-              if (query.collection !== collection) continue
-
-              const matches = recordMatchesWhere(record, query.where)
-              const exists = storeRef.current.hasRecord(
-                queryKey,
-                record.recordId,
-              )
-
-              if (changeType === 'delete') {
-                if (exists)
-                  storeRef.current.applyChange(queryKey, record, 'delete')
-              } else if (changeType === 'create') {
-                if (matches)
-                  storeRef.current.applyChange(queryKey, record, 'create')
-              } else {
-                if (matches && exists)
-                  storeRef.current.applyChange(queryKey, record, 'update')
-                else if (matches && !exists)
-                  storeRef.current.applyChange(queryKey, record, 'create')
-                else if (!matches && exists)
-                  storeRef.current.applyChange(queryKey, record, 'delete')
-              }
-            } catch {
-              // Skip invalid query keys
-            }
+              const query = JSON.parse(queryKey)
+              ws.send(JSON.stringify({ type: MSG_SUBSCRIBE, payload: { subscriptionId, query } }))
+            } catch { /* skip */ }
           }
-          break
         }
-
-        case MSG_ERROR: {
-          const { subscriptionId, error } = payload as {
-            subscriptionId?: string
-            error: string
-          }
-          if (subscriptionId) {
-            for (const [subId, queryKey] of subscriptionMapRef.current) {
-              if (subId === subscriptionId) {
-                storeRef.current.setError(queryKey, error)
-                break
-              }
-            }
-          } else {
-            const parsed = parseServerError(error)
-            if (parsed.isPermissionError) {
-              authCallbacksRef.current.onPermissionError?.(parsed.title, parsed.detail)
-            } else {
-              authCallbacksRef.current.onValidationError?.(parsed.title, parsed.detail)
-            }
-            console.error('[RecordScope] Error:', error)
-          }
-          break
-        }
-
-        case MSG_YJS_JOIN: {
-          const { collection, recordId, fieldName, canWrite } = payload as {
-            collection: string
-            recordId: string
-            fieldName: string
-            canWrite: boolean
-          }
-          const docKey = `${collection}:${recordId}:${fieldName}`
-          const handlers = yjsJoinHandlersRef.current.get(docKey)
-          if (handlers) {
-            handlers.forEach((h) => h(canWrite))
-          }
-          break
-        }
-
-        case MSG_ACK: {
-          const { requestId, success, error, ...rest } = payload as {
-            requestId: string
-            success: boolean
-            error?: string
-            [key: string]: unknown
-          }
-          const pending = pendingRequestsRef.current.get(requestId)
-          if (pending) {
-            clearTimeout(pending.timer)
-            pendingRequestsRef.current.delete(requestId)
-            if (success) {
-              pending.resolve(rest)
-            } else {
-              pending.reject(new Error(error || 'Mutation rejected'))
-            }
-          }
-          break
-        }
-
-        case MSG_LIST_SCHEMAS: {
-          const { schemas: discoveredList } = payload as {
-            schemas: CollectionSchema[]
-          }
-          setDiscoveredSchemas(discoveredList ?? [])
-          break
-        }
-
-        case MSG_RESUBSCRIBE: {
-          // Team membership changed — re-subscribe all active queries
-          const mux = muxHandleRef.current
-          if (mux) {
-            for (const [subscriptionId, queryKey] of subscriptionMapRef.current) {
-              try {
-                const query = JSON.parse(queryKey)
-                mux.sendMessage({ type: MSG_SUBSCRIBE, payload: { subscriptionId, query } })
-              } catch { /* skip invalid */ }
-            }
-          } else {
-            const ws = wsRef.current
-            if (ws && ws.readyState === WebSocket.OPEN) {
-              for (const [subscriptionId, queryKey] of subscriptionMapRef.current) {
-                try {
-                  const query = JSON.parse(queryKey)
-                  ws.send(JSON.stringify({ type: MSG_SUBSCRIBE, payload: { subscriptionId, query } }))
-                } catch { /* skip invalid */ }
-              }
-            }
-          }
-          break
-        }
+        break
       }
-    },
-    [roomId],
-  )
-
-  // ── Direct WS message handler (parses raw MessageEvent) ────────────
-
-  const handleMessage = useCallback(
-    (event: MessageEvent) => {
-      if (event.data instanceof ArrayBuffer) {
-        binaryHandlersRef.current.forEach((h) => h(event.data as ArrayBuffer))
-        return
-      }
-
-      try {
-        const msg = JSON.parse(event.data as string) as {
-          type: number
-          payload: unknown
-        }
-        handleParsedMessage(msg)
-      } catch (e) {
-        console.error('[RecordScope] Failed to parse message:', e)
-      }
-    },
-    [handleParsedMessage],
-  )
-
-  // ── Multiplex transport ────────────────────────────────────────────
-  // When MultiplexProvider is in the tree, delegate to the shared WS.
-
-  useEffect(() => {
-    if (!multiplex) return
-
-    const handle = multiplex.connectScope(roomId, appId)
-    muxHandleRef.current = handle
-
-    const unsubMsg = handle.onMessage((msg) => {
-      handleParsedMessage(msg)
-    })
-
-    const unsubBin = handle.onBinaryMessage((data) => {
-      binaryHandlersRef.current.forEach((h) => h(data))
-    })
-
-    const unsubStatus = handle.onStatusChange((s) => {
-      setStatus(s)
-      if (s === 'connecting') {
-        setReady(false)
-        for (const [, queryKey] of subscriptionMapRef.current) {
-          storeRef.current.resetToLoading(queryKey)
-        }
-      }
-    })
-
-    return () => {
-      unsubMsg()
-      unsubBin()
-      unsubStatus()
-      // Reset before nulling handle so cleanup sendMessage() calls
-      // (e.g. useQuery unsubscribe) hit the silent "pre-connection" path
-      // instead of the "was previously connected" warning path.
-      hasEverBeenReadyRef.current = false
-      muxHandleRef.current = null
-      multiplex.disconnectScope(roomId)
     }
-  }, [multiplex, roomId, appId, handleParsedMessage])
+  }, [roomId])
 
-  // ── Direct WebSocket connect ───────────────────────────────────────
-  // Only used when MultiplexProvider is NOT in the tree.
+  // ── WebSocket connect ────────────────────────────────────────────────
 
   const connect = useCallback(async () => {
-    if (multiplex) return
-
     const profile = userProfileRef.current
     const hasTokenProvider = !!getAuthTokenRef.current
-    if (!profile && !hasTokenProvider && !allowAnonymous) {
-      console.log(`[WS] connect() skipped: no profile, no token provider, not anonymous`, { roomId })
-      return
-    }
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      if (profile && !connectedWithProfileRef.current) {
-        console.log(`[WS] Reconnecting with profile data`, { roomId })
-        hasEverBeenReadyRef.current = false
-        setReady(false)
-        wsRef.current.onclose = null
-        wsRef.current.close()
-        wsRef.current = null
-      } else {
-        return
-      }
-    }
-    if (wsRef.current?.readyState === WebSocket.CONNECTING) {
-      console.log(`[WS] connect() skipped: already CONNECTING`, { roomId })
-      return
-    }
+    if (!profile && !hasTokenProvider && !allowAnonymous) return
+
+    if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) return
 
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current)
       reconnectTimeoutRef.current = null
     }
 
-    let baseUrl: string
-    if (wsUrl) {
-      baseUrl = wsUrl.replace(/^http/, 'ws')
-    } else {
-      const protocol =
-        window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      baseUrl = `${protocol}//${window.location.host}`
-    }
-
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const baseUrl = wsUrl?.replace(/^http/, 'ws') ?? `${protocol}//${window.location.host}`
     const params = new URLSearchParams()
 
     if (profile) {
       params.set('userId', profile.id)
-      params.set('isAdmin', String(profile.isAdmin))
       if (profile.name) params.set('userName', profile.name)
       if (profile.email) params.set('userEmail', profile.email)
       if (profile.imageUrl) params.set('userImageUrl', profile.imageUrl)
     }
 
-    const tokenStart = performance.now()
     try {
-      const contextGetToken = getAuthTokenRef.current
-      const token = contextGetToken
-        ? await contextGetToken()
-        : await getAuthToken()
-      if (token) {
-        params.set('token', token)
-      }
-      console.log(`[WS] Token acquired in ${(performance.now() - tokenStart).toFixed(0)}ms`, { roomId, hasProfile: !!profile, tokenSource: contextGetToken ? 'context' : 'tokenProvider' })
-    } catch {
-      console.log(`[WS] Token failed after ${(performance.now() - tokenStart).toFixed(0)}ms`, { roomId })
-    }
+      const tokenFn = getAuthTokenRef.current ?? getAuthToken
+      const token = await tokenFn()
+      if (token) params.set('token', token)
+    } catch { /* token fetch failed — connect anyway if anonymous */ }
 
     params.set('appId', appId)
 
-    connectedWithProfileRef.current = !!profile
-
-    const wsPath = `${wsPathPrefix}/${roomId}`
-    const url = `${baseUrl}${wsPath}?${params.toString()}`
-    console.log('[WS] Connecting:', {
-      roomId,
-      attempt: reconnectAttemptRef.current,
-    })
+    const url = `${baseUrl}${wsPathPrefix}/${roomId}?${params.toString()}`
     const ws = new WebSocket(url)
     ws.binaryType = 'arraybuffer'
+    wsRef.current = ws
 
     ws.onopen = () => {
-      const pendingSubs = subscriptionMapRef.current.size
-      const skippedMsgs = preConnectMsgCountRef.current
-      console.log('[WS] Connected:', {
-        roomId,
-        appId,
-        pendingSubs,
-        skippedMsgs,
-      })
-      preConnectMsgCountRef.current = 0
       setStatus('connected')
+      // Re-subscribe all active queries
       for (const [subscriptionId, queryKey] of subscriptionMapRef.current) {
         try {
           const query = JSON.parse(queryKey)
           ws.send(JSON.stringify({ type: MSG_SUBSCRIBE, payload: { subscriptionId, query } }))
-        } catch { /* skip invalid */ }
+        } catch { /* skip */ }
       }
     }
 
     ws.onmessage = handleMessage
 
-    ws.onclose = (event) => {
-      console.log('[WS] Closed:', {
-        roomId,
-        code: event.code,
-        reason: event.reason,
-        wasClean: event.wasClean,
-      })
+    ws.onclose = () => {
       setStatus('disconnected')
       setReady(false)
       wsRef.current = null
-
-      for (const [, queryKey] of subscriptionMapRef.current) {
-        storeRef.current.resetToLoading(queryKey)
-      }
-
-      for (const [_id, pending] of pendingRequestsRef.current) {
+      for (const [, queryKey] of subscriptionMapRef.current) storeRef.current.resetToLoading(queryKey)
+      for (const [, pending] of pendingRequestsRef.current) {
         clearTimeout(pending.timer)
         pending.reject(new Error('WebSocket disconnected'))
       }
       pendingRequestsRef.current.clear()
-
       const attempt = reconnectAttemptRef.current
       const delay = Math.min(1000 * Math.pow(2, attempt), 30000)
-      console.log('[WS] Scheduling reconnect:', {
-        roomId,
-        attempt,
-        delayMs: delay,
-      })
-
       reconnectAttemptRef.current = attempt + 1
       reconnectTimeoutRef.current = setTimeout(connect, delay)
     }
 
-    ws.onerror = (e) => {
-      console.error('[WS] Error:', { roomId, error: e })
-    }
+    ws.onerror = () => {}
+  }, [roomId, wsUrl, wsPathPrefix, handleMessage, allowAnonymous, appId])
 
-    wsRef.current = ws
-  }, [
-    multiplex,
-    roomId,
-    wsUrl,
-    wsPathPrefix,
-    handleMessage,
-    allowAnonymous,
-    appId,
-  ])
+  // ── Connect when auth is available ───────────────────────────────────
 
-  // ── Connect when auth is available (direct-WS only) ────────────────
-
-  const userProfileLoading = auth?.userProfileLoading ?? false
   const userProfileId = auth?.userProfile?.id
   const hasAuthToken = !!auth?.getAuthToken
+  const userProfileLoading = auth?.userProfileLoading ?? false
 
   useEffect(() => {
-    if (multiplex) return
-    const reason = userProfileId ? 'profileId' : hasAuthToken ? 'authToken' : allowAnonymous && !userProfileLoading ? 'anonymous' : null
-    console.log(`[WS] Connect effect:`, { roomId, reason, userProfileId: !!userProfileId, hasAuthToken, userProfileLoading })
-    if (userProfileId || hasAuthToken) {
-      connect()
-    } else if (allowAnonymous && !userProfileLoading) {
+    if (userProfileId || hasAuthToken || (allowAnonymous && !userProfileLoading)) {
       connect()
     }
-  }, [multiplex, userProfileId, hasAuthToken, userProfileLoading, allowAnonymous, connect])
+  }, [userProfileId, hasAuthToken, userProfileLoading, allowAnonymous, connect])
 
-  // Reconnect on visibility change (direct-WS only)
+  // Reconnect on tab focus
   useEffect(() => {
-    if (multiplex) return
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        const ws = wsRef.current
-        const isConnected = ws?.readyState === WebSocket.OPEN
-        if (!isConnected && (userProfileRef.current || getAuthTokenRef.current || allowAnonymous)) {
-          console.log('[WS] Reconnecting after visibility change')
-          reconnectAttemptRef.current = 0
-          connect()
-        }
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && wsRef.current?.readyState !== WebSocket.OPEN) {
+        reconnectAttemptRef.current = 0
+        connect()
       }
     }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [connect])
 
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () =>
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [multiplex, roomId, connect, allowAnonymous])
-
-  // Cleanup on unmount or roomId change (direct-WS only)
+  // Cleanup
   useEffect(() => {
-    if (multiplex) return
     return () => {
-      console.log('[WS] Unmounting RecordScope:', { roomId })
-      hasEverBeenReadyRef.current = false
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current)
-        reconnectTimeoutRef.current = null
-      }
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current)
       const ws = wsRef.current
-      if (ws) {
-        ws.onclose = null
-        ws.onmessage = null
-        ws.onerror = null
-        ws.close()
-        wsRef.current = null
-      }
+      if (ws) { ws.onclose = null; ws.close() }
+      wsRef.current = null
     }
-  }, [multiplex, roomId])
+  }, [roomId])
 
-  // ── Context methods ─────────────────────────────────────────────────
+  // ── Send helpers ─────────────────────────────────────────────────────
 
-  const sendMessage = useCallback(
-    (message: { type: number; payload: unknown }) => {
-      const mux = muxHandleRef.current
-      if (mux) {
-        mux.sendMessage(message)
-        return
-      }
-      const ws = wsRef.current
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify(message))
-      } else if (hasEverBeenReadyRef.current) {
-        console.warn(
-          '[RecordScope] Cannot send message, WebSocket disconnected (was previously connected)',
-          { roomId, msgType: message.type },
-        )
-      } else {
-        preConnectMsgCountRef.current++
-        console.debug(
-          `[RecordScope] Skipping send (WS not yet ready), roomId=${roomId}, msgType=${message.type}, skipped#=${preConnectMsgCountRef.current}`,
-        )
-      }
-    },
-    [roomId],
-  )
+  const sendMessage = useCallback((message: { type: number; payload: unknown }) => {
+    const ws = wsRef.current
+    if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message))
+  }, [])
 
-  // Auto-discover schemas after connection is ready
-  useEffect(() => {
-    if (ready) {
-      sendMessage({ type: MSG_LIST_SCHEMAS, payload: {} })
+  const sendBinary = useCallback((data: Uint8Array) => {
+    const ws = wsRef.current
+    if (ws?.readyState === WebSocket.OPEN) ws.send(data)
+  }, [])
+
+  const onBinaryMessage = useCallback((handler: (data: ArrayBuffer) => void) => {
+    binaryHandlersRef.current.add(handler)
+    return () => { binaryHandlersRef.current.delete(handler) }
+  }, [])
+
+  const registerYjsJoinHandler = useCallback((docKey: string, handler: (canWrite: boolean) => void) => {
+    if (!yjsJoinHandlersRef.current.has(docKey)) yjsJoinHandlersRef.current.set(docKey, new Set())
+    yjsJoinHandlersRef.current.get(docKey)!.add(handler)
+    return () => {
+      const handlers = yjsJoinHandlersRef.current.get(docKey)
+      if (handlers) { handlers.delete(handler); if (handlers.size === 0) yjsJoinHandlersRef.current.delete(docKey) }
     }
-  }, [ready, sendMessage])
+  }, [])
 
-  const setUserRole = useCallback(
-    (userId: string, role: string) => {
-      sendMessage({ type: MSG_SET_ROLE, payload: { userId, role } })
-    },
-    [sendMessage],
-  )
+  const sendConfirmed = useCallback((
+    message: { type: number; payload: Record<string, unknown> },
+    timeoutMs = 10000,
+  ): Promise<unknown> => {
+    const ws = wsRef.current
+    if (!ws || ws.readyState !== WebSocket.OPEN) return Promise.reject(new Error('WebSocket not connected'))
+    const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        pendingRequestsRef.current.delete(requestId)
+        reject(new Error('Mutation confirmation timed out'))
+      }, timeoutMs)
+      pendingRequestsRef.current.set(requestId, { resolve, reject, timer })
+      ws.send(JSON.stringify({ ...message, payload: { ...message.payload, requestId } }))
+    })
+  }, [])
+
+  const setUserRole = useCallback((userId: string, role: string) => {
+    sendMessage({ type: MSG_SET_ROLE, payload: { userId, role } })
+  }, [sendMessage])
 
   const requestUserList = useCallback(() => {
     sendMessage({ type: MSG_USER_LIST, payload: {} })
   }, [sendMessage])
 
-  const registerSubscription = useCallback(
-    (subscriptionId: string, queryKey: string) => {
-      subscriptionMapRef.current.set(subscriptionId, queryKey)
-    },
-    [],
-  )
+  const registerSubscription = useCallback((subscriptionId: string, queryKey: string) => {
+    subscriptionMapRef.current.set(subscriptionId, queryKey)
+  }, [])
 
   const unregisterSubscription = useCallback((subscriptionId: string) => {
     subscriptionMapRef.current.delete(subscriptionId)
   }, [])
 
-  const sendBinary = useCallback((data: Uint8Array) => {
-    const mux = muxHandleRef.current
-    if (mux) {
-      mux.sendBinary(data)
-      return
-    }
-    const ws = wsRef.current
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(data)
-    }
-  }, [])
+  // Auto-discover schemas
+  useEffect(() => {
+    if (ready) sendMessage({ type: MSG_LIST_SCHEMAS, payload: {} })
+  }, [ready, sendMessage])
 
-  const onBinaryMessage = useCallback(
-    (handler: (data: ArrayBuffer) => void) => {
-      binaryHandlersRef.current.add(handler)
-      return () => {
-        binaryHandlersRef.current.delete(handler)
-      }
-    },
-    [],
-  )
-
-  const registerYjsJoinHandler = useCallback(
-    (docKey: string, handler: (canWrite: boolean) => void) => {
-      if (!yjsJoinHandlersRef.current.has(docKey)) {
-        yjsJoinHandlersRef.current.set(docKey, new Set())
-      }
-      yjsJoinHandlersRef.current.get(docKey)!.add(handler)
-
-      return () => {
-        const handlers = yjsJoinHandlersRef.current.get(docKey)
-        if (handlers) {
-          handlers.delete(handler)
-          if (handlers.size === 0) {
-            yjsJoinHandlersRef.current.delete(docKey)
-          }
-        }
-      }
-    },
-    [],
-  )
-
-  const sendConfirmed = useCallback(
-    (
-      message: { type: number; payload: Record<string, unknown> },
-      timeoutMs = 10000,
-    ): Promise<unknown> => {
-      const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
-      const mux = muxHandleRef.current
-
-      if (!mux) {
-        const ws = wsRef.current
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-          return Promise.reject(new Error('WebSocket not connected'))
-        }
-      }
-
-      return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => {
-          pendingRequestsRef.current.delete(requestId)
-          reject(new Error('Mutation confirmation timed out'))
-        }, timeoutMs)
-
-        pendingRequestsRef.current.set(requestId, { resolve, reject, timer })
-
-        const fullMsg = {
-          ...message,
-          payload: { ...message.payload, requestId },
-        }
-
-        if (mux) {
-          mux.sendMessage(fullMsg)
-        } else {
-          const ws = wsRef.current
-          if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify(fullMsg))
-          }
-        }
-      })
-    },
-    [],
-  )
-
-  // ── Register collections in ScopeRegistry ───────────────────────────
+  // ── ScopeRegistry ────────────────────────────────────────────────────
 
   const scopeEntryRef = useRef<ScopeEntry | null>(null)
   if (!scopeEntryRef.current) {
     scopeEntryRef.current = {
-      store: storeRef.current,
-      sendMessage,
-      sendConfirmed,
-      registerSubscription,
-      unregisterSubscription,
-      sendBinary,
-      onBinaryMessage,
-      registerYjsJoinHandler,
-      ready,
-      status,
+      store: storeRef.current, sendMessage, sendConfirmed,
+      registerSubscription, unregisterSubscription, sendBinary, onBinaryMessage,
+      registerYjsJoinHandler, ready, status,
     }
   }
   scopeEntryRef.current.ready = ready
@@ -815,83 +492,81 @@ export function RecordScope({
   const registeredSchemasRef = useRef<CollectionSchema[] | null>(null)
   if (!isolated && registry && schemas !== registeredSchemasRef.current) {
     if (registeredSchemasRef.current) {
-      const oldNames = registeredSchemasRef.current.map((s) => s.name)
-      registry.unregister(scopeIdRef.current, oldNames)
+      registry.unregister(scopeIdRef.current, registeredSchemasRef.current.map((s) => s.name))
     }
-    const collectionNames = schemas.map((s) => s.name)
-    if (collectionNames.length > 0) {
-      registry.register(scopeIdRef.current, collectionNames, scopeEntryRef.current!)
-    }
+    const names = schemas.map((s) => s.name)
+    if (names.length > 0) registry.register(scopeIdRef.current, names, scopeEntryRef.current!)
     registeredSchemasRef.current = schemas
   }
 
   useEffect(() => {
     if (isolated || !registry) return
     return () => {
-      const collectionNames = (registeredSchemasRef.current ?? []).map((s) => s.name)
-      if (collectionNames.length === 0) return
-      registry.unregister(scopeIdRef.current, collectionNames)
+      const names = (registeredSchemasRef.current ?? []).map((s) => s.name)
+      if (names.length > 0) registry.unregister(scopeIdRef.current, names)
     }
   }, [isolated, registry, roomId])
 
-  // ── Provide RecordContext ───────────────────────────────────────────
+  // ── Context ──────────────────────────────────────────────────────────
 
-  const registeredCollections = useMemo(
-    () => new Set(schemas.map((s) => s.name)),
-    [schemas],
-  )
+  const registeredCollections = useMemo(() => new Set(schemas.map((s) => s.name)), [schemas])
 
-  const value: RecordContextValue = useMemo(
-    () => ({
-      store: storeRef.current,
-      roomId,
-      registeredCollections,
-      userProfile: auth?.userProfile ?? null,
-      userProfileLoading: auth?.userProfileLoading ?? false,
-      refetchUserProfile: auth?.refetchUserProfile ?? (async () => {}),
-      roomRole,
-      allUsers,
-      usersLoaded,
-      status,
-      ready,
-      discoveredSchemas,
-      setUserRole,
-      requestUserList,
-      registerSubscription,
-      unregisterSubscription,
-      sendMessage,
-      sendBinary,
-      onBinaryMessage,
-      registerYjsJoinHandler,
-      sendConfirmed,
-    }),
-    [
-      roomId,
-      registeredCollections,
-      auth?.userProfile,
-      auth?.userProfileLoading,
-      auth?.refetchUserProfile,
-      roomRole,
-      allUsers,
-      usersLoaded,
-      status,
-      ready,
-      discoveredSchemas,
-      setUserRole,
-      requestUserList,
-      registerSubscription,
-      unregisterSubscription,
-      sendMessage,
-      sendBinary,
-      onBinaryMessage,
-      registerYjsJoinHandler,
-      sendConfirmed,
-    ],
-  )
+  const value: RecordContextValue = useMemo(() => ({
+    store: storeRef.current, roomId, registeredCollections,
+    userProfile: auth?.userProfile ?? null,
+    userProfileLoading: auth?.userProfileLoading ?? false,
+    refetchUserProfile: auth?.refetchUserProfile ?? (async () => {}),
+    roomRole, allUsers, usersLoaded, status, ready, discoveredSchemas,
+    setUserRole, requestUserList, registerSubscription, unregisterSubscription,
+    sendMessage, sendBinary, onBinaryMessage, registerYjsJoinHandler, sendConfirmed,
+  }), [
+    roomId, registeredCollections, auth?.userProfile, auth?.userProfileLoading,
+    auth?.refetchUserProfile, roomRole, allUsers, usersLoaded, status, ready,
+    discoveredSchemas, setUserRole, requestUserList, registerSubscription,
+    unregisterSubscription, sendMessage, sendBinary, onBinaryMessage,
+    registerYjsJoinHandler, sendConfirmed,
+  ])
 
   if (!children) return null
+  return <RecordContext.Provider value={value}>{children}</RecordContext.Provider>
+}
 
+// ============================================================================
+// RecordScope (public API)
+// ============================================================================
+
+export function RecordScope({
+  roomId,
+  schemas,
+  children,
+  appId,
+  sharedScopes,
+  wsUrl,
+  wsPathPrefix = '/ws',
+  isolated = false,
+}: RecordScopeProps) {
   return (
-    <RecordContext.Provider value={value}>{children}</RecordContext.Provider>
+    <>
+      {sharedScopes?.map((shared) => (
+        <HeadlessScope
+          key={shared.roomId}
+          roomId={shared.roomId}
+          schemas={shared.schemas}
+          appId={appId}
+          wsUrl={wsUrl}
+          wsPathPrefix={wsPathPrefix}
+        />
+      ))}
+      <ScopeConnection
+        roomId={roomId}
+        schemas={schemas}
+        appId={appId}
+        wsUrl={wsUrl}
+        wsPathPrefix={wsPathPrefix}
+        isolated={isolated}
+      >
+        {children}
+      </ScopeConnection>
+    </>
   )
 }

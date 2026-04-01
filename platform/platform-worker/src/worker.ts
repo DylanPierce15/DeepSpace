@@ -19,9 +19,8 @@ import { cors } from 'hono/cors'
 import { verifyJwt, verifyInternalSignature } from '@deepspace/auth'
 import type { JwtVerifierConfig, VerifiedAuth } from '@deepspace/auth'
 
-// Re-export Durable Object classes for wrangler
+// Re-export Durable Object class for wrangler
 export { SharedRecordRoom } from './record-room-stub.js'
-export { GatewaySession } from './gateway-session-stub.js'
 
 // ============================================================================
 // Types
@@ -29,7 +28,6 @@ export { GatewaySession } from './gateway-session-stub.js'
 
 interface Env {
   RECORD_ROOMS: DurableObjectNamespace
-  GATEWAY_SESSIONS: DurableObjectNamespace
   SCHEMA_REGISTRY: R2Bucket
   AUTH_JWT_PUBLIC_KEY: string
   AUTH_JWT_ISSUER: string
@@ -185,26 +183,6 @@ app.all('/internal/tools/:scopeId/:action{.+}', async (c) => {
     }),
   )
 })
-
-// ── Multiplexed WebSocket ────────────────────────────────────────────────
-
-async function muxHandler(c: { req: { raw: Request; url: string; query(key: string): string | undefined }; env: Env; json: (data: unknown, status?: number) => Response }) {
-  const auth = await authenticate(c.req.raw, c.env)
-  if (!auth) return c.json({ error: 'Authentication required' }, 401)
-
-  const appId = c.req.query('appId')
-  if (!appId) return c.json({ error: 'appId required' }, 400)
-
-  const gwId = c.env.GATEWAY_SESSIONS.idFromName(`${auth.userId}:${appId}`)
-  const stub = c.env.GATEWAY_SESSIONS.get(gwId)
-
-  const gwUrl = new URL(c.req.url)
-  gwUrl.searchParams.set('userId', auth.userId)
-  return stub.fetch(new Request(gwUrl.toString(), c.req.raw))
-}
-
-app.get('/mux/ws', (c) => muxHandler(c))
-app.get('/platform/mux/ws', (c) => muxHandler(c))
 
 // ── WebSocket (per-scope, supports anonymous for conv/dir) ───────────────
 

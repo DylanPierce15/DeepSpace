@@ -11,6 +11,11 @@ compatibility_flags = ["nodejs_compat"]
 binding = "APP_REGISTRY"
 bucket_name = "deepspace-schema-registry"
 
+# Shared with dispatch-worker — stores per-app cron task configs
+[[kv_namespaces]]
+binding = "CRON_TASKS"
+id = "a13702840633449ab9a5e5371491ac18"
+
 [dev]
 port = 8796
 inspector_port = 9237

@@ -19,7 +19,6 @@ import React, {
   type ReactNode,
 } from 'react'
 import type { CollectionSchema } from '@deepspace/types'
-import { getApiUrl } from '@deepspace/config'
 import { useAuth, getAuthToken } from '../auth'
 import { RecordStore } from './store'
 import { ScopeRegistryProvider } from './ScopeRegistry'
@@ -670,16 +669,24 @@ export function RecordProvider({
 }): React.ReactElement {
   const { isLoaded, isSignedIn } = useAuth()
 
-  // Build fetchUser that calls the DeepSpace API with a Better Auth token
+  // Derive user profile from the JWT — no API call needed.
+  // The auth-worker puts name, email, image in the token claims.
   const fetchUser = useCallback(async (): Promise<UserProfile> => {
     if (!isSignedIn) throw new Error('Not signed in')
     const token = await getAuthToken()
     if (!token) throw new Error('No auth token')
-    const response = await fetch(`${getApiUrl()}/api/users/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (!response.ok) throw new Error(`Failed to fetch user: ${response.status}`)
-    return response.json()
+    try {
+      const parts = token.split('.')
+      const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
+      return {
+        id: payload.sub,
+        name: payload.name ?? '',
+        email: payload.email ?? '',
+        imageUrl: payload.image ?? undefined,
+      }
+    } catch {
+      throw new Error('Failed to decode JWT')
+    }
   }, [isSignedIn])
 
   // Build getAuthToken function — use prop override or default to auth module

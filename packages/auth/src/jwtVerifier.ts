@@ -48,7 +48,9 @@ const keyCache = new Map<string, CryptoKey>()
 async function getPublicKey(pem: string): Promise<CryptoKey> {
   const cached = keyCache.get(pem)
   if (cached) return cached
-  const key = await importSPKI(pem, 'ES256')
+  // .dev.vars stores PEM with literal \n — replace with actual newlines
+  const normalized = pem.replace(/\\n/g, '\n')
+  const key = await importSPKI(normalized, 'ES256')
   keyCache.set(pem, key)
   return key
 }

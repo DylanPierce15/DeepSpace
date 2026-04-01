@@ -51,8 +51,4 @@ test.describe('Platform worker', () => {
     expect(res.status()).toBe(401)
   })
 
-  test('GET /mux/ws without auth returns 401', async ({ request }) => {
-    const res = await request.get(`${PLATFORM_URL}/mux/ws`)
-    expect(res.status()).toBe(401)
-  })
 })

@@ -12,6 +12,7 @@ import deployRoutes from './routes/deploy'
 export type Env = {
   Bindings: {
     APP_REGISTRY: R2Bucket
+    CRON_TASKS: KVNamespace
     AUTH_JWT_PUBLIC_KEY: string
     AUTH_JWT_ISSUER: string
     CLOUDFLARE_API_TOKEN: string

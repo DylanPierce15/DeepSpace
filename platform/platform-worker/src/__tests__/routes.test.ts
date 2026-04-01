@@ -83,18 +83,6 @@ describe('Platform worker routes', () => {
     })
   })
 
-  // ── Mux WebSocket auth gating ──────────────────────────────────────────
-
-  describe('GET /mux/ws', () => {
-    it('returns 401 without auth', async () => {
-      const res = await SELF.fetch('https://fake-host/mux/ws')
-      expect(res.status).toBe(401)
-
-      const body = (await res.json()) as { error: string }
-      expect(body.error).toBe('Authentication required')
-    })
-  })
-
   // ── API passthrough ────────────────────────────────────────────────────
 
   describe('ALL /api/*', () => {
@@ -139,15 +127,5 @@ describe('Platform worker routes', () => {
       expect(body.success).toBe(true)
     })
 
-    it('GET /mux/ws with valid JWT but missing appId returns 400', async () => {
-      const token = await signJwt()
-      const res = await SELF.fetch('https://fake-host/mux/ws', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      expect(res.status).toBe(400)
-
-      const body = (await res.json()) as { error: string }
-      expect(body.error).toBe('appId required')
-    })
-  })
+})
 })

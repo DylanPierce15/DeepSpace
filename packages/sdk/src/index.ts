@@ -33,7 +33,6 @@ export {
   // Providers
   RecordProvider,
   RecordScope,
-  MultiplexProvider,
   ScopeRegistryProvider,
 
   // Core hooks
@@ -46,12 +45,15 @@ export {
   useTeams,
   usePresence,
 
+  // Directory hooks
+  useConversations,
+  useCommunities,
+  usePosts,
+
   // Yjs collaborative editing
   useYjsField,
   useYjsText,
 
-  // Multi-scope
-  useMultiplex,
 
   // File uploads
   useR2Files,
@@ -91,6 +93,27 @@ export {
   MSG_SYNC_UPDATE,
 } from './storage'
 
+// ── Messaging ────────────────────────────────────────────────────────
+export {
+  useConversation,
+  groupReactionsForMessage,
+  shouldGroupMessages,
+  getThreadCounts,
+  formatMessageTime,
+  formatFullTimestamp,
+} from './messaging'
+
+export type {
+  MessageRecord,
+  ReactionRecord,
+  MemberRecord,
+  ReadCursorRecord,
+  GroupedReaction,
+  ConversationObject,
+  ContentSegment,
+  LinkPreviewData,
+} from './messaging'
+
 // ── Types ─────────────────────────────────────────────────────────────
 export type {
   // Storage types
@@ -109,8 +132,6 @@ export type {
   UseYjsFieldResult,
   UseYjsTextResult,
   ConnectionStatus,
-  ScopeHandle,
-  MultiplexContextValue,
   ScopeEntry,
   SyncResult,
   AwarenessState,

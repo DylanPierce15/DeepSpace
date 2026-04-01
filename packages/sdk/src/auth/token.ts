@@ -7,7 +7,8 @@
  * This replaces Clerk's getToken() and the old widgetAuth postMessage system.
  */
 
-import { getAuthUrl } from '@deepspace/config'
+// Token is fetched via same-origin /api/auth/token — the app's worker (or Vite proxy)
+// routes this to the auth-worker. No cross-origin requests needed.
 
 let cachedToken: string | null = null
 let tokenExpiry = 0
@@ -39,7 +40,7 @@ export async function getAuthToken(): Promise<string | null> {
   }
 
   try {
-    const res = await fetch(`${getAuthUrl()}/api/auth/token`, {
+    const res = await fetch('/api/auth/token', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },

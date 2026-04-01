@@ -18,7 +18,6 @@ describe('SDK barrel exports', () => {
     const storage = await import('../storage/index')
     expect(storage.RecordProvider).toBeDefined()
     expect(storage.RecordScope).toBeDefined()
-    expect(storage.MultiplexProvider).toBeDefined()
     expect(storage.useQuery).toBeDefined()
     expect(storage.useMutations).toBeDefined()
     expect(storage.useUser).toBeDefined()

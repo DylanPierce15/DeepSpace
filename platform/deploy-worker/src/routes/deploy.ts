@@ -10,6 +10,7 @@ import { Hono } from 'hono'
 import type { Env } from '../worker'
 import { authMiddleware } from '../middleware/auth'
 import { deployToWfP, deleteFromWfP, sha256Hex32, type AssetEntry } from '../lib/cloudflare-deploy'
+import { validateCronConfig, buildCronKVEntry } from '../lib/cron-validation'
 
 const deploy = new Hono<Env>()
 
@@ -39,6 +40,7 @@ deploy.post('/:appName', authMiddleware, async (c) => {
   const formData = await c.req.formData()
   const workerFile = formData.get('worker') as File | null
   const assetsJson = formData.get('assets') as string | null
+  const cronConfigJson = formData.get('cronConfig') as string | null
 
   if (!workerFile) {
     return c.json({ error: 'Missing "worker" field (bundled worker.js)' }, 400)
@@ -55,6 +57,21 @@ deploy.post('/:appName', authMiddleware, async (c) => {
     rawAssets = JSON.parse(assetsJson)
   } catch {
     return c.json({ error: 'Invalid assets JSON' }, 400)
+  }
+
+  // Parse and validate optional cron config
+  let parsedCronConfig: ReturnType<typeof validateCronConfig> | null = null
+  if (cronConfigJson) {
+    let rawCron: unknown
+    try {
+      rawCron = JSON.parse(cronConfigJson)
+    } catch {
+      return c.json({ error: 'Invalid cronConfig JSON' }, 400)
+    }
+    parsedCronConfig = validateCronConfig(rawCron)
+    if (!parsedCronConfig.success) {
+      return c.json({ error: `Invalid cron config: ${parsedCronConfig.error}` }, 400)
+    }
   }
 
   // Build asset entries with hashes
@@ -91,6 +108,17 @@ deploy.post('/:appName', authMiddleware, async (c) => {
 
   if (!result.success) {
     return c.json({ error: result.error }, 500)
+  }
+
+  // Register cron tasks in dispatch worker's KV (or clean up if no tasks)
+  const cronKvKey = `cron:${appName}`
+  if (parsedCronConfig?.success && parsedCronConfig.data.tasks.length > 0) {
+    const kvEntry = buildCronKVEntry(parsedCronConfig.data, userId)
+    await c.env.CRON_TASKS.put(cronKvKey, JSON.stringify(kvEntry))
+    console.log(`[deploy] Registered ${kvEntry.tasks.length} cron task(s) for ${appName}`)
+  } else {
+    // No cron tasks — remove any previously registered config
+    await c.env.CRON_TASKS.delete(cronKvKey)
   }
 
   // Update app registry
@@ -144,7 +172,8 @@ deploy.delete('/:appName', authMiddleware, async (c) => {
     return c.json({ error: result.error }, 500)
   }
 
-  // Remove from registry
+  // Remove cron tasks and app registry entry
+  await c.env.CRON_TASKS.delete(`cron:${appName}`)
   await c.env.APP_REGISTRY.delete(registryKey)
 
   return c.json({ success: true })

@@ -12,7 +12,8 @@
     "./theme": "./src/theme/index.ts",
     "./config": "./src/config/index.ts",
     "./client": "./src/client/index.ts",
-    "./platform": "./src/platform/index.ts"
+    "./platform": "./src/platform/index.ts",
+    "./messaging": "./src/messaging/index.ts"
   },
   "scripts": {
     "build": "tsc --project tsconfig.json",

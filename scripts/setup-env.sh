@@ -29,7 +29,7 @@ write_dev_vars() {
   : > "$outfile"
 
   for key in "${keys[@]}"; do
-    value=$(echo "$SECRETS" | grep "^${key}=" | head -1 | cut -d= -f2-)
+    value=$(echo "$SECRETS" | grep "^${key}=" | head -1 | cut -d= -f2- || true)
     if [ -n "$value" ]; then
       echo "${key}=${value}" >> "$outfile"
     fi
@@ -69,7 +69,6 @@ write_dev_vars "$ROOT/platform/platform-worker" \
   AUTH_JWT_PUBLIC_KEY \
   AUTH_JWT_ISSUER \
   AUTH_JWT_AUDIENCE \
-  AUTH_JWT_AUTHORIZED_PARTIES \
   AUTH_JWT_CLOCK_SKEW_MS \
   INTERNAL_STORAGE_HMAC_SECRET
 
