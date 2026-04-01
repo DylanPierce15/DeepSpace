@@ -3,6 +3,6 @@
 # NOTE: Deploy/delete via Cloudflare REST API, not wrangler CLI
 
 name = "deepspace-sdk-test"
-main = "worker.ts"
+main = "src/worker.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]

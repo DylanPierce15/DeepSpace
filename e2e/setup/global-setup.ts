@@ -37,7 +37,7 @@ export default async function globalSetup() {
   }
 
   // Bundle TS -> JS with esbuild
-  const workerTs = resolve(import.meta.dirname, '../test-app/worker.ts')
+  const workerTs = resolve(import.meta.dirname, '../test-app/src/worker.ts')
   const outfile = resolve(import.meta.dirname, '../test-app/.worker-bundle.js')
   execSync(`npx esbuild ${workerTs} --bundle --format=esm --outfile=${outfile} --target=esnext`, {
     stdio: 'inherit',
