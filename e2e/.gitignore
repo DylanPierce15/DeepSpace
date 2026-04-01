@@ -1,0 +1,5 @@
+.auth-state.json
+test-app/.worker-bundle.js
+node_modules/
+test-results/
+playwright-report/
