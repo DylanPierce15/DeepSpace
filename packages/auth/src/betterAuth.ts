@@ -41,10 +41,7 @@ export function createDeepSpaceAuth(config: DeepSpaceAuthConfig) {
   }
 
   return betterAuth({
-    database: {
-      type: 'd1',
-      d1: config.database,
-    },
+    database: config.database,
     baseURL: config.baseURL,
     secret: config.secret,
     emailAndPassword: {
