@@ -84,6 +84,7 @@ deploy.post('/:appName', authMiddleware, async (c) => {
       ownerUserId: userId,
       jwtPublicKey: c.env.DEPLOY_JWT_PUBLIC_KEY_PEM,
       jwtIssuer: c.env.AUTH_JWT_ISSUER,
+      authWorkerUrl: c.env.AUTH_WORKER_URL,
       hmacSecret: c.env.INTERNAL_HMAC_SECRET,
     },
   )

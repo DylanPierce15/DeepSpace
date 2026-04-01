@@ -17,6 +17,7 @@ export type Env = {
     CLOUDFLARE_API_TOKEN: string
     CLOUDFLARE_ACCOUNT_ID: string
     DEPLOY_JWT_PUBLIC_KEY_PEM: string
+    AUTH_WORKER_URL: string
     INTERNAL_HMAC_SECRET: string
   }
   Variables: {

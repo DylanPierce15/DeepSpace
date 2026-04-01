@@ -2,6 +2,7 @@
  * Site Worker — Hono-based Cloudflare Worker for DeepSpace apps.
  *
  * Deployed per-app via Workers for Platforms. Handles:
+ *   - Auth proxy → auth-worker (same-origin cookies)
  *   - WebSocket proxy to platform-worker (RecordRoom)
  *   - Server actions (app-defined, bypass user RBAC)
  *   - Scoped R2 file storage
@@ -39,6 +40,7 @@ interface Env {
   PLATFORM_WORKER: Fetcher
   AUTH_JWT_PUBLIC_KEY: string
   AUTH_JWT_ISSUER: string
+  AUTH_WORKER_URL: string
   APP_NAME: string
   OWNER_USER_ID: string
   INTERNAL_STORAGE_HMAC_SECRET: string
@@ -67,7 +69,6 @@ async function resolveAuth(
   req: Request,
   env: Env,
 ): Promise<VerifyResult | null> {
-  // Cookie-based session token or Authorization header
   const authHeader = req.headers.get('Authorization')
   const token = authHeader?.startsWith('Bearer ')
     ? authHeader.slice(7)
@@ -78,6 +79,38 @@ async function resolveAuth(
   const outcome = await verifyJwt(jwtConfig(env), token)
   return outcome.result
 }
+
+// ---------------------------------------------------------------------------
+// Auth proxy → auth-worker (same-origin cookies)
+// ---------------------------------------------------------------------------
+
+app.all('/api/auth/*', async (c) => {
+  const url = new URL(c.req.url)
+  const authUrl = new URL(url.pathname + url.search, c.env.AUTH_WORKER_URL)
+
+  const res = await fetch(authUrl.toString(), {
+    method: c.req.method,
+    headers: c.req.raw.headers,
+    body: c.req.method !== 'GET' && c.req.method !== 'HEAD'
+      ? c.req.raw.body
+      : undefined,
+  })
+
+  // Forward the response including set-cookie headers
+  // Rewrite cookie domain so it's same-origin with the app
+  const headers = new Headers(res.headers)
+  const setCookie = headers.get('set-cookie')
+  if (setCookie) {
+    // Remove Domain= attribute so cookie defaults to current host (same-origin)
+    const rewritten = setCookie.replace(/;\s*Domain=[^;]*/gi, '')
+    headers.set('set-cookie', rewritten)
+  }
+
+  return new Response(res.body, {
+    status: res.status,
+    headers,
+  })
+})
 
 // ---------------------------------------------------------------------------
 // WebSocket proxy → platform-worker
@@ -118,8 +151,6 @@ function getR2Handler(env: Env): ScopedR2Handler {
   if (!r2Handler[env.APP_NAME]) {
     r2Handler[env.APP_NAME] = createScopedR2Handler({
       resolvePrefix(scope, ctx) {
-        // App files: apps/{appName}/
-        // User files: apps/{appName}/users/{userId}/
         if (scope === 'app') {
           return { prefix: `apps/${env.APP_NAME}/` }
         }
@@ -190,7 +221,6 @@ app.all('/platform/*', async (c) => {
 app.get('*', async (c) => {
   const response = await c.env.ASSETS.fetch(c.req.raw)
   if (response.status === 404) {
-    // SPA fallback — serve index.html for client-side routing
     const url = new URL(c.req.url)
     url.pathname = '/index.html'
     return c.env.ASSETS.fetch(new Request(url.toString(), c.req.raw))
@@ -235,40 +265,19 @@ function createActionTools(env: Env, userId: string): ActionTools {
 
   return {
     create(sid, collection, data) {
-      return toolRequest('POST', 'records/create', {
-        scopeId: sid,
-        collection,
-        data,
-      })
+      return toolRequest('POST', 'records/create', { scopeId: sid, collection, data })
     },
     update(sid, collection, recordId, data) {
-      return toolRequest('POST', 'records/update', {
-        scopeId: sid,
-        collection,
-        recordId,
-        data,
-      })
+      return toolRequest('POST', 'records/update', { scopeId: sid, collection, recordId, data })
     },
     remove(sid, collection, recordId) {
-      return toolRequest('POST', 'records/delete', {
-        scopeId: sid,
-        collection,
-        recordId,
-      })
+      return toolRequest('POST', 'records/delete', { scopeId: sid, collection, recordId })
     },
     get(sid, collection, recordId) {
-      return toolRequest('POST', 'records/get', {
-        scopeId: sid,
-        collection,
-        recordId,
-      })
+      return toolRequest('POST', 'records/get', { scopeId: sid, collection, recordId })
     },
     query(sid, collection, options) {
-      return toolRequest('POST', 'records/query', {
-        scopeId: sid,
-        collection,
-        ...options,
-      })
+      return toolRequest('POST', 'records/query', { scopeId: sid, collection, ...options })
     },
   }
 }

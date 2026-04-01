@@ -103,3 +103,39 @@ form.append(hash, new Blob([asset.contentBase64]), hash)
 const mimeType = getMimeType(asset.path)
 form.append(hash, new Blob([asset.contentBase64], { type: mimeType }), hash)
 ```
+
+## 11. Cloudflare Assets: permanent MIME type poisoning by content hash
+
+**Problem:** After fixing the MIME type on upload (issue #10), some assets still served as `application/octet-stream` — even with a fresh app name, fresh deploy, and correct MIME types in the upload code.
+
+**Root cause:** Cloudflare's asset storage system caches assets **globally by content hash** (the first 32 hex chars of SHA-256). When a file is uploaded for the first time, the MIME type from that upload is permanently associated with that hash. Subsequent uploads of the same hash — even with a different MIME type — are silently ignored. The asset upload session returns `buckets: []` (0 buckets) meaning "I already have all these files, nothing to upload." The MIME type from the original broken upload persists forever.
+
+This means:
+- Any file uploaded before the MIME fix (issue #10) is permanently poisoned
+- Purging the CF edge cache (`/zones/{id}/purge_cache`) clears the CDN layer but does NOT fix the underlying asset store's MIME metadata
+- The only way to "fix" a poisoned hash is to change the file content so it produces a different hash
+
+**How we hit this:** During development, we deployed the starter template multiple times through the broken deploy worker (before the MIME fix). The Vite build produces deterministic output — same source code → same bundle → same hash. So every subsequent deploy of the unmodified template reused the poisoned hashes.
+
+**How we verified:**
+1. Deployed a synthetic test with small unique files through the fixed deploy worker → all MIME types correct
+2. Deployed the real Vite build (same hashes as the broken deploys) → JS/CSS still `application/octet-stream`
+3. Changed `--color-primary` in `styles.css` to produce a new CSS hash → CSS MIME type correct
+4. Added a JSX element to `App.tsx` to produce a new JS hash → JS MIME type correct
+5. Confirmed: the deploy worker fix works for any hash that has never been uploaded before
+
+**Solution:** This is a one-time problem caused by our debugging process. For production:
+- The deploy worker now sets correct MIME types on every upload (issue #10 fix)
+- Any file uploaded through the fixed deploy worker gets correct MIME types on first upload
+- Those MIME types are cached permanently by CF — which is now a good thing
+- Real users who only ever deploy through the fixed deploy worker will never encounter this issue
+
+For our development environment, we changed `--color-primary` from `#818cf8` to `#7c87f5` in the starter template to produce fresh hashes that don't collide with any poisoned ones. We also had the CF zone cache purged from the dashboard to clear stale edge cache entries.
+
+**Lesson:** When working with CF's asset upload API, always set MIME types from the very first upload. There is no way to retroactively fix the MIME type for an existing content hash.
+
+## 12. SDK config: production URLs must point to deployed workers
+
+**Problem:** The `@deepspace/config` package had production URLs pointing to `auth.deep.space`, `api.deep.space`, etc. — domains that don't exist yet. Apps deployed to `*.app.space` tried to reach these domains for auth/API calls and got `ERR_NAME_NOT_RESOLVED`.
+
+**Fix:** Updated `PROD_CONFIG` in `packages/config/src/index.ts` to point to the actual deployed worker URLs (`deepspace-auth.eudaimonicincorporated.workers.dev`, etc.). These will be updated to the custom domains once DNS is configured.

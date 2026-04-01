@@ -49,9 +49,9 @@ const DEV_CONFIG: EnvironmentConfig = {
 
 const PROD_CONFIG: EnvironmentConfig = {
   name: 'prod',
-  apiUrl: 'https://api.deep.space',
-  platformWorkerUrl: 'https://platform.deep.space',
-  authUrl: 'https://auth.deep.space',
+  apiUrl: 'https://deepspace-api.eudaimonicincorporated.workers.dev',
+  platformWorkerUrl: 'https://deepspace-platform-worker.eudaimonicincorporated.workers.dev',
+  authUrl: 'https://deepspace-auth.eudaimonicincorporated.workers.dev',
   authSignInUrl: 'https://deep.space/sign-in',
   authSignUpUrl: 'https://deep.space/sign-up',
   mainAppUrl: 'https://deep.space',
