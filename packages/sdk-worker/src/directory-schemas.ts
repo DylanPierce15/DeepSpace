@@ -18,71 +18,14 @@
 
 import type { CollectionSchema } from './schemas'
 
-// ============================================================================
-// TypeScript interfaces
-// ============================================================================
-
-export interface DirectoryConversationData {
-  Name: string
-  Description: string
-  Type: string
-  Visibility: string
-  CreatedBy: string
-  ParticipantHash: string
-  ParticipantIds: string
-  Status: string
-  AssigneeId: string
-  LinkedRef: string
-  LastMessageAt: string
-  LastMessagePreview: string
-  LastMessageAuthor: string
-  MessageCount: number
-}
-
-export interface ConversationStateData {
-  ConversationId: string
-  UserId: string
-  LastReadAt: string
-  LastReadMessageCount: number
-  Starred: number
-  Archived: number
-  Trashed: number
-  Labels: string
-  Folder: string
-}
-
-export interface DirectoryCommunityData {
-  Name: string
-  Description: string
-  CreatedBy: string
-  Type: string
-  Visibility: string
-  MemberCount: number
-  Rules: string
-  IconUrl: string
-  CoverUrl: string
-}
-
-export interface DirectoryMembershipData {
-  CommunityId: string
-  UserId: string
-  UserName: string
-  Role: string
-  JoinedAt: string
-}
-
-export interface DirectoryPostData {
-  Title: string
-  Content: string
-  AuthorId: string
-  Type: string
-  CommunityId: string
-  ParentId: string
-  ConversationId: string
-  Status: string
-  Tags: string
-  LinkUrl: string
-}
+// Re-export data interfaces from @deepspace/types (single source of truth)
+export type {
+  DirectoryConversationData,
+  ConversationStateData,
+  DirectoryCommunityData,
+  DirectoryMembershipData,
+  DirectoryPostData,
+} from '@deepspace/types'
 
 // ============================================================================
 // Schemas

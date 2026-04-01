@@ -10,7 +10,7 @@
  * 6. Run Playwright tests against the live app
  * 7. deepspace undeploy (teardown)
  *
- * Usage: npx tsx e2e/scripts/run-full-e2e.ts
+ * Usage: npx tsx tests/production/scripts/run-full-e2e.ts
  */
 
 import { execSync } from 'node:child_process'
@@ -18,7 +18,7 @@ import { mkdirSync, rmSync, existsSync, cpSync, readFileSync, writeFileSync, rea
 import { join, resolve, extname } from 'node:path'
 import { tmpdir } from 'node:os'
 
-const MONOREPO = resolve(import.meta.dirname, '../..')
+const MONOREPO = resolve(import.meta.dirname, '../../..')
 const APP_NAME = `ds-e2e-${Date.now().toString(36)}`
 const WORK_DIR = join(tmpdir(), `deepspace-e2e-${Date.now()}`)
 const APP_DIR = join(WORK_DIR, APP_NAME)
@@ -108,11 +108,11 @@ async function main() {
     run(`node ${CLI_BIN} deploy`, APP_DIR)
 
     // Write app name for Playwright tests to read
-    writeFileSync(join(MONOREPO, 'e2e', '.app-name'), APP_NAME)
+    writeFileSync(join(MONOREPO, 'tests', 'production', '.app-name'), APP_NAME)
 
     // ── Step 6: Run Playwright tests ────────────────────────────
     step('Step 6: Playwright tests')
-    run('npx playwright test', join(MONOREPO, 'e2e'))
+    run('npx playwright test', join(MONOREPO, 'tests', 'production'))
 
     step('ALL PASSED')
 

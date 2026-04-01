@@ -10,9 +10,10 @@
   },
   "scripts": {
     "build": "turbo build",
-    "dev": "turbo dev",
+    "dev": "./scripts/dev.sh",
     "lint": "turbo lint",
     "test": "turbo test",
+    "test:local": "./scripts/test-local.sh",
     "type-check": "turbo type-check",
     "clean": "turbo clean",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""

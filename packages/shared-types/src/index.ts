@@ -8,7 +8,7 @@
 // Schema Types
 // ============================================================================
 
-export type FieldType = 'string' | 'number' | 'boolean' | 'json'
+export type FieldType = 'string' | 'number' | 'boolean' | 'json' | 'object' | 'array' | 'yjs'
 
 export interface FieldSchema {
   type: FieldType
@@ -21,24 +21,37 @@ export interface FieldSchema {
   default?: unknown
   /** System-managed field — not writable by client mutations */
   systemManaged?: boolean
-  /** Whitelist of fields updatable per role */
-  writableFields?: Record<string, string[]>
-  /** Auto-set timestamp when this field changes */
-  timestampTrigger?: string
+  /**
+   * Trigger-based timestamp: auto-set to current ISO timestamp when trigger fires.
+   * - { field: 'claimedByUserId' } — sets when claimedByUserId becomes truthy
+   * - { field: 'submitted', value: true } — sets when submitted becomes true
+   */
+  timestampTrigger?: {
+    field: string
+    value?: unknown
+  }
 }
 
-export type PermissionRule = boolean | 'own' | 'unclaimed-or-own' | 'collaborator' | 'team' | 'access' | 'published'
+export type PermissionRule = boolean | 'own' | 'unclaimed-or-own' | 'collaborator' | 'team' | 'access' | 'published' | 'shared'
 
 export interface SchemaPermissions {
   read: PermissionRule
   create: PermissionRule
   update: PermissionRule
   delete: PermissionRule
+  /** Field-level write permissions — only these fields can be updated by this role */
+  writableFields?: string[]
 }
 
 export interface CollectionSchema {
   name: string
-  fields: Record<string, FieldSchema>
+  /** Field definitions for validation (document-mode collections) */
+  fields?: Record<string, FieldSchema>
+  /** Column definitions for table-mode storage */
+  columns?: Array<{ name: string; storage: string; interpretation: string | Record<string, unknown> }>
+  /** Composite uniqueness constraint */
+  uniqueOn?: string[]
+  /** Permissions per role */
   permissions: Record<string, SchemaPermissions>
   /** Field name used for ownership checks */
   ownerField?: string
@@ -47,7 +60,9 @@ export interface CollectionSchema {
   /** Field name for team-based access */
   teamField?: string
   /** Field name for visibility-based access */
-  visibilityField?: string
+  visibilityField?: string | { field: string; value: unknown }
+  /** Default role for new users (only on 'users' collection) */
+  defaultRole?: string
 }
 
 // ============================================================================
@@ -183,9 +198,6 @@ export const MSG_YJS_LEAVE = 21
 export const MSG_YJS_SYNC = 22
 export const MSG_YJS_AWARENESS = 23
 
-// Schema registration
-export const MSG_REGISTER_SCHEMAS = 30
-
 // Mutation acknowledgement
 export const MSG_ACK = 31
 
@@ -287,4 +299,106 @@ export interface HandlerContext {
   getWebSockets(): Iterable<WebSocket>
   send(ws: WebSocket, message: { type: number; payload: unknown }): void
   sendBinary(ws: WebSocket, data: Uint8Array): void
+}
+
+// ============================================================================
+// Directory Data Interfaces (dir:{appName} scope)
+// ============================================================================
+
+export interface DirectoryConversationData {
+  Name: string
+  Description: string
+  Type: string
+  Visibility: string
+  CreatedBy: string
+  ParticipantHash: string
+  ParticipantIds: string
+  Status: string
+  AssigneeId: string
+  LinkedRef: string
+  LastMessageAt: string
+  LastMessagePreview: string
+  LastMessageAuthor: string
+  MessageCount: number
+}
+
+export interface ConversationStateData {
+  ConversationId: string
+  UserId: string
+  LastReadAt: string
+  LastReadMessageCount: number
+  Starred: number
+  Archived: number
+  Trashed: number
+  Labels: string
+  Folder: string
+}
+
+export interface DirectoryCommunityData {
+  Name: string
+  Description: string
+  CreatedBy: string
+  Type: string
+  Visibility: string
+  MemberCount: number
+  Rules: string
+  IconUrl: string
+  CoverUrl: string
+}
+
+export interface DirectoryMembershipData {
+  CommunityId: string
+  UserId: string
+  UserName: string
+  Role: string
+  JoinedAt: string
+}
+
+export interface DirectoryPostData {
+  Title: string
+  Content: string
+  AuthorId: string
+  Type: string
+  CommunityId: string
+  ParentId: string
+  ConversationId: string
+  Status: string
+  Tags: string
+  LinkUrl: string
+}
+
+// ============================================================================
+// Conversation Data Interfaces (conv:{id} scope)
+// ============================================================================
+
+export interface ConvMessageData {
+  Content: string
+  AuthorId: string
+  ParentId: string
+  Edited: number
+  MessageType: string
+  Metadata: string
+}
+
+export interface ConvReactionData {
+  MessageId: string
+  Emoji: string
+  UserId: string
+}
+
+export interface ConvMemberData {
+  UserId: string
+  UserName: string
+  Role: string
+}
+
+export interface ConvReadCursorData {
+  UserId: string
+  LastReadAt: string
+}
+
+export interface ConvVoteData {
+  TargetId: string
+  UserId: string
+  Direction: number
 }

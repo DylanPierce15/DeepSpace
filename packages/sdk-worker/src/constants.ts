@@ -23,9 +23,6 @@ export const MSG_YJS_LEAVE = 21
 export const MSG_YJS_SYNC = 22
 export const MSG_YJS_AWARENESS = 23
 
-// Schema registration
-export const MSG_REGISTER_SCHEMAS = 30
-
 // Mutation acknowledgement
 export const MSG_ACK = 31
 

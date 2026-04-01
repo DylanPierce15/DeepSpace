@@ -42,7 +42,6 @@ import {
   MSG_SET_ROLE,
   MSG_YJS_JOIN,
   MSG_YJS_LEAVE,
-  MSG_REGISTER_SCHEMAS,
   MSG_LIST_SCHEMAS,
 } from './constants'
 import {
@@ -215,7 +214,7 @@ export class RecordRoom {
   // ============================================================================
 
   private async initializeDatabase(): Promise<void> {
-    // Core infrastructure tables (yjs docs and runtime schema persistence)
+    // Core infrastructure tables
     this.sql.exec(`
       CREATE TABLE IF NOT EXISTS yjs_docs (
         doc_key TEXT PRIMARY KEY,
@@ -223,7 +222,7 @@ export class RecordRoom {
         updated_at TEXT NOT NULL
       );
 
-      CREATE TABLE IF NOT EXISTS runtime_schemas (
+      CREATE TABLE IF NOT EXISTS persisted_schemas (
         name TEXT PRIMARY KEY,
         schema TEXT NOT NULL,
         created_at TEXT NOT NULL
@@ -231,8 +230,19 @@ export class RecordRoom {
 
     `)
 
-    // Load persisted runtime schemas (survives hibernation)
-    this.loadRuntimeSchemas()
+    // Migrate old table name if it exists
+    try {
+      const oldTable = this.sql.exec(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='runtime_schemas'`
+      ).toArray()
+      if (oldTable.length > 0) {
+        this.sql.exec(`INSERT OR IGNORE INTO persisted_schemas SELECT * FROM runtime_schemas`)
+        this.sql.exec(`DROP TABLE runtime_schemas`)
+      }
+    } catch { /* ignore */ }
+
+    // Load persisted schemas (survives hibernation)
+    this.loadPersistedSchemas()
 
     // Create SQL tables for all collections (table-mode)
     this.ensureAllCollectionTables()
@@ -454,14 +464,13 @@ export class RecordRoom {
   }
 
   // ============================================================================
-  // Three-Tier Schema Loading
+  // Schema Loading
   // ============================================================================
 
   /**
    * Load schemas based on scope type:
    * - Global DOs (workspace, conv, dir): Baked into code, zero I/O
-   * - App DOs (app:{appId}): Pushed by platform worker, persisted in runtime_schemas
-   * - User DOs (user:{userId}): Fetched from R2 on every wake (~100ms)
+   * - App DOs (app:{appId}): Pushed by platform worker, persisted in persisted_schemas
    */
   private async loadSchemasForScope(scopePrefix: string): Promise<void> {
     // Tier 1: Global DOs — schemas baked into code
@@ -469,17 +478,16 @@ export class RecordRoom {
       this.loadGlobalSchemas(scopePrefix)
       return
     }
-    // Tier 2: App DOs — schemas pushed by platform worker, in runtime_schemas.
-    // Already loaded by loadRuntimeSchemas() in initializeDatabase().
+    // Tier 2: App DOs — schemas pushed by platform worker, in persisted_schemas.
+    // Already loaded by loadPersistedSchemas() in initializeDatabase().
     if (scopePrefix === 'app') {
       return
     }
-    // User DOs removed from the SDK — only app, conv, dir, workspace scopes
   }
 
   /**
    * Load baked-in schemas for a specific global DO type.
-   * Always overwrites persisted runtime_schemas with code-level schemas
+   * Always overwrites persisted schemas with code-level schemas
    * so that deploys take effect without waiting for DO hibernation.
    */
   private globalSchemasLoaded = false
@@ -493,8 +501,8 @@ export class RecordRoom {
 
 
   /**
-   * Register schemas as trusted and persist to runtime_schemas SQLite.
-   * Shared by push-schemas endpoint and R2 fetch.
+   * Register schemas as trusted and persist to persisted_schemas SQLite table.
+   * Shared by push-schemas endpoint and global schema loading.
    */
   private persistSchemas(schemas: CollectionSchema[]): void {
     const now = new Date().toISOString()
@@ -502,7 +510,7 @@ export class RecordRoom {
       if (!schema.name) continue
       this.schemaRegistry.registerTrusted(schema)
       this.sql.exec(
-        `INSERT OR REPLACE INTO runtime_schemas (name, schema, created_at) VALUES (?, ?, ?)`,
+        `INSERT OR REPLACE INTO persisted_schemas (name, schema, created_at) VALUES (?, ?, ?)`,
         schema.name, JSON.stringify(schema), now
       )
       this.ensureCollectionTable(schema)
@@ -693,10 +701,6 @@ export class RecordRoom {
         handleYjsLeave(ws, attachment, payload as YjsLeavePayload)
         break
 
-      case MSG_REGISTER_SCHEMAS:
-        this.handleRegisterSchemas(ws, payload as { schemas: CollectionSchema[] })
-        break
-
       case MSG_LIST_SCHEMAS:
         this.handleListSchemas(ws)
         break
@@ -707,14 +711,16 @@ export class RecordRoom {
   }
 
   // ============================================================================
-  // Schema Registration
+  // Schema Persistence
   // ============================================================================
 
   /**
-   * Load runtime schemas from SQLite (survives DO hibernation).
+   * Load persisted schemas from SQLite (survives DO hibernation).
+   * These are trusted schemas written by persistSchemas() (push-schemas endpoint
+   * or global schema loading).
    */
-  private loadRuntimeSchemas(): void {
-    const cursor = this.sql.exec(`SELECT name, schema FROM runtime_schemas`)
+  private loadPersistedSchemas(): void {
+    const cursor = this.sql.exec(`SELECT name, schema FROM persisted_schemas`)
     let count = 0
     const names: string[] = []
     for (const row of cursor.toArray()) {
@@ -723,73 +729,18 @@ export class RecordRoom {
         const schema = JSON.parse(r.schema) as CollectionSchema
         if (!schema.name) continue
         this.schemaRegistry.registerTrusted(schema)
-        // Only apply defaultRole from users schemas that aren't scoped to
-        // 'user' — user-scope schemas (defaultRole: 'viewer') should only
-        // affect user:* DOs, not conv:* or app:* DOs. Guard kept for DOs
-        // that may have stale user-scope schemas persisted from earlier code.
-        if (schema.name === 'users' && schema.defaultRole && schema.scope !== 'user') {
+        if (schema.name === 'users' && schema.defaultRole) {
           this.defaultRole = schema.defaultRole
         }
         names.push(r.name)
         count++
       } catch (e) {
-        console.error('[DO] Failed to parse runtime schema:', r.name, e)
+        console.error('[DO] Failed to parse persisted schema:', r.name, e)
       }
     }
     if (count > 0) {
-      console.log('[DO] Loaded runtime schemas from SQLite:', count, names)
+      console.log('[DO] Loaded persisted schemas from SQLite:', count, names)
     }
-  }
-
-
-  /**
-   * Handle runtime schema registration from client.
-   * Persists to SQLite so schemas survive hibernation.
-   */
-  private handleRegisterSchemas(
-    ws: WebSocket,
-    payload: { schemas: CollectionSchema[] }
-  ): void {
-    const { schemas } = payload
-
-    if (!schemas || !Array.isArray(schemas)) {
-      this.send(ws, { type: MSG_ERROR, payload: { error: 'Invalid schemas payload' } })
-      return
-    }
-
-    const registered: string[] = []
-    const skipped: string[] = []
-    const now = new Date().toISOString()
-
-    for (const schema of schemas) {
-      if (!schema.name || typeof schema.name !== 'string') {
-        continue // Skip invalid schemas
-      }
-
-      if (this.schemaRegistry.registerRuntime(schema)) {
-        registered.push(schema.name)
-        // Widget schemas are NOT persisted — they're re-sent on each WS connection.
-        // Only pushed schemas (from platform worker) and R2 schemas are persisted.
-        this.ensureCollectionTable(schema)
-        if (schema.name === 'users' && schema.defaultRole) {
-          this.defaultRole = schema.defaultRole
-        }
-      } else {
-        skipped.push(schema.name) // Has trusted schema, cannot override
-      }
-    }
-
-    // Send confirmation back to client
-    this.send(ws, {
-      type: MSG_REGISTER_SCHEMAS,
-      payload: {
-        registered,
-        skipped,
-        message: skipped.length > 0
-          ? `Registered ${registered.length} schemas. ${skipped.length} skipped (trusted schemas exist).`
-          : `Registered ${registered.length} schemas.`,
-      },
-    })
   }
 
   // ============================================================================
@@ -797,7 +748,7 @@ export class RecordRoom {
   // ============================================================================
 
   /**
-   * Handle MSG_LIST_SCHEMAS: return all registered schemas (trusted + runtime).
+   * Handle MSG_LIST_SCHEMAS: return all registered schemas.
    * Allows clients to discover what collections exist in this scope.
    */
   private handleListSchemas(ws: WebSocket): void {

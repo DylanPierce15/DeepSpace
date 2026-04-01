@@ -310,14 +310,6 @@ export interface RolePermissions {
 export interface CollectionSchema {
   /** Collection name (used as table key) */
   name: string
-  /**
-   * Which DO scope this collection belongs to.
-   * - 'app' (default): lives in the app's own DO (app:{appId})
-   * - 'user': lives in the user's personal DO (user:{userId}).
-   *   Collection names with scope: 'user' must be globally unique across
-   *   all apps — the platform worker rejects uploads that collide.
-   */
-  scope?: 'app' | 'user'
   /** Field definitions for validation (only needed for document-mode collections) */
   fields?: Record<string, FieldSchema>
   /**
@@ -885,24 +877,14 @@ export function validateRecordData(
 // ============================================================================
 
 /**
- * Default permissive permissions for undefined collections.
- * Used when no schema is defined - anyone can do anything.
- */
-/**
  * Schema registry for looking up collection schemas.
- * 
- * Supports two types of schemas:
- * - Trusted (build-time): Set via constructor, cannot be overridden
- * - Runtime: Registered dynamically, only for collections without trusted schemas
- * 
- * This allows deployed sites to have secure schemas while canvas widgets
- * can send schemas at runtime for testing.
+ *
+ * All schemas are trusted — baked into the worker at deploy time
+ * or pushed by the platform worker via the push-schemas endpoint.
  */
 export class SchemaRegistry {
-  /** Trusted schemas from constructor - cannot be overridden */
+  /** Trusted schemas — set via constructor or registerTrusted() */
   private trusted: Map<string, CollectionSchema> = new Map()
-  /** Runtime schemas from client - only used if no trusted schema exists */
-  private runtime: Map<string, CollectionSchema> = new Map()
 
   constructor(schemas: CollectionSchema[] = []) {
     for (const schema of schemas) {
@@ -911,40 +893,10 @@ export class SchemaRegistry {
   }
 
   /**
-   * Register a schema as trusted (from R2 or persisted storage).
-   * Trusted schemas cannot be overridden by client MSG_REGISTER_SCHEMAS.
-   * Promotes any existing runtime schema to trusted.
+   * Register a schema as trusted (from persisted storage or push-schemas endpoint).
    */
   registerTrusted(schema: CollectionSchema): void {
     this.trusted.set(schema.name, ensureColumns(schema))
-    this.runtime.delete(schema.name) // Clean up if it was runtime before
-  }
-
-  /**
-   * Register a schema at runtime (from client via MSG_REGISTER_SCHEMAS).
-   * Only registers if no trusted schema exists for this collection.
-   * Returns true if registered, false if trusted schema exists.
-   */
-  registerRuntime(schema: CollectionSchema): boolean {
-    if (this.trusted.has(schema.name)) {
-      return false // Cannot override trusted schema
-    }
-    this.runtime.set(schema.name, ensureColumns(schema))
-    return true
-  }
-
-  /**
-   * Register multiple schemas at runtime.
-   * Returns count of schemas that were actually registered.
-   */
-  registerRuntimeBatch(schemas: CollectionSchema[]): number {
-    let count = 0
-    for (const schema of schemas) {
-      if (this.registerRuntime(schema)) {
-        count++
-      }
-    }
-    return count
   }
 
   /**
@@ -952,11 +904,11 @@ export class SchemaRegistry {
    * Returns undefined if no schema is registered.
    */
   get(name: string): CollectionSchema | undefined {
-    return this.trusted.get(name) || this.runtime.get(name)
+    return this.trusted.get(name)
   }
 
   has(name: string): boolean {
-    return this.trusted.has(name) || this.runtime.has(name)
+    return this.trusted.has(name)
   }
 
   /** Check if a collection has a trusted (build-time) schema */
@@ -965,22 +917,11 @@ export class SchemaRegistry {
   }
 
   all(): CollectionSchema[] {
-    const all = new Map<string, CollectionSchema>()
-    // Runtime first, then trusted overwrites (trusted takes priority)
-    for (const [name, schema] of this.runtime) {
-      all.set(name, schema)
-    }
-    for (const [name, schema] of this.trusted) {
-      all.set(name, schema)
-    }
-    return Array.from(all.values())
+    return Array.from(this.trusted.values())
   }
 
   names(): string[] {
-    const names = new Set<string>()
-    for (const name of this.trusted.keys()) names.add(name)
-    for (const name of this.runtime.keys()) names.add(name)
-    return Array.from(names)
+    return Array.from(this.trusted.keys())
   }
 }
 

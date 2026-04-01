@@ -363,14 +363,6 @@ export class GatewaySession implements DurableObject {
       if (this.userImageUrl) params.set('userImageUrl', this.userImageUrl)
     }
     params.set('appId', appId)
-    // Scope-level authorization: user scope owner gets admin role
-    const scopePrefix = scopeId.split(':')[0]
-    if (scopePrefix === 'user' && this.userId) {
-      const scopeUserId = scopeId.slice('user:'.length)
-      if (this.userId === scopeUserId) {
-        params.set('isCanvasOwner', 'true')
-      }
-    }
 
     const url = `https://internal/ws/${scopeId}?${params.toString()}`
     const upgradeRequest = new Request(url, {

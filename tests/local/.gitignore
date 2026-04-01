@@ -1,0 +1,4 @@
+.auth-state.json
+node_modules/
+test-results/
+report/

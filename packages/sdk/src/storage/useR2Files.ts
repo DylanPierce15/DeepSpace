@@ -1,11 +1,10 @@
 /**
  * useR2Files — Scoped file storage hook for DeepSpace apps.
  *
- * Provides upload, download, list, and delete for files in R2, scoped to:
- *   - The current app ("self", the default — uses hostname-based scoping on the server)
- *   - The authenticated user's personal files ("user")
+ * Provides upload, download, list, and delete for files in R2, scoped to
+ * the current app ("self" — uses hostname-based scoping on the server).
  *
- * @example Default (app's own files)
+ * @example
  * ```tsx
  * const { upload, downloadFile, deleteFile, list } = useR2Files()
  * await upload(myFile, 'photo.png')
@@ -13,14 +12,6 @@
  * const files = await list()
  * await downloadFile(files[0])  // uses originalName automatically
  * await deleteFile(files[0])
- * ```
- *
- * @example User-scoped files
- * ```tsx
- * const userFiles = useR2Files({ scope: 'user' })
- * await userFiles.upload(avatar, 'avatar.png')
- * const myFiles = await userFiles.list()
- * await userFiles.downloadFile(myFiles[0])
  * ```
  */
 
@@ -98,19 +89,17 @@ export interface UseR2FilesReturn {
   /**
    * Build a plain URL for a file. Accepts an R2FileInfo or a raw key string.
    *
-   * **Warning**: This URL has no auth token attached. It only works for
-   * unauthenticated reads — specifically `scope=self` on deployed sites
-   * where the prefix is derived from the hostname. For user-scoped files,
-   * use `downloadFile` or `readFile` instead.
+   * **Note**: This URL has no auth token attached. It only works for
+   * unauthenticated reads on deployed sites where the prefix is derived
+   * from the hostname. For authenticated access, use `downloadFile` or
+   * `readFile` instead.
    */
   getUrl: (fileOrKey: R2FileInfo | string) => string
   /** Whether an upload is currently in progress. */
   isUploading: boolean
 }
 
-export type R2Scope =
-  | { scope?: 'self' }
-  | { scope: 'user' }
+export type R2Scope = { scope?: 'self' }
 
 // ============================================================================
 // Helpers
@@ -134,13 +123,9 @@ export function useR2Files(options?: R2Scope): UseR2FilesReturn {
   /** Query string that tells the worker which scope to use. */
   const scopeParams = useMemo(() => {
     const params = new URLSearchParams()
-    if (!options || !options.scope || options.scope === 'self') {
-      params.set('scope', 'self')
-    } else if (options.scope === 'user') {
-      params.set('scope', 'user')
-    }
+    params.set('scope', 'self')
     return params.toString()
-  }, [options])
+  }, [])
 
   /** Get auth headers using the DeepSpace auth token. */
   const authHeaders = useCallback(async (): Promise<Record<string, string>> => {

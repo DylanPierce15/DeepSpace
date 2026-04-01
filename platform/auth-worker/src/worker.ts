@@ -78,7 +78,8 @@ app.post('/api/auth/token', async (c) => {
   }
 
   if (!cachedPrivateKey) {
-    cachedPrivateKey = await importPKCS8(c.env.JWT_PRIVATE_KEY, 'ES256')
+    const pem = c.env.JWT_PRIVATE_KEY.replace(/\\n/g, '\n')
+    cachedPrivateKey = await importPKCS8(pem, 'ES256')
   }
 
   const jwt = await new SignJWT({
@@ -120,10 +121,34 @@ app.on(['GET', 'POST'], '/api/auth/*', async (c) => {
 })
 
 // ============================================================================
-// Health Check
+// Health Check + DB Migration
 // ============================================================================
 
 app.get('/health', (c) => c.json({ status: 'ok', service: 'deepspace-auth' }))
+
+/**
+ * POST /_migrate — run Better Auth's built-in DB migrations.
+ * Handles all tables including plugin columns (twoFactor, organization, etc.).
+ * Only available in local dev (wrangler dev). Blocked in production.
+ */
+app.post('/_migrate', async (c) => {
+  if (c.env.AUTH_BASE_URL && !c.env.AUTH_BASE_URL.includes('localhost')) {
+    return c.json({ error: 'Migrations disabled in production' }, 403)
+  }
+  const { getMigrations } = await import('better-auth/db/migration')
+  const { runMigrations } = await getMigrations({
+    database: c.env.AUTH_DB,
+    baseURL: c.env.AUTH_BASE_URL,
+    secret: c.env.BETTER_AUTH_SECRET,
+    emailAndPassword: { enabled: true },
+    plugins: [
+      (await import('better-auth/plugins')).organization(),
+      (await import('better-auth/plugins')).twoFactor(),
+    ],
+  })
+  await runMigrations()
+  return c.json({ ok: true })
+})
 
 // ============================================================================
 // Export

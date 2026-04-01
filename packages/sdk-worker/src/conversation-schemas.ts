@@ -10,41 +10,14 @@
 
 import type { CollectionSchema } from './schemas'
 
-// ============================================================================
-// TypeScript interfaces matching conversation schema columns
-// ============================================================================
-
-export interface ConvMessageData {
-  Content: string
-  AuthorId: string
-  ParentId: string
-  Edited: number
-  MessageType: string
-  Metadata: string
-}
-
-export interface ConvReactionData {
-  MessageId: string
-  Emoji: string
-  UserId: string
-}
-
-export interface ConvMemberData {
-  UserId: string
-  UserName: string
-  Role: string
-}
-
-export interface ConvReadCursorData {
-  UserId: string
-  LastReadAt: string
-}
-
-export interface ConvVoteData {
-  TargetId: string
-  UserId: string
-  Direction: number
-}
+// Re-export data interfaces from @deepspace/types (single source of truth)
+export type {
+  ConvMessageData,
+  ConvReactionData,
+  ConvMemberData,
+  ConvReadCursorData,
+  ConvVoteData,
+} from '@deepspace/types'
 
 // ============================================================================
 // Schemas

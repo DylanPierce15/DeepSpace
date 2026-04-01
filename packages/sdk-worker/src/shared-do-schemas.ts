@@ -7,7 +7,6 @@
  *
  * Scope tiers:
  * - App DO (app:{appHandle}) — private to each app, app defines tables
- * - User DO (user:{userId}) — one per user, apps register custom tables
  * - Dir DO (dir:{appHandle}) — cross-app directory (conversations, communities, posts)
  * - Workspace DO (workspace:default) — shared business data (teams, tasks, people, ledger)
  * - Conv DO (conv:{id}) — single conversation (messages, reactions, members)
@@ -24,7 +23,7 @@ import { WORKSPACE_SCHEMAS } from './workspace-schemas'
 
 export interface SharedConnection {
   type: string
-  instanceId?: string // omit for 'user' (auto-set to authenticated userId)
+  instanceId?: string
 }
 
 export interface GlobalDOType {
