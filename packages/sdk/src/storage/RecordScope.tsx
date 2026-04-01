@@ -378,17 +378,47 @@ function ScopeConnection({
     ws.onerror = () => {}
   }, [roomId, wsUrl, wsPathPrefix, handleMessage, allowAnonymous, appId])
 
-  // ── Connect when auth is available ───────────────────────────────────
+  // ── Disconnect helper ─────────────────────────────────────────────────
 
-  const userProfileId = auth?.userProfile?.id
-  const hasAuthToken = !!auth?.getAuthToken
+  const disconnect = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current)
+      reconnectTimeoutRef.current = null
+    }
+    const ws = wsRef.current
+    if (ws) {
+      ws.onclose = null
+      ws.onmessage = null
+      ws.onerror = null
+      ws.close()
+      wsRef.current = null
+    }
+    setStatus('connecting')
+    setReady(false)
+    reconnectAttemptRef.current = 0
+  }, [])
+
+  // ── Auth identity change → disconnect and reconnect ──────────────────
+  // Fires when: sign-in, sign-out, account switch, or initial load completes.
+  // The identity is the user's profile ID (null = anonymous).
+
+  const userProfileId = auth?.userProfile?.id ?? null
   const userProfileLoading = auth?.userProfileLoading ?? false
 
   useEffect(() => {
-    if (userProfileId || hasAuthToken || (allowAnonymous && !userProfileLoading)) {
+    // Still loading auth — wait
+    if (userProfileLoading) return
+
+    // Tear down existing connection (if any) so we reconnect with new identity
+    disconnect()
+
+    // Connect if we have auth OR anonymous is allowed
+    if (userProfileId || allowAnonymous) {
       connect()
     }
-  }, [userProfileId, hasAuthToken, userProfileLoading, allowAnonymous, connect])
+
+    return disconnect
+  }, [userProfileId, userProfileLoading, allowAnonymous, connect, disconnect])
 
   // Reconnect on tab focus
   useEffect(() => {
@@ -401,16 +431,6 @@ function ScopeConnection({
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [connect])
-
-  // Cleanup
-  useEffect(() => {
-    return () => {
-      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current)
-      const ws = wsRef.current
-      if (ws) { ws.onclose = null; ws.close() }
-      wsRef.current = null
-    }
-  }, [roomId])
 
   // ── Send helpers ─────────────────────────────────────────────────────
 
