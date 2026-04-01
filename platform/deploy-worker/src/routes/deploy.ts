@@ -163,7 +163,7 @@ deploy.get('/:appName', authMiddleware, async (c) => {
     return c.json({ deployed: false })
   }
 
-  const meta = await obj.json()
+  const meta = (await obj.json()) as Record<string, unknown>
   return c.json({ deployed: true, ...meta })
 })
 
