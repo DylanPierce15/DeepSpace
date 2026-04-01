@@ -1,0 +1,72 @@
+/**
+ * deepspace undeploy
+ *
+ * Removes a deployed app from *.app.space via the deploy worker.
+ */
+
+import { defineCommand } from 'citty'
+import { readFileSync, existsSync } from 'node:fs'
+import { join, resolve } from 'node:path'
+import { homedir } from 'node:os'
+import * as p from '@clack/prompts'
+
+const DEPLOY_URL = process.env.DEEPSPACE_DEPLOY_URL ?? 'https://deepspace-deploy.eudaimonicincorporated.workers.dev'
+
+export default defineCommand({
+  meta: {
+    name: 'undeploy',
+    description: 'Remove a deployed DeepSpace app',
+  },
+  args: {
+    name: {
+      type: 'positional',
+      description: 'App name to undeploy (reads from wrangler.toml if omitted)',
+      required: false,
+    },
+  },
+  async run({ args }) {
+    let appName = args.name
+
+    // If no name given, try to read from wrangler.toml in cwd
+    if (!appName) {
+      const wranglerPath = join(process.cwd(), 'wrangler.toml')
+      if (existsSync(wranglerPath)) {
+        const content = readFileSync(wranglerPath, 'utf-8')
+        const match = content.match(/^name\s*=\s*"(.+)"/m)
+        if (match) appName = match[1]
+      }
+    }
+
+    if (!appName) {
+      p.cancel('Provide an app name or run from a DeepSpace app directory.')
+      process.exit(1)
+    }
+
+    const tokenPath = join(homedir(), '.deepspace', 'token')
+    if (!existsSync(tokenPath)) {
+      p.cancel('Not logged in. Run `deepspace login` first.')
+      process.exit(1)
+    }
+    const token = readFileSync(tokenPath, 'utf-8').trim()
+
+    p.intro(`Undeploying ${appName}`)
+    const s = p.spinner()
+    s.start('Removing...')
+
+    const res = await fetch(`${DEPLOY_URL}/api/deploy/${appName}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    const body = (await res.json()) as { success?: boolean; error?: string }
+
+    if (!res.ok || !body.success) {
+      s.stop('Failed')
+      p.cancel(body.error ?? `Undeploy error (${res.status})`)
+      process.exit(1)
+    }
+
+    s.stop('Removed')
+    p.outro(`${appName}.app.space has been taken down`)
+  },
+})

@@ -1,0 +1,24 @@
+# DeepSpace Deploy Worker
+# Handles app deployment to Workers for Platforms on behalf of authenticated users.
+# Holds CLOUDFLARE_API_TOKEN — isolated from other workers for security.
+
+name = "deepspace-deploy"
+main = "src/worker.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[r2_buckets]]
+binding = "APP_REGISTRY"
+bucket_name = "deepspace-schema-registry"
+
+[dev]
+port = 8796
+inspector_port = 9237
+
+# Secrets (set via `wrangler secret put`):
+#   AUTH_JWT_PUBLIC_KEY       — ES256 public key for JWT verification
+#   AUTH_JWT_ISSUER           — JWT issuer URL
+#   CLOUDFLARE_API_TOKEN      — CF API token for WfP operations
+#   CLOUDFLARE_ACCOUNT_ID     — CF account ID
+#   DEPLOY_JWT_PUBLIC_KEY_PEM — The actual PEM value to set on deployed workers
+#   INTERNAL_HMAC_SECRET      — HMAC secret to set on deployed workers
