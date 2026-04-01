@@ -13,7 +13,12 @@ import { signIn, signUp } from './client'
 
 type Mode = 'sign-in' | 'sign-up'
 
-export function AuthOverlay(): React.ReactElement | null {
+interface AuthOverlayProps {
+  /** Called when the user clicks the close button. If omitted, overlay is not closeable. */
+  onClose?: () => void
+}
+
+export function AuthOverlay({ onClose }: AuthOverlayProps = {}): React.ReactElement | null {
   const { isLoaded, isSignedIn } = useAuth()
   const [mode, setMode] = useState<Mode>('sign-in')
   const [email, setEmail] = useState('')
@@ -91,6 +96,7 @@ export function AuthOverlay(): React.ReactElement | null {
 
       <div
         data-testid="auth-overlay"
+        onClick={onClose ? (e) => { if (e.target === e.currentTarget) onClose() } : undefined}
         style={{
           position: 'fixed',
           inset: 0,
@@ -108,6 +114,7 @@ export function AuthOverlay(): React.ReactElement | null {
         <div
           className="ds-auth-card"
           style={{
+            position: 'relative',
             width: '100%',
             maxWidth: 380,
             margin: 24,
@@ -122,6 +129,32 @@ export function AuthOverlay(): React.ReactElement | null {
             animation: 'ds-auth-card-in 0.45s cubic-bezier(0.25, 1, 0.5, 1) 0.08s forwards',
           }}
         >
+          {onClose && (
+            <button
+              data-testid="auth-overlay-close"
+              onClick={onClose}
+              style={{
+                position: 'absolute',
+                top: 12,
+                right: 12,
+                width: 28,
+                height: 28,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '50%',
+                border: 'none',
+                background: 'rgba(255,255,255,0.08)',
+                color: 'rgba(255,255,255,0.5)',
+                cursor: 'pointer',
+                fontSize: 16,
+                lineHeight: 1,
+              }}
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          )}
           <div style={{
             fontSize: 22,
             fontWeight: 700,

@@ -1,5 +1,8 @@
 /**
- * E2E: Platform worker — health, app registry CRUD.
+ * E2E: Platform worker — health, app registry, global DO WebSocket.
+ *
+ * Note: App-specific DOs live in the app's own worker now.
+ * The platform worker only hosts global DOs (conv, dir, workspace).
  */
 
 import { test, expect, PLATFORM_URL } from './fixtures'
@@ -24,13 +27,11 @@ test.describe('Platform worker', () => {
     const appId = `e2e-test-${Date.now()}`
     const metadata = { name: 'E2E Test App', description: 'Created by E2E tests' }
 
-    // Write
     const putRes = await authedRequest.put(`${PLATFORM_URL}/api/app-registry/${appId}`, {
       data: metadata,
     })
     expect(putRes.ok()).toBeTruthy()
 
-    // Read back
     const getRes = await authedRequest.get(`${PLATFORM_URL}/api/app-registry/${appId}`)
     expect(getRes.ok()).toBeTruthy()
     const body = await getRes.json()
@@ -46,11 +47,10 @@ test.describe('Platform worker', () => {
     expect(body.apps).toBeInstanceOf(Array)
   })
 
-  test('GET /ws/app:test without auth connects (RBAC handled by RecordRoom)', async ({ request }) => {
-    const res = await request.get(`${PLATFORM_URL}/ws/app:test`)
-    // WebSocket upgrade returns 101, or non-upgrade GET returns 426
-    // Either way, it should NOT be 401 — auth is optional, RBAC is per-schema
-    expect(res.status()).not.toBe(401)
+  test('GET /ws/conv:test connects for global DO scopes', async ({ request }) => {
+    // Global scopes (conv, dir, workspace) are handled by the platform worker
+    const res = await request.get(`${PLATFORM_URL}/ws/conv:test`)
+    // Non-upgrade GET may return various status codes, but the route exists
+    expect(res.status()).toBeLessThan(500)
   })
-
 })

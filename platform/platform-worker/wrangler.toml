@@ -8,7 +8,16 @@ compatibility_flags = ["nodejs_compat"]
 
 [[migrations]]
 tag = "v1"
-new_sqlite_classes = ["GlobalRecordRoom"]
+new_sqlite_classes = ["SharedRecordRoom"]
+
+[[migrations]]
+tag = "v2"
+new_classes = ["GatewaySession"]
+
+[[migrations]]
+tag = "v3"
+renamed_classes = [{from = "SharedRecordRoom", to = "GlobalRecordRoom"}]
+deleted_classes = ["GatewaySession"]
 
 [[r2_buckets]]
 binding = "SCHEMA_REGISTRY"

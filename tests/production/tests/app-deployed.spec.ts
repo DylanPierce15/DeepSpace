@@ -1,11 +1,11 @@
 /**
  * E2E: Real starter template deployed via WfP.
- * Tests the full user journey: load → auth overlay → sign in → see content.
+ * Tests anonymous browsing, sign-in, navigation, and RBAC.
  */
 
 import { readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { test, expect, AUTH_URL } from './fixtures'
+import { test, expect } from './fixtures'
 
 function getAppBase(): string {
   const nameFile = resolve(import.meta.dirname, '../.app-name')
@@ -18,7 +18,7 @@ function getAppBase(): string {
 
 const APP_BASE = getAppBase()
 
-test.describe('Deployed SDK app — infrastructure', () => {
+test.describe('Deployed app — infrastructure', () => {
   test('serves HTML with correct content-type and structure', async ({ request }) => {
     const res = await request.get(APP_BASE)
     expect(res.status()).toBe(200)
@@ -53,7 +53,7 @@ test.describe('Deployed SDK app — infrastructure', () => {
   })
 })
 
-test.describe('Deployed SDK app — auth overlay', () => {
+test.describe('Deployed app — anonymous browsing', () => {
   test('no fatal JS errors on page load', async ({ page }) => {
     const fatalErrors: string[] = []
     page.on('pageerror', (err) => {
@@ -64,81 +64,68 @@ test.describe('Deployed SDK app — auth overlay', () => {
     expect(fatalErrors).toEqual([])
   })
 
-  test('React mounts and renders content', async ({ page }) => {
+  test('React mounts and shows content', async ({ page }) => {
     await page.goto(APP_BASE, { waitUntil: 'networkidle' })
     const root = page.locator('#root')
-    await expect(root).toBeAttached()
     await expect(root).not.toBeEmpty({ timeout: 10_000 })
+    await expect(page.getByText('Welcome')).toBeVisible({ timeout: 10_000 })
   })
 
-  test('shows frosted auth overlay with sign-in form', async ({ page }) => {
+  test('shows navigation with sign-in button', async ({ page }) => {
     await page.goto(APP_BASE, { waitUntil: 'networkidle' })
+    await expect(page.locator('[data-testid="app-navigation"]')).toBeVisible({ timeout: 10_000 })
+    await expect(page.locator('[data-testid="nav-sign-in-button"]')).toBeVisible()
+  })
 
-    const overlay = page.locator('[data-testid="auth-overlay"]')
-    await expect(overlay).toBeVisible({ timeout: 10_000 })
+  test('no auth overlay on initial load', async ({ page }) => {
+    await page.goto(APP_BASE, { waitUntil: 'networkidle' })
+    await expect(page.locator('[data-testid="auth-overlay"]')).not.toBeAttached()
+  })
+})
 
-    // Form fields
-    await expect(page.locator('input[type="email"]')).toBeVisible()
-    await expect(page.locator('input[type="password"]')).toBeVisible()
-
-    // Submit button
-    await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible()
-
-    // Branding
-    await expect(page.getByText('Sign in to DeepSpace')).toBeVisible()
-    await expect(page.getByText('Powered by DeepSpace')).toBeVisible()
+test.describe('Deployed app — sign-in', () => {
+  test('clicking sign-in opens closeable modal', async ({ page }) => {
+    await page.goto(APP_BASE, { waitUntil: 'networkidle' })
+    await page.locator('[data-testid="nav-sign-in-button"]').click()
+    await expect(page.locator('[data-testid="auth-overlay"]')).toBeVisible({ timeout: 5_000 })
+    await expect(page.locator('[data-testid="auth-overlay-close"]')).toBeVisible()
+    await page.locator('[data-testid="auth-overlay-close"]').click()
+    await expect(page.locator('[data-testid="auth-overlay"]')).not.toBeAttached({ timeout: 5_000 })
   })
 
   test('can switch between sign-in and sign-up modes', async ({ page }) => {
     await page.goto(APP_BASE, { waitUntil: 'networkidle' })
-    await expect(page.locator('[data-testid="auth-overlay"]')).toBeVisible({ timeout: 10_000 })
-
-    // Default is sign-in
-    await expect(page.getByText('Sign in to DeepSpace')).toBeVisible()
-
-    // Switch to sign-up
-    await page.getByText("Don't have an account? Sign up").click()
-    await expect(page.getByText('Create your account')).toBeVisible()
-    await expect(page.locator('input[placeholder="Name"]')).toBeVisible()
-
-    // Switch back to sign-in
-    await page.getByText('Already have an account? Sign in').click()
-    await expect(page.getByText('Sign in to DeepSpace')).toBeVisible()
+    await page.locator('[data-testid="nav-sign-in-button"]').click()
+    const overlay = page.locator('[data-testid="auth-overlay"]')
+    await expect(overlay).toBeVisible({ timeout: 5_000 })
+    await expect(overlay.getByText('Sign in to DeepSpace')).toBeVisible()
+    await overlay.getByText("Don't have an account? Sign up").click()
+    await expect(overlay.getByText('Create your account')).toBeVisible()
+    await overlay.getByText('Already have an account? Sign in').click()
+    await expect(overlay.getByText('Sign in to DeepSpace')).toBeVisible()
   })
 
   test('shows error for wrong credentials', async ({ page }) => {
     await page.goto(APP_BASE, { waitUntil: 'networkidle' })
-    await expect(page.locator('[data-testid="auth-overlay"]')).toBeVisible({ timeout: 10_000 })
-
-    await page.locator('input[type="email"]').fill('wrong@wrong.com')
-    await page.locator('input[type="password"]').fill('wrongpassword')
-    await page.getByRole('button', { name: /sign in/i }).click()
-
-    // Should show error message
-    await expect(page.locator('.ds-auth-card').getByText(/fail|invalid|error|not found/i)).toBeVisible({ timeout: 10_000 })
+    await page.locator('[data-testid="nav-sign-in-button"]').click()
+    const overlay = page.locator('[data-testid="auth-overlay"]')
+    await expect(overlay).toBeVisible({ timeout: 5_000 })
+    await overlay.locator('input[type="email"]').fill('wrong@wrong.com')
+    await overlay.locator('input[type="password"]').fill('wrongpassword')
+    await overlay.locator('button[type="submit"]').click()
+    await expect(overlay.getByText(/fail|invalid|error|not found/i)).toBeVisible({ timeout: 10_000 })
   })
 
-  test('app content renders behind the overlay', async ({ page }) => {
+  test('successful sign-in replaces sign-in button with user info', async ({ page }) => {
     await page.goto(APP_BASE, { waitUntil: 'networkidle' })
-    await expect(page.locator('[data-testid="auth-overlay"]')).toBeVisible({ timeout: 10_000 })
-
-    // The HomePage "Welcome" text should exist in the DOM behind the overlay
-    await expect(page.getByText('Welcome')).toBeAttached({ timeout: 10_000 })
-  })
-
-  test('successful sign-in dismisses overlay and shows app', async ({ page }) => {
-    await page.goto(APP_BASE, { waitUntil: 'networkidle' })
-    await expect(page.locator('[data-testid="auth-overlay"]')).toBeVisible({ timeout: 10_000 })
-
-    // Sign in with the test user
-    await page.locator('input[type="email"]').fill('e2e-test@deepspace.test')
-    await page.locator('input[type="password"]').fill('TestPass123!')
-    await page.getByRole('button', { name: /sign in/i }).click()
-
-    // Overlay should disappear
-    await expect(page.locator('[data-testid="auth-overlay"]')).not.toBeVisible({ timeout: 15_000 })
-
-    // App content should be visible
-    await expect(page.getByText('Welcome')).toBeVisible({ timeout: 10_000 })
+    await page.locator('[data-testid="nav-sign-in-button"]').click()
+    const overlay = page.locator('[data-testid="auth-overlay"]')
+    await expect(overlay).toBeVisible({ timeout: 5_000 })
+    await overlay.locator('input[type="email"]').fill('e2e-test@deepspace.test')
+    await overlay.locator('input[type="password"]').fill('TestPass123!')
+    await overlay.locator('button[type="submit"]').click()
+    await expect(overlay).not.toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('[data-testid="nav-user-name"]')).toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('[data-testid="nav-sign-in-button"]')).not.toBeAttached()
   })
 })

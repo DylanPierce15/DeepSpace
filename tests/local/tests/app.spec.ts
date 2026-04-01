@@ -1,16 +1,26 @@
 /**
- * Local: Starter template app running on localhost:5173.
- * Tests the real app with real auth against local workers.
+ * Local: App tests against real workers.
+ * Tests page load, anonymous browsing, sign-in flow, and navigation.
  */
 
 import { test, expect, APP_URL } from './fixtures'
+
+// Helper: sign in via the nav bar sign-in button → auth modal
+async function signIn(page: import('@playwright/test').Page) {
+  await page.locator('[data-testid="nav-sign-in-button"]').click()
+  const overlay = page.locator('[data-testid="auth-overlay"]')
+  await expect(overlay).toBeVisible({ timeout: 5_000 })
+  await overlay.locator('input[type="email"]').fill('local-test@deepspace.test')
+  await overlay.locator('input[type="password"]').fill('LocalTestPass123!')
+  await overlay.locator('button[type="submit"]').click()
+  await expect(overlay).not.toBeVisible({ timeout: 15_000 })
+}
 
 test.describe('App — page load', () => {
   test('serves HTML with root div', async ({ request }) => {
     const res = await request.get(APP_URL)
     expect(res.ok()).toBeTruthy()
-    const html = await res.text()
-    expect(html).toContain('<div id="root"></div>')
+    expect(await res.text()).toContain('<div id="root"></div>')
   })
 
   test('React mounts without fatal errors', async ({ page }) => {
@@ -20,111 +30,68 @@ test.describe('App — page load', () => {
       errors.push(err.message)
     })
     await page.goto(APP_URL, { waitUntil: 'networkidle' })
-    const root = page.locator('#root')
-    await expect(root).not.toBeEmpty({ timeout: 10_000 })
+    await expect(page.locator('#root')).not.toBeEmpty({ timeout: 10_000 })
     expect(errors).toEqual([])
   })
 })
 
-test.describe('App — auth overlay', () => {
-  test('shows auth overlay when not signed in', async ({ page }) => {
+test.describe('App — anonymous browsing', () => {
+  test('shows navigation and content without signing in', async ({ page }) => {
     await page.goto(APP_URL, { waitUntil: 'networkidle' })
-    const overlay = page.locator('[data-testid="auth-overlay"]')
-    await expect(overlay).toBeVisible({ timeout: 10_000 })
-    await expect(page.locator('input[type="email"]')).toBeVisible()
-    await expect(page.locator('input[type="password"]')).toBeVisible()
+    await expect(page.locator('[data-testid="app-navigation"]')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('Welcome')).toBeVisible({ timeout: 10_000 })
+  })
+
+  test('shows sign-in button instead of user pill', async ({ page }) => {
+    await page.goto(APP_URL, { waitUntil: 'networkidle' })
+    await expect(page.locator('[data-testid="nav-sign-in-button"]')).toBeVisible({ timeout: 10_000 })
+  })
+
+  test('no auth overlay on load', async ({ page }) => {
+    await page.goto(APP_URL, { waitUntil: 'networkidle' })
+    await expect(page.locator('[data-testid="auth-overlay"]')).not.toBeAttached()
+  })
+})
+
+test.describe('App — sign-in flow', () => {
+  test('clicking sign-in opens closeable auth modal', async ({ page }) => {
+    await page.goto(APP_URL, { waitUntil: 'networkidle' })
+    await page.locator('[data-testid="nav-sign-in-button"]').click()
+    await expect(page.locator('[data-testid="auth-overlay"]')).toBeVisible({ timeout: 5_000 })
+    await expect(page.locator('[data-testid="auth-overlay-close"]')).toBeVisible()
+
+    // Close it
+    await page.locator('[data-testid="auth-overlay-close"]').click()
+    await expect(page.locator('[data-testid="auth-overlay"]')).not.toBeAttached({ timeout: 5_000 })
   })
 
   test('sign-in with wrong credentials shows error', async ({ page }) => {
     await page.goto(APP_URL, { waitUntil: 'networkidle' })
-    await expect(page.locator('[data-testid="auth-overlay"]')).toBeVisible({ timeout: 10_000 })
-
-    await page.locator('input[type="email"]').fill('wrong@wrong.com')
-    await page.locator('input[type="password"]').fill('wrongpassword')
-    await page.getByRole('button', { name: /sign in/i }).click()
-
-    await expect(
-      page.locator('.ds-auth-card').getByText(/fail|invalid|error|not found/i),
-    ).toBeVisible({ timeout: 10_000 })
+    await page.locator('[data-testid="nav-sign-in-button"]').click()
+    const overlay = page.locator('[data-testid="auth-overlay"]')
+    await expect(overlay).toBeVisible({ timeout: 5_000 })
+    await overlay.locator('input[type="email"]').fill('wrong@wrong.com')
+    await overlay.locator('input[type="password"]').fill('wrongpassword')
+    await overlay.locator('button[type="submit"]').click()
+    await expect(overlay.locator('.ds-auth-card').getByText(/fail|invalid|error|not found/i)).toBeVisible({ timeout: 10_000 })
   })
 
-  test('real sign-in dismisses overlay and shows app content', async ({ page }) => {
+  test('successful sign-in shows user info in nav', async ({ page }) => {
     await page.goto(APP_URL, { waitUntil: 'networkidle' })
-    await expect(page.locator('[data-testid="auth-overlay"]')).toBeVisible({ timeout: 10_000 })
-
-    await page.locator('input[type="email"]').fill('local-test@deepspace.test')
-    await page.locator('input[type="password"]').fill('LocalTestPass123!')
-    await page.getByRole('button', { name: /sign in/i }).click()
-
-    // Overlay should disappear
-    await expect(page.locator('[data-testid="auth-overlay"]')).not.toBeVisible({ timeout: 15_000 })
-
-    // App content should be visible
-    await expect(page.getByText('Welcome')).toBeVisible({ timeout: 10_000 })
+    await signIn(page)
+    await expect(page.locator('[data-testid="nav-user-name"]')).toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('[data-testid="nav-sign-in-button"]')).not.toBeAttached()
   })
 })
 
 test.describe('App — navigation', () => {
-  test('shows navigation after sign-in', async ({ page }) => {
-    await page.goto(APP_URL, { waitUntil: 'networkidle' })
-    await expect(page.locator('[data-testid="auth-overlay"]')).toBeVisible({ timeout: 10_000 })
-
-    await page.locator('input[type="email"]').fill('local-test@deepspace.test')
-    await page.locator('input[type="password"]').fill('LocalTestPass123!')
-    await page.getByRole('button', { name: /sign in/i }).click()
-
-    await expect(page.locator('[data-testid="auth-overlay"]')).not.toBeVisible({ timeout: 15_000 })
-
-    // Navigation bar should be visible
-    await expect(page.locator('[data-testid="app-navigation"]')).toBeVisible({ timeout: 10_000 })
-  })
-
   test('root path redirects to /home', async ({ page }) => {
     await page.goto(APP_URL, { waitUntil: 'networkidle' })
-    await expect(page.locator('[data-testid="auth-overlay"]')).toBeVisible({ timeout: 10_000 })
-
-    await page.locator('input[type="email"]').fill('local-test@deepspace.test')
-    await page.locator('input[type="password"]').fill('LocalTestPass123!')
-    await page.getByRole('button', { name: /sign in/i }).click()
-
-    await expect(page.locator('[data-testid="auth-overlay"]')).not.toBeVisible({ timeout: 15_000 })
-
-    // Navigate to root and verify redirect to /home
-    await page.goto(`${APP_URL}/`, { waitUntil: 'networkidle' })
     await expect(page).toHaveURL(/\/home/, { timeout: 10_000 })
   })
 
-  test('user info visible in nav', async ({ page }) => {
-    await page.goto(APP_URL, { waitUntil: 'networkidle' })
-    await expect(page.locator('[data-testid="auth-overlay"]')).toBeVisible({ timeout: 10_000 })
-
-    await page.locator('input[type="email"]').fill('local-test@deepspace.test')
-    await page.locator('input[type="password"]').fill('LocalTestPass123!')
-    await page.getByRole('button', { name: /sign in/i }).click()
-
-    await expect(page.locator('[data-testid="auth-overlay"]')).not.toBeVisible({ timeout: 15_000 })
-
-    // User name or email should appear in the navigation
-    const nav = page.locator('[data-testid="app-navigation"]')
-    await expect(nav).toBeVisible({ timeout: 10_000 })
-
-    // The nav should contain some user-identifying text (name or email)
-    // The user pill appears once the RecordRoom WebSocket connects and registers the user,
-    // which may take a moment through the Vite proxy
-    const userNameEl = page.locator('[data-testid="nav-user-name"]')
-    await expect(userNameEl).toBeVisible({ timeout: 20_000 })
-    const text = await userNameEl.textContent()
-    expect(text?.length).toBeGreaterThan(0)
-  })
-})
-
-test.describe('App — platform worker', () => {
-  test('platform health check reachable via proxy', async ({ request }) => {
-    // Vite proxies /platform/* → localhost:8792, so /platform/api/health → /platform/api/health
-    // The platform worker serves health at /api/health directly
-    const res = await request.get(`${APP_URL}/platform/api/health`)
-    // Accept 200 (direct), 404 (path mismatch through proxy), or 502 (service unavailable)
-    // Any of these proves the proxy route exists — only a connection refused would be a problem
-    expect(res.status()).toBeLessThan(503)
+  test('test page accessible', async ({ page }) => {
+    await page.goto(`${APP_URL}/test`, { waitUntil: 'networkidle' })
+    await expect(page.locator('[data-testid="test-page"]')).toBeVisible({ timeout: 10_000 })
   })
 })

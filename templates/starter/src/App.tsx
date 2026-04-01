@@ -10,7 +10,7 @@ import { HomePage } from './pages/HomePage'
 import { TestPage } from './pages/TestPage'
 
 // ============================================================================
-// Shared scope config — built from SHARED_CONNECTIONS at module level
+// Shared scope config
 // ============================================================================
 
 const sharedScopes: Array<{ roomId: string; schemas: CollectionSchema[] }> =
@@ -26,135 +26,128 @@ const sharedScopes: Array<{ roomId: string; schemas: CollectionSchema[] }> =
 // ============================================================================
 
 function Navigation() {
+  const { isSignedIn } = useAuth()
   const { user } = useUser()
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [showAuthModal, setShowAuthModal] = useState(false)
 
-  const userRole = (user?.role ?? ROLES.VIEWER) as Role
-  const roleConfig = ROLE_CONFIG[userRole] ?? ROLE_CONFIG[ROLES.VIEWER]
+  const userRole = (user?.role ?? 'anonymous') as Role | 'anonymous'
+  const roleConfig = ROLE_CONFIG[userRole as Role] ?? { title: 'Anonymous', badgeVariant: 'secondary' }
 
-  // Close mobile menu on navigation
-  useEffect(() => {
-    setMobileMenuOpen(false)
-  }, [location.pathname])
+  useEffect(() => { setMobileMenuOpen(false) }, [location.pathname])
 
-  const navItems: Array<{ path: string; label: string; roles: Role[] }> = [
-    { path: '/home', label: 'Home', roles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
-    { path: '/test', label: 'Test', roles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
-    // { path: '/items', label: 'Items', roles: [ROLES.MEMBER, ROLES.ADMIN] },
+  const navItems: Array<{ path: string; label: string }> = [
+    { path: '/home', label: 'Home' },
+    { path: '/test', label: 'Test' },
   ]
 
-  const isAdmin = user?.role === 'admin'
-  const visibleNavItems = isAdmin
-    ? navItems
-    : navItems.filter((item) => item.roles.includes(userRole))
-
   return (
-    <nav
-      data-testid="app-navigation"
-      className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-xl"
-    >
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* App name */}
-        <Link to="/home" className="text-base font-semibold text-foreground tracking-tight">
-          {APP_NAME}
-        </Link>
+    <>
+      <nav
+        data-testid="app-navigation"
+        className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-xl"
+      >
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <Link to="/home" className="text-base font-semibold text-foreground tracking-tight">
+            {APP_NAME}
+          </Link>
 
-        {/* Desktop nav links */}
-        <div className="hidden md:flex items-center gap-1">
-          {visibleNavItems.map((item) => {
-            const isActive = location.pathname === item.path
-            return (
+          {/* Desktop nav */}
+          <div className="hidden md:flex items-center gap-1">
+            {navItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
                 className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
-                  isActive
+                  location.pathname === item.path
                     ? 'bg-secondary text-foreground'
                     : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
                 }`}
               >
                 {item.label}
               </Link>
-            )
-          })}
-        </div>
+            ))}
+          </div>
 
-        {/* User info + role badge + hamburger */}
-        <div className="flex items-center gap-2.5">
-          {/* Role badge */}
-          <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-              roleConfig.badgeVariant === 'warning'
-                ? 'bg-warning/20 text-warning'
-                : roleConfig.badgeVariant === 'default'
-                  ? 'bg-primary/20 text-primary'
-                  : 'bg-secondary text-muted-foreground'
-            }`}
-          >
-            {roleConfig.title}
-          </span>
+          {/* Right side: role badge + user/sign-in + hamburger */}
+          <div className="flex items-center gap-2.5">
+            <span
+              data-testid="nav-role-badge"
+              className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                roleConfig.badgeVariant === 'warning'
+                  ? 'bg-warning/20 text-warning'
+                  : roleConfig.badgeVariant === 'default'
+                    ? 'bg-primary/20 text-primary'
+                    : 'bg-secondary text-muted-foreground'
+              }`}
+            >
+              {roleConfig.title}
+            </span>
 
-          {/* User pill */}
-          {user && (
-            <div className="flex items-center gap-2 rounded-full border border-border bg-secondary/50 px-2.5 py-1">
-              {user.imageUrl ? (
-                <img src={user.imageUrl} alt="" className="h-6 w-6 rounded-full" />
-              ) : (
+            {isSignedIn && user ? (
+              <div className="flex items-center gap-2 rounded-full border border-border bg-secondary/50 px-2.5 py-1">
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs text-muted-foreground">
                   {user.name?.[0]?.toUpperCase() ?? '?'}
                 </div>
-              )}
-              <span data-testid="nav-user-name" className="hidden text-sm text-muted-foreground sm:inline">
-                {user.name || user.email}
-              </span>
-            </div>
-          )}
-
-          {/* Hamburger (mobile) */}
-          <button
-            className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground md:hidden"
-            onClick={() => setMobileMenuOpen((prev) => !prev)}
-            aria-label="Toggle menu"
-            aria-expanded={mobileMenuOpen}
-          >
-            {mobileMenuOpen ? (
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+                <span data-testid="nav-user-name" className="hidden text-sm text-muted-foreground sm:inline">
+                  {user.name || user.email}
+                </span>
+              </div>
             ) : (
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
+              <button
+                data-testid="nav-sign-in-button"
+                onClick={() => setShowAuthModal(true)}
+                className="rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
+              >
+                Sign In
+              </button>
             )}
-          </button>
-        </div>
-      </div>
 
-      {/* Mobile dropdown */}
-      {mobileMenuOpen && (
-        <div className="border-t border-border bg-card/95 backdrop-blur-xl md:hidden">
-          <div className="px-4 py-2">
-            {visibleNavItems.map((item) => {
-              const isActive = location.pathname === item.path
-              return (
+            {/* Hamburger (mobile) */}
+            <button
+              className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground md:hidden"
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              aria-label="Toggle menu"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                {mobileMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile dropdown */}
+        {mobileMenuOpen && (
+          <div className="border-t border-border bg-card/95 backdrop-blur-xl md:hidden">
+            <div className="px-4 py-2">
+              {navItems.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
                   className={`block w-full rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                    isActive
+                    location.pathname === item.path
                       ? 'bg-secondary text-foreground'
                       : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
                   }`}
                 >
                   {item.label}
                 </Link>
-              )
-            })}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+      </nav>
+
+      {/* Auth modal — closeable overlay */}
+      {showAuthModal && (
+        <AuthOverlay onClose={() => setShowAuthModal(false)} />
       )}
-    </nav>
+    </>
   )
 }
 
@@ -168,32 +161,11 @@ interface ProtectedRouteProps {
 }
 
 function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, isLoading } = useUser()
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
-        Loading...
-      </div>
-    )
-  }
-
+  const { user } = useUser()
   if (user?.role === 'admin') return <>{children}</>
-
   const userRole = (user?.role ?? ROLES.VIEWER) as Role
-  if (!allowedRoles.includes(userRole)) {
-    return <Navigate to="/home" replace />
-  }
-
+  if (!allowedRoles.includes(userRole)) return <Navigate to="/home" replace />
   return <>{children}</>
-}
-
-// ============================================================================
-// Root Redirect
-// ============================================================================
-
-function RootRedirect() {
-  return <Navigate to="/home" replace />
 }
 
 // ============================================================================
@@ -201,7 +173,7 @@ function RootRedirect() {
 // ============================================================================
 
 function AppShell() {
-  const { isLoaded, isSignedIn } = useAuth()
+  const { isLoaded } = useAuth()
 
   if (!isLoaded) {
     return (
@@ -222,39 +194,26 @@ function AppShell() {
   }
 
   return (
-    <>
-      {!isSignedIn && <AuthOverlay />}
-      <RecordProvider allowAnonymous>
-        <RecordScope
-          roomId={SCOPE_ID}
-          schemas={schemas}
-          appId={APP_NAME}
-          sharedScopes={sharedScopes}
-        >
-          <div className="flex min-h-screen flex-col bg-background">
-            <Navigation />
-            <main className="flex-1 overflow-y-auto">
-              <Routes>
-                <Route path="/" element={<RootRedirect />} />
-                <Route path="/home" element={<HomePage />} />
-                <Route path="/test" element={<TestPage />} />
-                {/* Add more routes here:
-                <Route
-                  path="/admin/*"
-                  element={
-                    <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-                      <AdminPage />
-                    </ProtectedRoute>
-                  }
-                />
-                */}
-                <Route path="*" element={<Navigate to="/home" replace />} />
-              </Routes>
-            </main>
-          </div>
-        </RecordScope>
-      </RecordProvider>
-    </>
+    <RecordProvider allowAnonymous>
+      <RecordScope
+        roomId={SCOPE_ID}
+        schemas={schemas}
+        appId={APP_NAME}
+        sharedScopes={sharedScopes}
+      >
+        <div className="flex min-h-screen flex-col bg-background">
+          <Navigation />
+          <main className="flex-1 overflow-y-auto">
+            <Routes>
+              <Route path="/" element={<Navigate to="/home" replace />} />
+              <Route path="/home" element={<HomePage />} />
+              <Route path="/test" element={<TestPage />} />
+              <Route path="*" element={<Navigate to="/home" replace />} />
+            </Routes>
+          </main>
+        </div>
+      </RecordScope>
+    </RecordProvider>
   )
 }
 
