@@ -9,15 +9,15 @@ compatibility_flags = ["nodejs_compat"]
 # Workers for Platforms dispatch namespace
 [[dispatch_namespaces]]
 binding = "USER_APPS"
-namespace = "deepspace-apps"
+namespace = "spaces-apps"
 
 [[kv_namespaces]]
 binding = "HOSTNAME_MAP"
-id = "" # Set in production env
+id = "5c57d809011d4574b8fa4f4e7b03ef9a"
 
 [[kv_namespaces]]
 binding = "CRON_TASKS"
-id = "" # Set in production env
+id = "a13702840633449ab9a5e5371491ac18"
 
 [dev]
 port = 8793

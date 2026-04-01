@@ -11,7 +11,7 @@ bucket_name = "__APP_NAME__-files"
 
 [[services]]
 binding = "PLATFORM_WORKER"
-service = "platform-worker"
+service = "deepspace-platform-worker"
 
 [vars]
 APP_NAME = "__APP_NAME__"
