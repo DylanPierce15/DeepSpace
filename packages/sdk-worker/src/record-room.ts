@@ -70,17 +70,12 @@ import {
   handleApiRequest,
 } from './handlers'
 import { SYSTEM_COLLECTION_SCHEMAS, broadcastAwarenessRemoval } from './handlers/yjs'
-import { getGlobalDOSchemas, GLOBAL_DO_TYPE_NAMES } from './shared-do-schemas'
+import { getGlobalDOSchemas } from './shared-do-schemas'
 
 /**
  * RecordRoom configuration options
  */
 export interface RecordRoomConfig {
-  /** 
-   * Default role for new users who don't have a role in user-roles collection.
-   * Defaults to 'member'.
-   */
-  defaultRole?: string
   /**
    * User ID of the app owner.
    * This user automatically gets 'admin' role on connect.
@@ -101,8 +96,6 @@ export class RecordRoom {
   private yjsDocs: Map<YjsDocKey, Y.Doc> = new Map()
   /** Next Yjs client ID counter */
   private nextYjsClientId = 1
-  /** Default role for new users */
-  private defaultRole: string
   /** Owner user ID — gets admin role automatically */
   private ownerUserId: string | null
   /** True until the first fetch() completes — detects hibernation wake-up */
@@ -118,8 +111,6 @@ export class RecordRoom {
     this.env = (env ?? {}) as { [key: string]: unknown }
     this.sql = state.storage.sql
     this.schemaRegistry = new SchemaRegistry([...SYSTEM_COLLECTION_SCHEMAS, BASE_USERS_SCHEMA, ...schemas])
-    const usersSchemaDefaultRole = schemas.find(s => s.name === 'users')?.defaultRole
-    this.defaultRole = config.defaultRole ?? usersSchemaDefaultRole ?? 'member'
     this.ownerUserId = config.ownerUserId ?? null
 
     this.state.setWebSocketAutoResponse(
@@ -186,18 +177,8 @@ export class RecordRoom {
 
     const url = new URL(request.url)
 
-    // Push schemas endpoint (called by platform worker after schema upload)
-    if (url.pathname === '/api/push-schemas' && request.method === 'POST') {
-      const schemas = await request.json() as CollectionSchema[]
-      this.persistSchemas(schemas)
-      return Response.json({ success: true, count: schemas.length })
-    }
-
     // HTTP API endpoints (tools, debug, etc.)
     if (url.pathname.startsWith('/api/')) {
-      const scopeId = url.searchParams.get('scopeId') ?? ''
-      const scopePrefix = scopeId.split(':')[0]
-      await this.loadSchemasForScope(scopePrefix)
       return handleApiRequest(this.createHandlerContext(), request, url)
     }
 
@@ -221,30 +202,9 @@ export class RecordRoom {
         state BLOB NOT NULL,
         updated_at TEXT NOT NULL
       );
-
-      CREATE TABLE IF NOT EXISTS persisted_schemas (
-        name TEXT PRIMARY KEY,
-        schema TEXT NOT NULL,
-        created_at TEXT NOT NULL
-      );
-
     `)
 
-    // Migrate old table name if it exists
-    try {
-      const oldTable = this.sql.exec(
-        `SELECT name FROM sqlite_master WHERE type='table' AND name='runtime_schemas'`
-      ).toArray()
-      if (oldTable.length > 0) {
-        this.sql.exec(`INSERT OR IGNORE INTO persisted_schemas SELECT * FROM runtime_schemas`)
-        this.sql.exec(`DROP TABLE runtime_schemas`)
-      }
-    } catch { /* ignore */ }
-
-    // Load persisted schemas (survives hibernation)
-    this.loadPersistedSchemas()
-
-    // Create SQL tables for all collections (table-mode)
+    // Create SQL tables for all registered collections
     this.ensureAllCollectionTables()
 
     // Migrate legacy data from old storage formats
@@ -464,63 +424,6 @@ export class RecordRoom {
   }
 
   // ============================================================================
-  // Schema Loading
-  // ============================================================================
-
-  /**
-   * Load schemas based on scope type:
-   * - Global DOs (workspace, conv, dir): Baked into code, zero I/O
-   * - App DOs (app:{appId}): Pushed by platform worker, persisted in persisted_schemas
-   */
-  private async loadSchemasForScope(scopePrefix: string): Promise<void> {
-    // Tier 1: Global DOs — schemas baked into code
-    if (GLOBAL_DO_TYPE_NAMES.includes(scopePrefix)) {
-      this.loadGlobalSchemas(scopePrefix)
-      return
-    }
-    // Tier 2: App DOs — schemas pushed by platform worker, in persisted_schemas.
-    // Already loaded by loadPersistedSchemas() in initializeDatabase().
-    if (scopePrefix === 'app') {
-      return
-    }
-  }
-
-  /**
-   * Load baked-in schemas for a specific global DO type.
-   * Always overwrites persisted schemas with code-level schemas
-   * so that deploys take effect without waiting for DO hibernation.
-   */
-  private globalSchemasLoaded = false
-  private loadGlobalSchemas(scopePrefix: string): void {
-    if (this.globalSchemasLoaded) return
-    this.globalSchemasLoaded = true
-    const schemas = getGlobalDOSchemas(scopePrefix)
-    if (schemas.length === 0) return
-    this.persistSchemas(schemas)
-  }
-
-
-  /**
-   * Register schemas as trusted and persist to persisted_schemas SQLite table.
-   * Shared by push-schemas endpoint and global schema loading.
-   */
-  private persistSchemas(schemas: CollectionSchema[]): void {
-    const now = new Date().toISOString()
-    for (const schema of schemas) {
-      if (!schema.name) continue
-      this.schemaRegistry.registerTrusted(schema)
-      this.sql.exec(
-        `INSERT OR REPLACE INTO persisted_schemas (name, schema, created_at) VALUES (?, ?, ?)`,
-        schema.name, JSON.stringify(schema), now
-      )
-      this.ensureCollectionTable(schema)
-      if (schema.name === 'users' && schema.defaultRole) {
-        this.defaultRole = schema.defaultRole
-      }
-    }
-  }
-
-  // ============================================================================
   // WebSocket Connection
   // ============================================================================
 
@@ -538,10 +441,6 @@ export class RecordRoom {
     const scopeId = url.pathname.replace(/^\/ws\//, '')
     const scopePrefix = scopeId.split(':')[0]
 
-    const schemaStart = Date.now()
-    await this.loadSchemasForScope(scopePrefix)
-    const schemaMs = Date.now() - schemaStart
-
     const pair = new WebSocketPair()
     const [client, server] = Object.values(pair)
 
@@ -553,7 +452,8 @@ export class RecordRoom {
       // Authenticated user — register and derive role
       const isOwner = isCanvasOwner || (this.ownerUserId != null && userId === this.ownerUserId)
       const regStart = Date.now()
-      const user = await registerUser(this.sql, userId, userName, userEmail, userImageUrl, isAdmin || isOwner, this.defaultRole, this.schemaRegistry)
+      const defaultRole = this.schemaRegistry.get('users')?.defaultRole ?? 'member'
+      const user = await registerUser(this.sql, userId, userName, userEmail, userImageUrl, isAdmin || isOwner, defaultRole, this.schemaRegistry)
       const regMs = Date.now() - regStart
 
       attachment = {
@@ -567,7 +467,7 @@ export class RecordRoom {
       this.send(server, { type: MSG_USER_INFO, payload: user })
 
       const totalMs = Date.now() - timing.fetchStart
-      console.log(`[DO Perf] ${scopeId} | cold=${timing.isColdStart} | init: ${timing.initMs}ms schema: ${schemaMs}ms reg: ${regMs}ms | total: ${totalMs}ms`)
+      console.log(`[DO Perf] ${scopeId} | cold=${timing.isColdStart} | init: ${timing.initMs}ms reg: ${regMs}ms | total: ${totalMs}ms`)
     } else {
       // Anonymous user — read-only viewer, not persisted
       const anonId = `anon-${crypto.randomUUID()}`
@@ -589,7 +489,7 @@ export class RecordRoom {
       }})
 
       const totalMs = Date.now() - timing.fetchStart
-      console.log(`[DO Perf] ${scopeId} | cold=${timing.isColdStart} anon | schema: ${schemaMs}ms | total: ${totalMs}ms`)
+      console.log(`[DO Perf] ${scopeId} | cold=${timing.isColdStart} anon | total: ${totalMs}ms`)
     }
 
     server.serializeAttachment(attachment)
@@ -711,38 +611,6 @@ export class RecordRoom {
   }
 
   // ============================================================================
-  // Schema Persistence
-  // ============================================================================
-
-  /**
-   * Load persisted schemas from SQLite (survives DO hibernation).
-   * These are trusted schemas written by persistSchemas() (push-schemas endpoint
-   * or global schema loading).
-   */
-  private loadPersistedSchemas(): void {
-    const cursor = this.sql.exec(`SELECT name, schema FROM persisted_schemas`)
-    let count = 0
-    const names: string[] = []
-    for (const row of cursor.toArray()) {
-      const r = row as { name: string; schema: string }
-      try {
-        const schema = JSON.parse(r.schema) as CollectionSchema
-        if (!schema.name) continue
-        this.schemaRegistry.registerTrusted(schema)
-        if (schema.name === 'users' && schema.defaultRole) {
-          this.defaultRole = schema.defaultRole
-        }
-        names.push(r.name)
-        count++
-      } catch (e) {
-        console.error('[DO] Failed to parse persisted schema:', r.name, e)
-      }
-    }
-    if (count > 0) {
-      console.log('[DO] Loaded persisted schemas from SQLite:', count, names)
-    }
-  }
-
   // ============================================================================
   // Schema Discovery
   // ============================================================================

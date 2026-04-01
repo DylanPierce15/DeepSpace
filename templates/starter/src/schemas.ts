@@ -4,10 +4,11 @@
  * Defines all collections with columns and RBAC permissions.
  * This is the SINGLE SOURCE OF TRUTH — imported by both worker and frontend.
  *
- * Roles (stored on user records):
- * - viewer: Read-only access (default for new users)
+ * Roles:
+ * - anonymous: Unauthenticated users (read-only public data)
+ * - viewer: Authenticated but read-only
  * - member: Can create and edit own content
- * - admin: Full access (automatically assigned to global admins)
+ * - admin: Full access
  */
 
 import type { CollectionSchema } from '@deepspace/sdk-worker'
@@ -22,24 +23,38 @@ const usersSchema: CollectionSchema = {
   name: 'users',
   columns: [
     ...USERS_COLUMNS,
-    // Add your app-specific columns here:
-    // { name: 'bio', storage: 'text', interpretation: 'plain' },
   ],
   permissions: {
-    viewer: {
-      read: 'own',
-      create: false,
-      update: 'own',
-      delete: false,
-    },
-    member: {
-      read: true,
-      create: false,
-      update: 'own',
-      delete: false,
-    },
+    viewer: { read: 'own', create: false, update: 'own', delete: false },
+    member: { read: true, create: false, update: 'own', delete: false },
     admin: { read: true, create: false, update: true, delete: true },
   },
+}
+
+// ============================================================================
+// Items Collection — demonstrates RBAC
+// ============================================================================
+
+const itemsSchema: CollectionSchema = {
+  name: 'items',
+  columns: [
+    { name: 'title', storage: 'text', interpretation: 'plain' },
+    { name: 'description', storage: 'text', interpretation: 'plain' },
+    { name: 'status', storage: 'text', interpretation: { kind: 'select', options: ['draft', 'published', 'archived'] } },
+    { name: 'createdBy', storage: 'text', interpretation: 'plain' },
+  ],
+  ownerField: 'createdBy',
+  permissions: {
+    // Anonymous: can read published items only
+    anonymous: { read: 'published', create: false, update: false, delete: false },
+    // Viewers: can read all items
+    viewer: { read: true, create: false, update: false, delete: false },
+    // Members: full CRUD on own items
+    member: { read: true, create: true, update: 'own', delete: 'own' },
+    // Admins: full access
+    admin: { read: true, create: true, update: true, delete: true },
+  },
+  visibilityField: { field: 'status', value: 'published' },
 }
 
 // ============================================================================
@@ -49,8 +64,5 @@ const usersSchema: CollectionSchema = {
 export const schemas: CollectionSchema[] = [
   usersSchema,
   settingsSchema,
-
-  // Add feature schemas here:
-  // itemsSchema,
-  // ...teamsSchemas,
+  itemsSchema,
 ]

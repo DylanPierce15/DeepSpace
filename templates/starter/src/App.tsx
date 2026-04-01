@@ -7,6 +7,7 @@ import type { CollectionSchema } from '@deepspace/types'
 import { APP_NAME, SCOPE_ID, SHARED_CONNECTIONS, ROLES, ROLE_CONFIG, type Role } from './constants'
 import { schemas } from './schemas'
 import { HomePage } from './pages/HomePage'
+import { TestPage } from './pages/TestPage'
 
 // ============================================================================
 // Shared scope config — built from SHARED_CONNECTIONS at module level
@@ -39,7 +40,7 @@ function Navigation() {
 
   const navItems: Array<{ path: string; label: string; roles: Role[] }> = [
     { path: '/home', label: 'Home', roles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
-    // Add more nav items here:
+    { path: '/test', label: 'Test', roles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
     // { path: '/items', label: 'Items', roles: [ROLES.MEMBER, ROLES.ADMIN] },
   ]
 
@@ -236,6 +237,7 @@ function AppShell() {
               <Routes>
                 <Route path="/" element={<RootRedirect />} />
                 <Route path="/home" element={<HomePage />} />
+                <Route path="/test" element={<TestPage />} />
                 {/* Add more routes here:
                 <Route
                   path="/admin/*"
