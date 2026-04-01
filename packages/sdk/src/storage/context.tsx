@@ -562,48 +562,22 @@ function RecordProviderAuthOnly({
     }
   }, [fetchUser])
 
-  // Fetch user profile with retry and periodic refresh
+  // Fetch user profile on mount and refresh periodically.
+  // fetchUser returns null when not signed in — that's fine, no retry needed.
   useEffect(() => {
     let mounted = true
-    let retryTimer: ReturnType<typeof setTimeout> | null = null
-    let pollInterval: ReturnType<typeof setInterval> | null = null
+    setUserProfileLoading(true)
+    fetchUser()
+      .then(profile => { if (mounted) setUserProfile(profile) })
+      .finally(() => { if (mounted) setUserProfileLoading(false) })
 
-    const tryFetch = (retryMs: number) => {
-      fetchUser()
-        .then(profile => {
-          if (!mounted) return
-          setUserProfile(profile)
-          // Initial fetch succeeded — start periodic polling to keep
-          // profile data fresh (credits, plan changes, etc.)
-          if (!pollInterval) {
-            pollInterval = setInterval(() => {
-              if (mounted) {
-                fetchUser()
-                  .then(p => { if (mounted) setUserProfile(p) })
-                  .catch(() => {})
-              }
-            }, 30000)
-          }
-        })
-        .catch(err => {
-          console.error('[RecordProvider] AuthOnly: fetch failed:', err)
-          if (mounted) {
-            const nextRetry = Math.min(retryMs * 2, 30000)
-            retryTimer = setTimeout(() => tryFetch(nextRetry), retryMs)
-          }
-        })
-        .finally(() => {
-          if (mounted) setUserProfileLoading(false)
-        })
-    }
+    const interval = setInterval(() => {
+      if (mounted) {
+        fetchUser().then(p => { if (mounted) setUserProfile(p) })
+      }
+    }, 30000)
 
-    tryFetch(1000)
-
-    return () => {
-      mounted = false
-      if (retryTimer) clearTimeout(retryTimer)
-      if (pollInterval) clearInterval(pollInterval)
-    }
+    return () => { mounted = false; clearInterval(interval) }
   }, [fetchUser])
 
   const authValue: RecordAuthContextValue = useMemo(() => ({
@@ -670,11 +644,11 @@ export function RecordProvider({
   const { isLoaded, isSignedIn } = useAuth()
 
   // Derive user profile from the JWT — no API call needed.
-  // The auth-worker puts name, email, image in the token claims.
-  const fetchUser = useCallback(async (): Promise<UserProfile> => {
-    if (!isSignedIn) throw new Error('Not signed in')
+  // Returns null when not signed in (no error, no console spam).
+  const fetchUser = useCallback(async (): Promise<UserProfile | null> => {
+    if (!isSignedIn) return null
     const token = await getAuthToken()
-    if (!token) throw new Error('No auth token')
+    if (!token) return null
     try {
       const parts = token.split('.')
       const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
@@ -685,7 +659,7 @@ export function RecordProvider({
         imageUrl: payload.image ?? undefined,
       }
     } catch {
-      throw new Error('Failed to decode JWT')
+      return null
     }
   }, [isSignedIn])
 

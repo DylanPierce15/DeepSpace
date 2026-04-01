@@ -187,15 +187,10 @@ app.all('/internal/tools/:scopeId/:action{.+}', async (c) => {
 // ── WebSocket (per-scope, supports anonymous for conv/dir) ───────────────
 
 app.get('/ws/:scopeId', async (c) => {
+  // Auth is optional — the RecordRoom's RBAC handles permissions per role.
+  // Anonymous connections get whatever role the schema assigns to unauthed users.
   const auth = await authenticate(c.req.raw, c.env)
   const scopeId = c.req.param('scopeId')
-  const scopePrefix = scopeId.split(':')[0]
-
-  // app scopes require authentication
-  if (scopePrefix === 'app' && !auth) {
-    return c.json({ error: 'Authentication required for app scopes' }, 401)
-  }
-
   return routeToRecordRoom(c.req.raw, c.env, auth, scopeId)
 })
 

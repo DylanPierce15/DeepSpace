@@ -46,9 +46,11 @@ test.describe('Platform worker', () => {
     expect(body.apps).toBeInstanceOf(Array)
   })
 
-  test('GET /ws/app:test without auth returns 401', async ({ request }) => {
+  test('GET /ws/app:test without auth connects (RBAC handled by RecordRoom)', async ({ request }) => {
     const res = await request.get(`${PLATFORM_URL}/ws/app:test`)
-    expect(res.status()).toBe(401)
+    // WebSocket upgrade returns 101, or non-upgrade GET returns 426
+    // Either way, it should NOT be 401 — auth is optional, RBAC is per-schema
+    expect(res.status()).not.toBe(401)
   })
 
 })

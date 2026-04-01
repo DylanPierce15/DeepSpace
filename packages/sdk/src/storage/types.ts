@@ -144,7 +144,7 @@ export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
  * Function to fetch user profile from API.
  * Uses Better Auth token from the auth module.
  */
-export type FetchUserProfile = () => Promise<UserProfile>
+export type FetchUserProfile = () => Promise<UserProfile | null>
 
 export interface RecordProviderProps {
   /** Room ID for backward compat. Omit for multi-scope mode (use RecordScope instead). */
