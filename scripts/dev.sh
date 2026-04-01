@@ -2,15 +2,19 @@
 set -euo pipefail
 
 # Start the full local development stack.
-# Starts auth-worker, platform-worker, and template app, then opens the browser.
 #
-# Prerequisites: .dev.vars in each worker dir (run: ./scripts/setup-env.sh dev)
+# Architecture:
+#   auth-worker     (port 8794)  — Better Auth + JWT issuance
+#   api-worker      (port 8795)  — Billing, user profiles
+#   platform-worker (port 8792)  — Global DOs (conv, dir, workspace)
+#   app worker      (port 8780)  — App's own RecordRoom DO + API routes
+#   vite dev        (port 5173)  — Frontend HMR, proxies /api + /ws → app worker
 #
-# Usage: ./scripts/dev.sh
+# Prerequisites: ./scripts/setup-env.sh dev
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PIDS=()
-PORTS=(8794 8795 8792 5173 9235 9236 9233)
+PORTS=(8794 8795 8792 8780 5173 9235 9236 9233 9237)
 
 cleanup() {
   echo ""
@@ -27,7 +31,7 @@ free_ports() {
     local pids
     pids=$(lsof -ti :"$port" 2>/dev/null || true)
     if [ -n "$pids" ]; then
-      echo "  killing existing process on port $port"
+      echo "  killing process on port $port"
       echo "$pids" | xargs kill -9 2>/dev/null || true
     fi
   done
@@ -52,10 +56,9 @@ wait_for_url() {
 echo "=== DeepSpace Local Dev ==="
 
 # ── Preflight ─────────────────────────────────────────────────────────
-for worker in auth-worker platform-worker; do
-  if [ ! -f "$ROOT/platform/$worker/.dev.vars" ]; then
-    echo "✗ Missing platform/$worker/.dev.vars"
-    echo "  Run: ./scripts/setup-env.sh dev"
+for dir in platform/auth-worker platform/api-worker platform/platform-worker templates/starter; do
+  if [ ! -f "$ROOT/$dir/.dev.vars" ]; then
+    echo "✗ Missing $dir/.dev.vars — run: ./scripts/setup-env.sh dev"
     exit 1
   fi
 done
@@ -64,55 +67,65 @@ done
 echo "→ Freeing ports..."
 free_ports
 
-# ── Start auth-worker ─────────────────────────────────────────────────
+# ── Replace __APP_NAME__ for local dev ────────────────────────────────
+LOCAL_APP_NAME="ds-local-dev"
+sed -i '' "s/__APP_NAME__/${LOCAL_APP_NAME}/g" "$ROOT/templates/starter/wrangler.toml"
+restore_wrangler() {
+  sed -i '' "s/${LOCAL_APP_NAME}/__APP_NAME__/g" "$ROOT/templates/starter/wrangler.toml" 2>/dev/null || true
+}
+original_cleanup=$(declare -f cleanup | tail -n +2)
+cleanup() {
+  restore_wrangler
+  echo ""
+  echo "→ Stopping services..."
+  for pid in "${PIDS[@]}"; do
+    kill "$pid" 2>/dev/null && wait "$pid" 2>/dev/null || true
+  done
+  echo "→ Done."
+}
+trap cleanup EXIT INT TERM
+
+# ── Start workers ─────────────────────────────────────────────────────
 echo "→ Starting auth-worker (port 8794)..."
-cd "$ROOT/platform/auth-worker"
-npx wrangler dev --port 8794 > /tmp/ds-dev-auth.log 2>&1 &
-PIDS+=($!)
-cd "$ROOT"
+cd "$ROOT/platform/auth-worker" && npx wrangler dev --port 8794 > /tmp/ds-dev-auth.log 2>&1 &
+PIDS+=($!); cd "$ROOT"
 wait_for_url "http://localhost:8794/health" "auth-worker"
 
-# ── Migrate DB ────────────────────────────────────────────────────────
 echo "→ Migrating auth DB..."
 curl -sf -X POST http://localhost:8794/_migrate > /dev/null
 echo "  ✓ auth DB ready"
 
-# ── Start api-worker ───────────────────────────────────────────────────
 echo "→ Starting api-worker (port 8795)..."
-cd "$ROOT/platform/api-worker"
-npx wrangler dev --port 8795 > /tmp/ds-dev-api.log 2>&1 &
-PIDS+=($!)
-cd "$ROOT"
+cd "$ROOT/platform/api-worker" && npx wrangler dev --port 8795 > /tmp/ds-dev-api.log 2>&1 &
+PIDS+=($!); cd "$ROOT"
 wait_for_url "http://localhost:8795/api/health" "api-worker"
 
-# ── Start platform-worker ─────────────────────────────────────────────
 echo "→ Starting platform-worker (port 8792)..."
-cd "$ROOT/platform/platform-worker"
-npx wrangler dev --port 8792 > /tmp/ds-dev-platform.log 2>&1 &
-PIDS+=($!)
-cd "$ROOT"
+cd "$ROOT/platform/platform-worker" && npx wrangler dev --port 8792 > /tmp/ds-dev-platform.log 2>&1 &
+PIDS+=($!); cd "$ROOT"
 wait_for_url "http://localhost:8792/api/health" "platform-worker"
 
-# ── Start template ────────────────────────────────────────────────────
-echo "→ Starting template app (port 5173)..."
-cd "$ROOT/templates/starter"
-npx vite --port 5173 > /tmp/ds-dev-app.log 2>&1 &
-PIDS+=($!)
-cd "$ROOT"
-wait_for_url "http://localhost:5173" "template app"
+echo "→ Starting app worker (port 8780)..."
+cd "$ROOT/templates/starter" && npx wrangler dev --port 8780 > /tmp/ds-dev-appworker.log 2>&1 &
+PIDS+=($!); cd "$ROOT"
+# App worker doesn't have a health endpoint, wait for port
+sleep 3
+echo "  ✓ app worker"
+
+echo "→ Starting frontend (port 5173)..."
+cd "$ROOT/templates/starter" && npx vite --port 5173 > /tmp/ds-dev-vite.log 2>&1 &
+PIDS+=($!); cd "$ROOT"
+wait_for_url "http://localhost:5173" "frontend"
 
 # ── Ready ─────────────────────────────────────────────────────────────
 echo ""
-echo "  App:      http://localhost:5173"
-echo "  Auth:     http://localhost:8794"
-echo "  API:      http://localhost:8795"
-echo "  Platform: http://localhost:8792"
-echo "  Logs:     /tmp/ds-dev-{auth,api,platform,app}.log"
+echo "  App:          http://localhost:5173"
+echo "  App Worker:   http://localhost:8780"
+echo "  Auth:         http://localhost:8794"
+echo "  API:          http://localhost:8795"
+echo "  Platform:     http://localhost:8792"
 echo ""
 echo "  Press Ctrl+C to stop."
 
-# Open browser
 open "http://localhost:5173" 2>/dev/null || true
-
-# Wait for Ctrl+C
 wait

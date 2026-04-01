@@ -1,23 +1,35 @@
 name = "__APP_NAME__"
 compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
 main = "worker.ts"
 
 [assets]
 directory = "dist"
 
+# App's own RecordRoom DO — schemas baked in at deploy time
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["AppRecordRoom"]
+
+[durable_objects]
+bindings = [
+  { name = "RECORD_ROOMS", class_name = "AppRecordRoom" },
+]
+
 [[r2_buckets]]
 binding = "FILES"
 bucket_name = "__APP_NAME__-files"
 
-[[services]]
-binding = "PLATFORM_WORKER"
-service = "deepspace-platform-worker"
-
 [vars]
 APP_NAME = "__APP_NAME__"
+
+[dev]
+port = 8780
+inspector_port = 9237
 
 # Secrets (set via `wrangler secret put`):
 #   AUTH_JWT_PUBLIC_KEY
 #   AUTH_JWT_ISSUER
+#   AUTH_WORKER_URL
 #   OWNER_USER_ID
 #   INTERNAL_STORAGE_HMAC_SECRET

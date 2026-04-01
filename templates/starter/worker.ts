@@ -1,14 +1,14 @@
 /**
- * Site Worker — Hono-based Cloudflare Worker for DeepSpace apps.
+ * App Worker — Hono-based Cloudflare Worker for DeepSpace apps.
  *
- * Deployed per-app via Workers for Platforms. Handles:
+ * Each app owns its RecordRoom DOs. Schemas are baked in at deploy time.
+ *
+ * Handles:
+ *   - WebSocket → app's own RecordRoom DO (real-time data)
  *   - Auth proxy → auth-worker (same-origin cookies)
- *   - WebSocket proxy to platform-worker (RecordRoom)
  *   - Server actions (app-defined, bypass user RBAC)
  *   - Scoped R2 file storage
- *   - McAPI proxy (integrations)
  *   - HMAC-authenticated cron
- *   - Platform worker proxy
  *   - Static asset serving with SPA fallback
  */
 
@@ -21,14 +21,21 @@ import {
   signInternalPayload,
 } from '@deepspace/auth'
 import type { JwtVerifierConfig, VerifyResult } from '@deepspace/auth'
-import {
-  createScopedR2Handler,
-  handleMcAPIProxy,
-  type ScopedR2Handler,
-} from '@deepspace/sdk-worker'
-import type { ActionHandler, ActionTools, ActionResult } from '@deepspace/types'
+import { RecordRoom, createScopedR2Handler, type ScopedR2Handler } from '@deepspace/sdk-worker'
+import type { ActionTools, ActionResult } from '@deepspace/types'
 import { actions } from './src/actions/index.js'
 import { handleCron } from './src/cron.js'
+import { schemas } from './src/schemas.js'
+
+// =============================================================================
+// Durable Object — RecordRoom with app schemas baked in
+// =============================================================================
+
+export class AppRecordRoom extends RecordRoom {
+  constructor(state: DurableObjectState, env: Env) {
+    super(state, env, schemas, { ownerUserId: env.OWNER_USER_ID })
+  }
+}
 
 // =============================================================================
 // Types
@@ -37,7 +44,7 @@ import { handleCron } from './src/cron.js'
 interface Env {
   ASSETS: Fetcher
   FILES: R2Bucket
-  PLATFORM_WORKER: Fetcher
+  RECORD_ROOMS: DurableObjectNamespace
   AUTH_JWT_PUBLIC_KEY: string
   AUTH_JWT_ISSUER: string
   AUTH_WORKER_URL: string
@@ -46,38 +53,28 @@ interface Env {
   INTERNAL_STORAGE_HMAC_SECRET: string
 }
 
-type AppContext = { Bindings: Env; Variables: { auth: VerifyResult | null } }
+type AppContext = { Bindings: Env }
 
 // =============================================================================
 // App
 // =============================================================================
 
 const app = new Hono<AppContext>()
-
-// CORS for API routes
 app.use('/api/*', cors())
 
 // ---------------------------------------------------------------------------
-// Auth helper
+// Auth
 // ---------------------------------------------------------------------------
 
 function jwtConfig(env: Env): JwtVerifierConfig {
   return { publicKey: env.AUTH_JWT_PUBLIC_KEY, issuer: env.AUTH_JWT_ISSUER }
 }
 
-async function resolveAuth(
-  req: Request,
-  env: Env,
-): Promise<VerifyResult | null> {
-  const authHeader = req.headers.get('Authorization')
-  const token = authHeader?.startsWith('Bearer ')
-    ? authHeader.slice(7)
-    : null
-
+async function resolveAuth(req: Request, env: Env): Promise<VerifyResult | null> {
+  const header = req.headers.get('Authorization')
+  const token = header?.startsWith('Bearer ') ? header.slice(7) : null
   if (!token) return null
-
-  const outcome = await verifyJwt(jwtConfig(env), token)
-  return outcome.result
+  return (await verifyJwt(jwtConfig(env), token)).result
 }
 
 // ---------------------------------------------------------------------------
@@ -87,40 +84,45 @@ async function resolveAuth(
 app.all('/api/auth/*', async (c) => {
   const url = new URL(c.req.url)
   const authUrl = new URL(url.pathname + url.search, c.env.AUTH_WORKER_URL)
-
   const res = await fetch(authUrl.toString(), {
     method: c.req.method,
     headers: c.req.raw.headers,
-    body: c.req.method !== 'GET' && c.req.method !== 'HEAD'
-      ? c.req.raw.body
-      : undefined,
+    body: c.req.method !== 'GET' && c.req.method !== 'HEAD' ? c.req.raw.body : undefined,
   })
-
-  // Forward the response including set-cookie headers
-  // Rewrite cookie domain so it's same-origin with the app
   const headers = new Headers(res.headers)
   const setCookie = headers.get('set-cookie')
   if (setCookie) {
-    // Remove Domain= attribute so cookie defaults to current host (same-origin)
-    const rewritten = setCookie.replace(/;\s*Domain=[^;]*/gi, '')
-    headers.set('set-cookie', rewritten)
+    headers.set('set-cookie', setCookie.replace(/;\s*Domain=[^;]*/gi, ''))
   }
-
-  return new Response(res.body, {
-    status: res.status,
-    headers,
-  })
+  return new Response(res.body, { status: res.status, headers })
 })
 
 // ---------------------------------------------------------------------------
-// WebSocket proxy → platform-worker
+// WebSocket → app's own RecordRoom DO
 // ---------------------------------------------------------------------------
 
 app.get('/ws/:roomId', async (c) => {
-  const url = new URL(c.req.url)
-  return c.env.PLATFORM_WORKER.fetch(
-    new Request(url.toString(), c.req.raw),
-  )
+  const roomId = c.req.param('roomId')
+
+  // Authenticate (optional — anonymous connections get limited RBAC)
+  const token = new URL(c.req.url).searchParams.get('token')
+  let auth: VerifyResult | null = null
+  if (token) {
+    auth = (await verifyJwt(jwtConfig(c.env), token)).result
+  }
+
+  // Route to DO — each roomId maps to one DO instance
+  const doId = c.env.RECORD_ROOMS.idFromName(roomId)
+  const stub = c.env.RECORD_ROOMS.get(doId)
+
+  // Forward the request with auth info in URL params
+  const doUrl = new URL(c.req.url)
+  if (auth) {
+    doUrl.searchParams.set('userId', auth.userId)
+  }
+  doUrl.searchParams.delete('token') // don't forward raw JWT to DO
+
+  return stub.fetch(new Request(doUrl.toString(), c.req.raw))
 })
 
 // ---------------------------------------------------------------------------
@@ -130,11 +132,9 @@ app.get('/ws/:roomId', async (c) => {
 app.post('/api/actions/:name', async (c) => {
   const auth = await resolveAuth(c.req.raw, c.env)
   if (!auth) return c.json({ error: 'Unauthorized' }, 401)
-
   const name = c.req.param('name')
   const action = actions[name]
   if (!action) return c.json({ error: 'Action not found' }, 404)
-
   const params = await c.req.json<Record<string, unknown>>()
   const tools = createActionTools(c.env, auth.userId)
   const result = await action({ userId: auth.userId, params, tools })
@@ -145,41 +145,24 @@ app.post('/api/actions/:name', async (c) => {
 // Scoped R2 files
 // ---------------------------------------------------------------------------
 
-const r2Handler: Record<string, ScopedR2Handler> = {}
+const r2Handlers: Record<string, ScopedR2Handler> = {}
 
 function getR2Handler(env: Env): ScopedR2Handler {
-  if (!r2Handler[env.APP_NAME]) {
-    r2Handler[env.APP_NAME] = createScopedR2Handler({
+  if (!r2Handlers[env.APP_NAME]) {
+    r2Handlers[env.APP_NAME] = createScopedR2Handler({
       resolvePrefix(scope, ctx) {
-        if (scope === 'app') {
-          return { prefix: `apps/${env.APP_NAME}/` }
-        }
-        if (!ctx.userId) {
-          return { error: 'Authentication required for user files' }
-        }
+        if (scope === 'app') return { prefix: `apps/${env.APP_NAME}/` }
+        if (!ctx.userId) return { error: 'Authentication required for user files' }
         return { prefix: `apps/${env.APP_NAME}/users/${ctx.userId}/` }
       },
     })
   }
-  return r2Handler[env.APP_NAME]
+  return r2Handlers[env.APP_NAME]
 }
 
 app.all('/api/files/*', async (c) => {
   const auth = await resolveAuth(c.req.raw, c.env)
-  const handler = getR2Handler(c.env)
-  const url = new URL(c.req.url)
-  return handler(c.req.raw, url, c.env.FILES, {
-    userId: auth?.userId ?? null,
-  })
-})
-
-// ---------------------------------------------------------------------------
-// McAPI proxy → api-worker
-// ---------------------------------------------------------------------------
-
-app.all('/api/mcapi/*', async (c) => {
-  const url = new URL(c.req.url)
-  return handleMcAPIProxy(c.req.raw, url)
+  return getR2Handler(c.env)(c.req.raw, new URL(c.req.url), c.env.FILES, { userId: auth?.userId ?? null })
 })
 
 // ---------------------------------------------------------------------------
@@ -188,30 +171,15 @@ app.all('/api/mcapi/*', async (c) => {
 
 app.post('/internal/cron', async (c) => {
   const body = await c.req.text()
-  const payload = buildInternalPayload(body)
-  const signature = c.req.header('x-internal-signature') ?? ''
-  const timestamp = c.req.header('x-internal-timestamp') ?? ''
-
   const valid = await verifyInternalSignature({
     secret: c.env.INTERNAL_STORAGE_HMAC_SECRET,
-    payload,
-    signature,
-    timestamp,
+    payload: buildInternalPayload(body),
+    signature: c.req.header('x-internal-signature') ?? '',
+    timestamp: c.req.header('x-internal-timestamp') ?? '',
   })
-
   if (!valid) return c.json({ error: 'Forbidden' }, 403)
-
-  const parsed = JSON.parse(body)
-  await handleCron(parsed)
+  await handleCron(JSON.parse(body))
   return c.json({ ok: true })
-})
-
-// ---------------------------------------------------------------------------
-// Platform worker proxy
-// ---------------------------------------------------------------------------
-
-app.all('/platform/*', async (c) => {
-  return c.env.PLATFORM_WORKER.fetch(c.req.raw)
 })
 
 // ---------------------------------------------------------------------------
@@ -229,56 +197,33 @@ app.get('*', async (c) => {
 })
 
 // =============================================================================
-// Action Tools — proxy to platform-worker with app trust
+// Action Tools — route to app's own RecordRoom DO
 // =============================================================================
 
 function createActionTools(env: Env, userId: string): ActionTools {
   const scopeId = `app:${env.APP_NAME}`
 
-  async function toolRequest(
-    method: string,
-    path: string,
-    body?: unknown,
-  ): Promise<ActionResult> {
-    const payload = body ? JSON.stringify(body) : '{}'
-    const { timestamp, signature } = await signInternalPayload({
-      secret: env.INTERNAL_STORAGE_HMAC_SECRET,
-      payload: buildInternalPayload(body),
-    })
-
-    const res = await env.PLATFORM_WORKER.fetch(
-      new Request(`https://internal/platform/api/tools/${path}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId,
-          'x-app-action': 'true',
-          'x-internal-timestamp': timestamp,
-          'x-internal-signature': signature,
-        },
-        body: payload,
-      }),
-    )
-
+  async function execTool(tool: string, params: Record<string, unknown>): Promise<ActionResult> {
+    const doId = env.RECORD_ROOMS.idFromName(scopeId)
+    const stub = env.RECORD_ROOMS.get(doId)
+    const res = await stub.fetch(new Request('https://internal/api/tools/execute', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': userId,
+        'x-app-action': 'true',
+      },
+      body: JSON.stringify({ tool, params }),
+    }))
     return res.json() as Promise<ActionResult>
   }
 
   return {
-    create(sid, collection, data) {
-      return toolRequest('POST', 'records/create', { scopeId: sid, collection, data })
-    },
-    update(sid, collection, recordId, data) {
-      return toolRequest('POST', 'records/update', { scopeId: sid, collection, recordId, data })
-    },
-    remove(sid, collection, recordId) {
-      return toolRequest('POST', 'records/delete', { scopeId: sid, collection, recordId })
-    },
-    get(sid, collection, recordId) {
-      return toolRequest('POST', 'records/get', { scopeId: sid, collection, recordId })
-    },
-    query(sid, collection, options) {
-      return toolRequest('POST', 'records/query', { scopeId: sid, collection, ...options })
-    },
+    create: (sid, collection, data) => execTool('records.create', { scopeId: sid, collection, data }),
+    update: (sid, collection, recordId, data) => execTool('records.update', { scopeId: sid, collection, recordId, data }),
+    remove: (sid, collection, recordId) => execTool('records.delete', { scopeId: sid, collection, recordId }),
+    get: (sid, collection, recordId) => execTool('records.get', { scopeId: sid, collection, recordId }),
+    query: (sid, collection, options) => execTool('records.query', { scopeId: sid, collection, ...options }),
   }
 }
 

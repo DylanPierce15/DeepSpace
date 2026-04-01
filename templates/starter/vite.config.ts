@@ -11,20 +11,13 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      // Auth proxy — same as worker.ts app.all('/api/auth/*')
-      '/api/auth': {
-        target: 'http://localhost:8794',
+      // All API and WebSocket routes → app worker (running via wrangler dev)
+      '/api': {
+        target: 'http://localhost:8780',
         changeOrigin: true,
       },
-      // Platform proxy — same as worker.ts app.all('/platform/*')
-      '/platform': {
-        target: 'http://localhost:8792',
-        changeOrigin: true,
-        ws: true,
-      },
-      // WebSocket proxy — same as worker.ts app.get('/ws/:roomId')
       '/ws': {
-        target: 'http://localhost:8792',
+        target: 'http://localhost:8780',
         changeOrigin: true,
         ws: true,
       },

@@ -76,4 +76,15 @@ write_dev_vars "$ROOT/platform/platform-worker" \
 write_dev_vars "$ROOT/platform/dispatch-worker" \
   INTERNAL_STORAGE_HMAC_SECRET
 
+# ── Starter Template (local dev) ────────────────────────────────────────────
+write_dev_vars "$ROOT/templates/starter" \
+  AUTH_JWT_PUBLIC_KEY \
+  AUTH_JWT_ISSUER \
+  INTERNAL_STORAGE_HMAC_SECRET
+
+# For local dev, the AUTH_WORKER_URL points to the local auth worker
+if [ "$CONFIG" = "dev" ]; then
+  echo "AUTH_WORKER_URL=http://localhost:8794" >> "$ROOT/templates/starter/.dev.vars"
+fi
+
 echo "✓ All .dev.vars synced from Doppler ($CONFIG)"

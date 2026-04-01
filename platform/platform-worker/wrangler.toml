@@ -1,5 +1,5 @@
 # DeepSpace Platform Worker
-# RecordRoom DOs — all data keyed by scopeId: app:{id}, conv:{id}, dir:{id}, workspace:default
+# Hosts global DOs: conv:{id}, dir:{id}, workspace:default
 
 name = "deepspace-platform-worker"
 main = "src/worker.ts"
@@ -8,7 +8,7 @@ compatibility_flags = ["nodejs_compat"]
 
 [[migrations]]
 tag = "v1"
-new_sqlite_classes = ["SharedRecordRoom"]
+new_sqlite_classes = ["GlobalRecordRoom"]
 
 [[r2_buckets]]
 binding = "SCHEMA_REGISTRY"
@@ -16,7 +16,7 @@ bucket_name = "deepspace-schema-registry"
 
 [durable_objects]
 bindings = [
-  { name = "RECORD_ROOMS", class_name = "SharedRecordRoom" },
+  { name = "RECORD_ROOMS", class_name = "GlobalRecordRoom" },
 ]
 
 [dev]
