@@ -182,21 +182,17 @@ function RecordProviderCore({
     }
   }, [fetchUser])
 
-  // Fetch user profile on mount with periodic refresh
+  // Fetch user profile on mount and refresh periodically.
+  // fetchUser returns null when not signed in — that's fine.
   useEffect(() => {
     let mounted = true
     setUserProfileLoading(true)
     fetchUser()
       .then(profile => { if (mounted) setUserProfile(profile) })
-      .catch(err => { console.error('[RecordProvider] Failed to fetch user profile:', err) })
       .finally(() => { if (mounted) setUserProfileLoading(false) })
 
     const interval = setInterval(() => {
-      if (mounted) {
-        fetchUser()
-          .then(profile => { if (mounted) setUserProfile(profile) })
-          .catch(() => {})
-      }
+      if (mounted) fetchUser().then(p => { if (mounted) setUserProfile(p) })
     }, 30000)
 
     return () => { mounted = false; clearInterval(interval) }

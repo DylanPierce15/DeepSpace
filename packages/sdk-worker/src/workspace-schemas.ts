@@ -187,7 +187,7 @@ export const workspaceAccountsSchema: CollectionSchema = {
  * ShareTarget: the ID of the target (channelId, teamId, userId, linkId, orgId)
  * Permission:  'view' | 'edit' — what the share grants
  *
- * Content itself lives in the owner's user DO (user:{OwnerId}).
+ * Content itself lives in the owner's app DO.
  * This table is the discovery layer: "what has been shared, with whom, and how".
  */
 export const workspaceContentSharesSchema: CollectionSchema = {
