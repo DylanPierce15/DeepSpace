@@ -78,4 +78,28 @@ All three SDK platform workers are deployed and functional:
 | `deepspace-api` | `deepspace-api.eudaimonicincorporated.workers.dev` | Billing + user profile working |
 | `deepspace-platform-worker` | `deepspace-platform-worker.eudaimonicincorporated.workers.dev` | Health + app registry working (DO stubs) |
 
+| `deepspace-deploy` | `deepspace-deploy.eudaimonicincorporated.workers.dev` | App deployment via REST API working |
+
 The full auth flow is verified: sign-up -> session cookie -> JWT -> API call with JWT -> user profile returned.
+
+## 10. Cloudflare Assets: MIME type must be set on upload Blob
+
+**Problem:** Apps deployed via the deploy worker served all files with `content-type: application/octet-stream`, causing browsers to download HTML instead of rendering it.
+
+**Root cause:** When uploading assets to the Cloudflare Workers Assets API (`POST /workers/assets/upload?base64=true`), the `Blob` in the multipart form must have the correct MIME type set. Cloudflare uses the Blob's content-type from the upload to determine how to serve the file. Without it, everything defaults to `application/octet-stream`.
+
+**Verified experimentally:**
+- `new Blob([b64], { type: 'text/html' })` → served as `content-type: text/html`
+- `new Blob([b64])` (no type) → served as `content-type: application/octet-stream`
+
+**This is NOT documented in the Cloudflare API docs.** The REST API examples show plain `curl -F` uploads without explicit MIME types. But the Miyagi3 `miniapp-deployer` sets MIME types on every Blob (line 543 of `deploy.ts`), which is why Miyagi3-deployed apps work correctly.
+
+**Fix:** Added `getMimeType(filePath)` function to the deploy worker's `cloudflare-deploy.ts` and pass the MIME type when constructing the upload Blob:
+```ts
+// Before (broken):
+form.append(hash, new Blob([asset.contentBase64]), hash)
+
+// After (fixed):
+const mimeType = getMimeType(asset.path)
+form.append(hash, new Blob([asset.contentBase64], { type: mimeType }), hash)
+```

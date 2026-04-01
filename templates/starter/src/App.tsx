@@ -12,6 +12,7 @@ export function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <meta name="generator" content="deepspace-sdk/0.1.0" />
       </RecordProvider>
     </DeepSpaceAuthProvider>
   )

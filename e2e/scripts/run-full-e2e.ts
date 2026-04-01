@@ -19,24 +19,19 @@ import { join, resolve, extname } from 'node:path'
 import { tmpdir } from 'node:os'
 
 const MONOREPO = resolve(import.meta.dirname, '../..')
-const APP_NAME = 'deepspace-sdk-test'
+const APP_NAME = `ds-e2e-${Date.now().toString(36)}`
 const WORK_DIR = join(tmpdir(), `deepspace-e2e-${Date.now()}`)
 const APP_DIR = join(WORK_DIR, APP_NAME)
 const PACKAGES_DIR = join(WORK_DIR, 'packages')
 const TEMPLATE_DIR = join(MONOREPO, 'templates', 'starter')
 const CLI_BIN = join(MONOREPO, 'packages', 'cli', 'dist', 'cli.js')
 
-// Test credentials
 const TEST_EMAIL = 'e2e-test@deepspace.test'
 const TEST_PASSWORD = 'TestPass123!'
 
-function run(cmd: string, cwd: string, env?: Record<string, string>) {
+function run(cmd: string, cwd: string) {
   console.log(`\n$ ${cmd}`)
-  execSync(cmd, {
-    cwd,
-    stdio: 'inherit',
-    env: { ...process.env, ...env },
-  })
+  execSync(cmd, { cwd, stdio: 'inherit' })
 }
 
 function step(msg: string) {
@@ -46,6 +41,7 @@ function step(msg: string) {
 async function main() {
   const keepApp = process.argv.includes('--keep')
   mkdirSync(WORK_DIR, { recursive: true })
+  console.log(`App name: ${APP_NAME}`)
   console.log(`Working directory: ${WORK_DIR}`)
 
   try {
@@ -68,7 +64,6 @@ async function main() {
         cwd: pkgDir,
         encoding: 'utf-8',
       })
-      // pnpm pack outputs a listing then the tarball path on the last non-empty line
       const lines = result.trim().split('\n').filter(Boolean)
       const lastLine = lines[lines.length - 1].trim()
       const tgzPath = lastLine.startsWith('/') ? lastLine : join(PACKAGES_DIR, lastLine)
@@ -93,18 +88,10 @@ async function main() {
         }
       }
     }
-
-    // Also need to rewrite workspace:* inside the packed tarballs' package.json
-    // The tarballs themselves have workspace:* deps. We need to fix those too.
-    // Actually — pnpm pack resolves workspace:* to real versions. Let's check.
-    // If not, we need a post-pack step. For now, try npm install and see.
-
-    // Add overrides so transitive workspace deps also resolve to tarballs
     pkgJson.overrides = {}
     for (const [name, tgzPath] of Object.entries(tarballPaths)) {
       pkgJson.overrides[name] = `file:${tgzPath}`
     }
-
     writeFileSync(pkgJsonPath, JSON.stringify(pkgJson, null, 2))
     console.log(`  Rewrote deps + overrides to tarball paths`)
 
@@ -114,14 +101,14 @@ async function main() {
 
     // ── Step 4: deepspace login ─────────────────────────────────
     step('Step 4: deepspace login')
-    run(
-      `node ${CLI_BIN} login --email ${TEST_EMAIL} --password ${TEST_PASSWORD}`,
-      APP_DIR,
-    )
+    run(`node ${CLI_BIN} login --email ${TEST_EMAIL} --password ${TEST_PASSWORD}`, APP_DIR)
 
     // ── Step 5: deepspace deploy ────────────────────────────────
     step('Step 5: deepspace deploy')
     run(`node ${CLI_BIN} deploy`, APP_DIR)
+
+    // Write app name for Playwright tests to read
+    writeFileSync(join(MONOREPO, 'e2e', '.app-name'), APP_NAME)
 
     // ── Step 6: Run Playwright tests ────────────────────────────
     step('Step 6: Playwright tests')
@@ -131,15 +118,12 @@ async function main() {
 
   } finally {
     if (!keepApp) {
-      // ── Step 7: Undeploy ────────────────────────────────────────
       step('Step 7: Undeploy')
       try {
         run(`node ${CLI_BIN} undeploy ${APP_NAME}`, APP_DIR)
       } catch {
         console.warn('Undeploy failed (may already be cleaned up)')
       }
-
-      // Clean up work dir
       try {
         rmSync(WORK_DIR, { recursive: true, force: true })
       } catch {

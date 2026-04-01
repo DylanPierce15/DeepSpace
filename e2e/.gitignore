@@ -1,4 +1,5 @@
 .auth-state.json
+.app-name
 .build/
 test-app/.worker-bundle.js
 node_modules/
