@@ -1,4 +1,4 @@
-name = "ds-local-dev"
+name = "__APP_NAME__"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 main = "worker.ts"
@@ -18,10 +18,10 @@ bindings = [
 
 [[r2_buckets]]
 binding = "FILES"
-bucket_name = "ds-local-dev-files"
+bucket_name = "__APP_NAME__-files"
 
 [vars]
-APP_NAME = "ds-local-dev"
+APP_NAME = "__APP_NAME__"
 
 [dev]
 port = 8780

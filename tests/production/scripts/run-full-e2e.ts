@@ -76,9 +76,11 @@ async function main() {
     copyDirSync(TEMPLATE_DIR, APP_DIR, new Set(['node_modules', 'dist', '.wrangler', '.deepspace']))
     replaceInDir(APP_DIR, '__APP_NAME__', APP_NAME)
 
-    // Rewrite package.json: workspace:* → file: tarballs
+    // Rewrite package.json: set app name + workspace:* → file: tarballs
     const pkgJsonPath = join(APP_DIR, 'package.json')
     const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf-8'))
+    pkgJson.name = APP_NAME
+    pkgJson.private = true
     for (const depType of ['dependencies', 'devDependencies']) {
       const deps = pkgJson[depType]
       if (!deps) continue

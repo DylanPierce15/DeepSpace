@@ -1,0 +1,6 @@
+{
+  "name": "@deepspace/features",
+  "version": "0.1.0",
+  "description": "Feature reference implementations for DeepSpace apps",
+  "files": ["*/"]
+}

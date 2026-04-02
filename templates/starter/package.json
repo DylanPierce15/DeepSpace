@@ -1,7 +1,17 @@
 {
-  "name": "__APP_NAME__",
-  "private": true,
+  "name": "@deepspace/starter",
+  "version": "0.1.0",
   "type": "module",
+  "files": [
+    "src/",
+    "worker.ts",
+    "wrangler.toml",
+    "index.html",
+    "vite.config.ts",
+    "postcss.config.js",
+    "tsconfig.json",
+    "cron.json"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",

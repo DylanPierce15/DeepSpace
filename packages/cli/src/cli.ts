@@ -4,11 +4,14 @@
  * DeepSpace CLI
  *
  * Commands:
- *   login  — authenticate with your DeepSpace account
- *   deploy — build and deploy your app to *.app.space
+ *   create   — scaffold a new DeepSpace app
+ *   login    — authenticate with your DeepSpace account
+ *   deploy   — build and deploy your app to *.app.space
+ *   undeploy — remove a deployed app
  */
 
 import { defineCommand, runMain } from 'citty'
+import create from './commands/create'
 import login from './commands/login'
 import deploy from './commands/deploy'
 import undeploy from './commands/undeploy'
@@ -20,6 +23,7 @@ const main = defineCommand({
     description: 'DeepSpace SDK CLI',
   },
   subCommands: {
+    create,
     login,
     deploy,
     undeploy,
