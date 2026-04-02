@@ -6,8 +6,8 @@
  */
 
 import { useState } from 'react'
-import { useQuery, useMutations, useUser } from '@deepspace/sdk/storage'
-import { useAuth } from '@deepspace/sdk/auth'
+import { useQuery, useMutations, useUser } from 'deepspace'
+import { useAuth } from 'deepspace'
 
 interface ItemData {
   title: string

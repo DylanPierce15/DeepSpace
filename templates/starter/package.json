@@ -22,10 +22,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@deepspace/auth": "workspace:*",
-    "@deepspace/sdk": "workspace:*",
-    "@deepspace/sdk-worker": "workspace:*",
-    "@deepspace/types": "workspace:*",
+    "deepspace": "workspace:*",
     "hono": "^4.7.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

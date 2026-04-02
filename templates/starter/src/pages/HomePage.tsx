@@ -1,4 +1,4 @@
-import { useUser } from '@deepspace/sdk/auth'
+import { useUser } from 'deepspace'
 
 export function HomePage() {
   const { user, isSignedIn } = useUser()

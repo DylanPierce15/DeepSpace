@@ -6,10 +6,10 @@
  */
 
 import { useState } from 'react'
-import { useMessages, useChannels, useReactions, useChannelMembers } from '@deepspace/sdk/messaging'
-import { useUser } from '@deepspace/sdk/storage'
-import type { RecordData } from '@deepspace/sdk/storage'
-import type { Channel, Message } from '@deepspace/sdk/messaging'
+import { useMessages, useChannels, useReactions, useChannelMembers } from 'deepspace'
+import { useUser } from 'deepspace'
+import type { RecordData } from 'deepspace'
+import type { Channel, Message } from 'deepspace'
 
 function ChannelList({
   channels,

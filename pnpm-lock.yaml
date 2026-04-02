@@ -130,6 +130,37 @@ importers:
         specifier: ^5.7.0
         version: 5.9.3
 
+  packages/deepspace:
+    dependencies:
+      '@deepspace/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@deepspace/cli':
+        specifier: workspace:*
+        version: link:../cli
+      '@deepspace/config':
+        specifier: workspace:*
+        version: link:../config
+      '@deepspace/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+      '@deepspace/sdk-worker':
+        specifier: workspace:*
+        version: link:../sdk-worker
+      '@deepspace/types':
+        specifier: workspace:*
+        version: link:../shared-types
+      react:
+        specifier: ^18.0.0 || ^19.0.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^18.0.0 || ^19.0.0
+        version: 19.2.4(react@19.2.4)
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
   packages/sdk:
     dependencies:
       '@deepspace/auth':
@@ -403,18 +434,9 @@ importers:
 
   templates/starter:
     dependencies:
-      '@deepspace/auth':
+      deepspace:
         specifier: workspace:*
-        version: link:../../packages/auth
-      '@deepspace/sdk':
-        specifier: workspace:*
-        version: link:../../packages/sdk
-      '@deepspace/sdk-worker':
-        specifier: workspace:*
-        version: link:../../packages/sdk-worker
-      '@deepspace/types':
-        specifier: workspace:*
-        version: link:../../packages/shared-types
+        version: link:../../packages/deepspace
       hono:
         specifier: ^4.7.0
         version: 4.12.9
