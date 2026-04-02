@@ -37,29 +37,22 @@ function groupParticipantHash(currentUserId: string, participantIds: string[]): 
 // ============================================================================
 
 describe('directory hooks barrel exports', () => {
-  it('exports useConversations from hooks barrel', async () => {
-    const hooks = await import('../../storage/hooks')
-    expect(hooks.useConversations).toBeDefined()
-    expect(typeof hooks.useConversations).toBe('function')
+  it('exports useConversations from directory barrel', async () => {
+    const dir = await import('../../directory/index')
+    expect(dir.useConversations).toBeDefined()
+    expect(typeof dir.useConversations).toBe('function')
   })
 
-  it('exports useCommunities from hooks barrel', async () => {
-    const hooks = await import('../../storage/hooks')
-    expect(hooks.useCommunities).toBeDefined()
-    expect(typeof hooks.useCommunities).toBe('function')
+  it('exports useCommunities from directory barrel', async () => {
+    const dir = await import('../../directory/index')
+    expect(dir.useCommunities).toBeDefined()
+    expect(typeof dir.useCommunities).toBe('function')
   })
 
-  it('exports usePosts from hooks barrel', async () => {
-    const hooks = await import('../../storage/hooks')
-    expect(hooks.usePosts).toBeDefined()
-    expect(typeof hooks.usePosts).toBe('function')
-  })
-
-  it('exports directory hooks from storage barrel', async () => {
-    const storage = await import('../../storage/index')
-    expect(storage.useConversations).toBeDefined()
-    expect(storage.useCommunities).toBeDefined()
-    expect(storage.usePosts).toBeDefined()
+  it('exports usePosts from directory barrel', async () => {
+    const dir = await import('../../directory/index')
+    expect(dir.usePosts).toBeDefined()
+    expect(typeof dir.usePosts).toBe('function')
   })
 })
 

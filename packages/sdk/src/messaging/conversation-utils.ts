@@ -5,7 +5,7 @@
  * and type checks across apps (slack-clone, discord-clone, etc.).
  */
 
-import type { UserInfo } from './hooks/useUserLookup'
+import type { UserInfo } from '../storage/hooks/useUserLookup'
 
 interface ConversationData {
   Name: string

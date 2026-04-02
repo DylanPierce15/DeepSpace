@@ -1,29 +1,34 @@
 /**
- * @deepspace/sdk Messaging Module
+ * Messaging Module
  *
- * Shared types, hooks, and utilities for conversation-based apps.
+ * Two patterns:
+ * 1. Channel-based: useChannels, useMessages, useReactions, etc. (app-scope DO)
+ * 2. Conversation-scoped: useConversation (conv:{id} DO)
  */
 
-// Types
+// ── Channel types ────────────────────────────────────────────────────────────
+export type { Channel, Message, Reaction, ChannelMember, ReadReceipt } from './channel-types'
+
+// ── Channel hooks ────────────────────────────────────────────────────────────
+export { useMessages } from './useMessages'
+export { useChannels } from './useChannels'
+export { useReactions, type GroupedReaction } from './useReactions'
+export { useChannelMembers } from './useChannelMembers'
+export { useReadReceipts } from './useReadReceipts'
+
+// ── Conversation-scoped hook (conv:{id} DOs) ────────────────────────────────
+export { useConversation } from './useConversation'
 export type {
   MessageRecord,
   ReactionRecord,
   MemberRecord,
   ReadCursorRecord,
-  GroupedReaction,
   ConversationObject,
-  ConvMessageData,
-  ConvReactionData,
-  ConvMemberData,
-  ConvReadCursorData,
   ContentSegment,
   LinkPreviewData,
 } from './types'
 
-// Hooks
-export { useConversation } from './useConversation'
-
-// Utilities
+// ── Utilities ────────────────────────────────────────────────────────────────
 export {
   groupReactionsForMessage,
   shouldGroupMessages,
@@ -31,3 +36,5 @@ export {
   formatMessageTime,
   formatFullTimestamp,
 } from './utils'
+export { getConversationDisplayName, isDMConversation, getConversationParticipantIds } from './conversation-utils'
+export { parseMessageMetadata } from './message-utils'

@@ -8,6 +8,7 @@ import { APP_NAME, SCOPE_ID, SHARED_CONNECTIONS, ROLES, ROLE_CONFIG, type Role }
 import { schemas } from './schemas'
 import { HomePage } from './pages/HomePage'
 import { TestPage } from './pages/TestPage'
+import { MessagingPage } from './pages/MessagingPage'
 
 // ============================================================================
 // Shared scope config
@@ -40,6 +41,7 @@ function Navigation() {
   const navItems: Array<{ path: string; label: string }> = [
     { path: '/home', label: 'Home' },
     { path: '/test', label: 'Test' },
+    { path: '/messaging', label: 'Messaging' },
   ]
 
   return (
@@ -208,6 +210,7 @@ function AppShell() {
               <Route path="/" element={<Navigate to="/home" replace />} />
               <Route path="/home" element={<HomePage />} />
               <Route path="/test" element={<TestPage />} />
+              <Route path="/messaging" element={<MessagingPage />} />
               <Route path="*" element={<Navigate to="/home" replace />} />
             </Routes>
           </main>

@@ -13,7 +13,8 @@
     "./config": "./src/config/index.ts",
     "./client": "./src/client/index.ts",
     "./platform": "./src/platform/index.ts",
-    "./messaging": "./src/messaging/index.ts"
+    "./messaging": "./src/messaging/index.ts",
+    "./directory": "./src/directory/index.ts"
   },
   "scripts": {
     "build": "tsc --project tsconfig.json",

@@ -9,10 +9,10 @@
  */
 
 import { useCallback } from 'react'
-import { useQuery } from './useQuery'
-import { useMutations } from './useMutations'
-import { useUser } from './useUser'
-import type { RecordData } from '../types'
+import { useQuery } from '../storage/hooks/useQuery'
+import { useMutations } from '../storage/hooks/useMutations'
+import { useUser } from '../storage/hooks/useUser'
+import type { RecordData } from '../storage/types'
 import type { DirectoryPostData } from '@deepspace/types'
 
 export function usePosts(opts?: { communityId?: string }) {

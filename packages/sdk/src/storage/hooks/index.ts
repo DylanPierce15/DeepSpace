@@ -1,7 +1,5 @@
 /**
- * Storage Hooks
- *
- * Re-exports all storage hooks.
+ * Core Storage Hooks
  */
 
 export { useUser } from './useUser'
@@ -12,6 +10,3 @@ export { useUserLookup, type UserInfo } from './useUserLookup'
 export { useTeams, type AddMemberOptions } from './useTeams'
 export { useYjsField, useYjsText, type UseYjsFieldResult, type UseYjsTextResult } from './useYjs'
 export { usePresence } from './usePresence'
-export { useConversations } from './useConversations'
-export { useCommunities } from './useCommunities'
-export { usePosts } from './usePosts'
