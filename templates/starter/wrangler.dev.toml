@@ -1,0 +1,31 @@
+# Local development config — real values, no placeholders.
+# Used by scripts/dev.sh and scripts/test-local.sh.
+# Not deployed — wrangler.toml (with __APP_NAME__) is used for deploys.
+
+name = "ds-local-dev"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+main = "worker.ts"
+
+[assets]
+directory = "dist"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["AppRecordRoom"]
+
+[durable_objects]
+bindings = [
+  { name = "RECORD_ROOMS", class_name = "AppRecordRoom" },
+]
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "ds-local-dev-files"
+
+[vars]
+APP_NAME = "ds-local-dev"
+
+[dev]
+port = 8780
+inspector_port = 9237

@@ -7,7 +7,7 @@ set -euo pipefail
 #   auth-worker     (port 8794)  — Better Auth + JWT issuance
 #   api-worker      (port 8795)  — Billing, user profiles
 #   platform-worker (port 8792)  — Global DOs (conv, dir, workspace)
-#   app worker      (port 8780)  — App's own RecordRoom DO + API routes
+#   app worker      (port 8780)  — App's own RecordRoom DO (via wrangler.dev.toml)
 #   vite dev        (port 5173)  — Frontend HMR, proxies /api + /ws → app worker
 #
 # Prerequisites: ./scripts/setup-env.sh dev
@@ -67,24 +67,6 @@ done
 echo "→ Freeing ports..."
 free_ports
 
-# ── Replace __APP_NAME__ for local dev ────────────────────────────────
-LOCAL_APP_NAME="ds-local-dev"
-sed -i '' "s/__APP_NAME__/${LOCAL_APP_NAME}/g" "$ROOT/templates/starter/wrangler.toml"
-restore_wrangler() {
-  sed -i '' "s/${LOCAL_APP_NAME}/__APP_NAME__/g" "$ROOT/templates/starter/wrangler.toml" 2>/dev/null || true
-}
-original_cleanup=$(declare -f cleanup | tail -n +2)
-cleanup() {
-  restore_wrangler
-  echo ""
-  echo "→ Stopping services..."
-  for pid in "${PIDS[@]}"; do
-    kill "$pid" 2>/dev/null && wait "$pid" 2>/dev/null || true
-  done
-  echo "→ Done."
-}
-trap cleanup EXIT INT TERM
-
 # ── Start workers ─────────────────────────────────────────────────────
 echo "→ Starting auth-worker (port 8794)..."
 cd "$ROOT/platform/auth-worker" && npx wrangler dev --port 8794 > /tmp/ds-dev-auth.log 2>&1 &
@@ -106,9 +88,8 @@ PIDS+=($!); cd "$ROOT"
 wait_for_url "http://localhost:8792/api/health" "platform-worker"
 
 echo "→ Starting app worker (port 8780)..."
-cd "$ROOT/templates/starter" && npx wrangler dev --port 8780 > /tmp/ds-dev-appworker.log 2>&1 &
+cd "$ROOT/templates/starter" && npx wrangler dev --config wrangler.dev.toml --port 8780 > /tmp/ds-dev-appworker.log 2>&1 &
 PIDS+=($!); cd "$ROOT"
-# App worker doesn't have a health endpoint, wait for port
 sleep 3
 echo "  ✓ app worker"
 
@@ -117,7 +98,6 @@ cd "$ROOT/templates/starter" && npx vite --port 5173 > /tmp/ds-dev-vite.log 2>&1
 PIDS+=($!); cd "$ROOT"
 wait_for_url "http://localhost:5173" "frontend"
 
-# ── Ready ─────────────────────────────────────────────────────────────
 echo ""
 echo "  App:          http://localhost:5173"
 echo "  App Worker:   http://localhost:8780"

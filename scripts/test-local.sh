@@ -7,7 +7,7 @@ set -euo pipefail
 #   auth-worker     (port 8794)  — Better Auth
 #   api-worker      (port 8795)  — Billing
 #   platform-worker (port 8792)  — Global DOs
-#   app worker      (port 8780)  — App RecordRoom DO
+#   app worker      (port 8780)  — App RecordRoom DO (via wrangler.dev.toml)
 #   vite dev        (port 5173)  — Frontend, proxies /api + /ws → app worker
 #
 # Prerequisites: ./scripts/setup-env.sh dev
@@ -73,27 +73,6 @@ rm -rf "$ROOT/platform/api-worker/.wrangler/state"
 rm -rf "$ROOT/platform/platform-worker/.wrangler/state"
 rm -rf "$ROOT/templates/starter/.wrangler/state"
 
-# Replace __APP_NAME__ placeholder for local dev
-echo "→ Setting up local app name..."
-LOCAL_APP_NAME="ds-local-dev"
-sed -i '' "s/__APP_NAME__/${LOCAL_APP_NAME}/g" "$ROOT/templates/starter/wrangler.toml"
-# Restore on exit
-restore_wrangler() {
-  sed -i '' "s/${LOCAL_APP_NAME}/__APP_NAME__/g" "$ROOT/templates/starter/wrangler.toml" 2>/dev/null || true
-}
-# Prepend to cleanup
-original_cleanup=$(declare -f cleanup | tail -n +2)
-cleanup() {
-  restore_wrangler
-  echo ""
-  echo "→ Stopping services..."
-  for pid in "${PIDS[@]}"; do
-    kill "$pid" 2>/dev/null && wait "$pid" 2>/dev/null || true
-  done
-  echo "→ Clean."
-}
-trap cleanup EXIT
-
 # ── Start workers ─────────────────────────────────────────────────────
 echo "→ Starting auth-worker (port 8794)..."
 cd "$ROOT/platform/auth-worker" && npx wrangler dev --port 8794 > /tmp/ds-local-auth.log 2>&1 &
@@ -111,7 +90,7 @@ PIDS+=($!); cd "$ROOT"
 wait_for_url "http://localhost:8792/api/health" "platform-worker"
 
 echo "→ Starting app worker (port 8780)..."
-cd "$ROOT/templates/starter" && npx wrangler dev --port 8780 > /tmp/ds-local-appworker.log 2>&1 &
+cd "$ROOT/templates/starter" && npx wrangler dev --config wrangler.dev.toml --port 8780 > /tmp/ds-local-appworker.log 2>&1 &
 PIDS+=($!); cd "$ROOT"
 sleep 3
 echo "  ✓ app worker"
