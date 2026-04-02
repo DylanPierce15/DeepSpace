@@ -102,17 +102,19 @@ export function TestPage() {
           </button>
         </div>
 
-        {/* Result */}
-        {lastResult && (
-          <div data-testid="test-last-result" className="mt-3 rounded bg-success/20 px-3 py-2 text-sm text-success">
-            {lastResult}
-          </div>
-        )}
-        {lastError && (
-          <div data-testid="test-last-error" className="mt-3 rounded bg-destructive/20 px-3 py-2 text-sm text-destructive">
-            {lastError}
-          </div>
-        )}
+        {/* Result — min-height prevents layout shift */}
+        <div className="mt-3 min-h-[2.25rem]">
+          {lastResult && (
+            <div data-testid="test-last-result" className="rounded bg-success/20 px-3 py-2 text-sm text-success">
+              {lastResult}
+            </div>
+          )}
+          {lastError && (
+            <div data-testid="test-last-error" className="rounded bg-destructive/20 px-3 py-2 text-sm text-destructive">
+              {lastError}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Items list */}
