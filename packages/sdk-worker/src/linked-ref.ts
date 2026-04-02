@@ -10,7 +10,7 @@
  * "show me everything linked to contact X" by filtering on LinkedRef.
  *
  * @example
- * import { LinkedRef, stringifyLinkedRef, parseLinkedRef } from '@deep-space/sdk-worker'
+ * import { LinkedRef, stringifyLinkedRef, parseLinkedRef } from '@deepspace/sdk-worker'
  *
  * // Creating a linked entry
  * const ref: LinkedRef = {
@@ -95,7 +95,7 @@ export function matchesLinkedRef(
  * in a directory DO via a server action.
  *
  * @example
- * import { buildLinkedConversation } from '@deep-space/sdk-worker'
+ * import { buildLinkedConversation } from '@deepspace/sdk-worker'
  *
  * const fields = buildLinkedConversation({
  *   name: 'Call with John Smith',

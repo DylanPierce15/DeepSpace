@@ -30,7 +30,7 @@ import React, {
   useMemo,
   type ReactNode,
 } from 'react'
-import type { CollectionSchema } from '@deep-space/types'
+import type { CollectionSchema } from '@deepspace/types'
 import { RecordContext, type RecordContextValue } from './context'
 import { useRecordAuth } from './context'
 import { RecordStore } from './store'

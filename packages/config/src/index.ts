@@ -1,5 +1,5 @@
 /**
- * @deep-space/config — Environment detection and URL configuration
+ * @deepspace/config — Environment detection and URL configuration
  *
  * Determines environment and provides URLs for DeepSpace services.
  *

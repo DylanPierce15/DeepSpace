@@ -13,7 +13,7 @@ import { useQuery } from '../storage/hooks/useQuery'
 import { useMutations } from '../storage/hooks/useMutations'
 import { useUser } from '../storage/hooks/useUser'
 import type { RecordData } from '../storage/types'
-import type { DirectoryPostData } from '@deep-space/types'
+import type { DirectoryPostData } from '@deepspace/types'
 
 export function usePosts(opts?: { communityId?: string }) {
   const { records: allPosts, status } = useQuery<DirectoryPostData>('posts')

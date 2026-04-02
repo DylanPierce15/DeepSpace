@@ -1,3 +1,3 @@
-import type { ActionHandler } from '@deep-space/types'
+import type { ActionHandler } from '@deepspace/types'
 
 export const actions: Record<string, ActionHandler> = {}

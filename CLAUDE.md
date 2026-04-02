@@ -1,16 +1,16 @@
 # DeepSpace SDK — Project Conventions
 
 ## Package Naming
-All packages use the `@deep-space/*` scope:
-- `@deep-space/types` — Shared type definitions
-- `@deep-space/config` — Environment detection & URLs
-- `@deep-space/auth` — JWT verification, Better Auth, HMAC internal auth
-- `@deep-space/sdk` — React client SDK (hooks, providers, storage)
-- `@deep-space/sdk-worker` — Cloudflare Worker runtime (RecordRoom, GatewaySession)
-- `@deep-space/cli` — CLI tool (tsup-bundled)
+All packages use the `@deepspace/*` scope:
+- `@deepspace/types` — Shared type definitions
+- `@deepspace/config` — Environment detection & URLs
+- `@deepspace/auth` — JWT verification, Better Auth, HMAC internal auth
+- `@deepspace/sdk` — React client SDK (hooks, providers, storage)
+- `@deepspace/sdk-worker` — Cloudflare Worker runtime (RecordRoom, GatewaySession)
+- `@deepspace/cli` — CLI tool (tsup-bundled)
 - `create-deepspace-app` — Project scaffolder
 
-Platform workers: `@deep-space/platform-worker`, `@deep-space/auth-worker`, `@deep-space/api-worker`, `@deep-space/dispatch-worker`
+Platform workers: `@deepspace/platform-worker`, `@deepspace/auth-worker`, `@deepspace/api-worker`, `@deepspace/dispatch-worker`
 
 ## Auth
 - **Better Auth** (not Clerk). The auth-worker handles sessions + JWT issuance.
@@ -41,7 +41,7 @@ Data is keyed by `scopeId`:
 ## Build System
 - **pnpm** (v9.15) workspace with **Turbo** for task orchestration.
 - TypeScript 5.7+, target ES2022, module ESNext, bundler resolution.
-- Packages that export raw `.ts` files: `@deep-space/types`, `@deep-space/config`, `@deep-space/auth`, `@deep-space/sdk`, `@deep-space/sdk-worker`.
+- Packages that export raw `.ts` files: `@deepspace/types`, `@deepspace/config`, `@deepspace/auth`, `@deepspace/sdk`, `@deepspace/sdk-worker`.
 - CLI packages use `tsup` for bundling.
 - Dashboard and starter template use Vite + React 19.
 

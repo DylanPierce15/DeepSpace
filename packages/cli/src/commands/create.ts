@@ -2,9 +2,9 @@
  * deepspace create <app-name>
  *
  * Scaffolds a new DeepSpace app:
- *   1. Fetches @deep-space/starter (from npm, or local monorepo with --local)
+ *   1. Fetches @deepspace/starter (from npm, or local monorepo with --local)
  *   2. Extracts template, replaces __APP_NAME__
- *   3. Fetches @deep-space/features → .deepspace/features/
+ *   3. Fetches @deepspace/features → .deepspace/features/
  *   4. Installs dependencies
  */
 
@@ -15,8 +15,8 @@ import { join, resolve, extname } from 'node:path'
 import { tmpdir } from 'node:os'
 import * as p from '@clack/prompts'
 
-const STARTER_PACKAGE = '@deep-space/starter'
-const FEATURES_PACKAGE = '@deep-space/features'
+const STARTER_PACKAGE = '@deepspace/starter'
+const FEATURES_PACKAGE = '@deepspace/features'
 
 function validateAppName(name: string): string | null {
   if (!name) return 'App name is required'

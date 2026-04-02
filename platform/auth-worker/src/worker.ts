@@ -8,7 +8,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { SignJWT, importPKCS8 } from 'jose'
-import { createDeepSpaceAuth } from '@deep-space/auth/better-auth'
+import { createDeepSpaceAuth } from '@deepspace/auth/better-auth'
 
 // ============================================================================
 // Types

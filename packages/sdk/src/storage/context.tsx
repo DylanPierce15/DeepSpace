@@ -18,7 +18,7 @@ import React, {
   useMemo,
   type ReactNode,
 } from 'react'
-import type { CollectionSchema } from '@deep-space/types'
+import type { CollectionSchema } from '@deepspace/types'
 import { useAuth, getAuthToken } from '../auth'
 import { RecordStore } from './store'
 import { ScopeRegistryProvider } from './ScopeRegistry'

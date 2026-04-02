@@ -12,7 +12,7 @@
  */
 
 import { Hono } from 'hono'
-import { verifyInternalSignature, signInternalPayload, buildInternalPayload } from '@deep-space/auth'
+import { verifyInternalSignature, signInternalPayload, buildInternalPayload } from '@deepspace/auth'
 
 // ============================================================================
 // Types

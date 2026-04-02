@@ -1,5 +1,5 @@
 import { createMiddleware } from 'hono/factory'
-import { verifyJwt } from '@deep-space/auth'
+import { verifyJwt } from '@deepspace/auth'
 import type { Env } from '../worker'
 
 export const authMiddleware = createMiddleware<Env>(async (c, next) => {

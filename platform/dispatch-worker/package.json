@@ -1,5 +1,5 @@
 {
-  "name": "@deep-space/dispatch-worker",
+  "name": "@deepspace/dispatch-worker",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,8 +12,8 @@
     "clean": "rm -rf dist *.tsbuildinfo .wrangler"
   },
   "dependencies": {
-    "@deep-space/auth": "workspace:*",
-    "@deep-space/types": "workspace:*",
+    "@deepspace/auth": "workspace:*",
+    "@deepspace/types": "workspace:*",
     "hono": "^4.6.0"
   },
   "devDependencies": {

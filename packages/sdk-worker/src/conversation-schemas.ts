@@ -10,14 +10,14 @@
 
 import type { CollectionSchema } from './schemas'
 
-// Re-export data interfaces from @deep-space/types (single source of truth)
+// Re-export data interfaces from @deepspace/types (single source of truth)
 export type {
   ConvMessageData,
   ConvReactionData,
   ConvMemberData,
   ConvReadCursorData,
   ConvVoteData,
-} from '@deep-space/types'
+} from '@deepspace/types'
 
 // ============================================================================
 // Schemas

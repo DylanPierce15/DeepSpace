@@ -1,5 +1,5 @@
 {
-  "name": "@deep-space/dashboard",
+  "name": "@deepspace/dashboard",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,9 +11,9 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@deep-space/sdk": "workspace:*",
-    "@deep-space/config": "workspace:*",
-    "@deep-space/types": "workspace:*",
+    "@deepspace/sdk": "workspace:*",
+    "@deepspace/config": "workspace:*",
+    "@deepspace/types": "workspace:*",
     "better-auth": "^1.2.0",
     "hono": "^4.6.0",
     "react": "^19.0.0",

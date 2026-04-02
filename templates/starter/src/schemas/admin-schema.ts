@@ -4,7 +4,7 @@
  * Admin-only settings collection for key-value app configuration.
  */
 
-import type { CollectionSchema } from '@deep-space/sdk-worker'
+import type { CollectionSchema } from '@deepspace/sdk-worker'
 
 export const settingsSchema: CollectionSchema = {
   name: 'settings',

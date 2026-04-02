@@ -11,11 +11,11 @@
  * Subscription-activated (zero cost until first subscriber):
  *   useInbox() — inbox entries from InboxRoom WebSocket
  *
- * Auth uses getAuthToken() from @deep-space/sdk/auth on demand.
+ * Auth uses getAuthToken() from @deepspace/sdk/auth on demand.
  * The template already provides DeepSpaceAuthProvider.
  *
  * Usage:
- *   import { PlatformProvider, usePlatform, useInbox } from '@deep-space/sdk/platform'
+ *   import { PlatformProvider, usePlatform, useInbox } from '@deepspace/sdk/platform'
  *
  *   // Already in template main.tsx:
  *   <PlatformProvider>

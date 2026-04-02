@@ -1,5 +1,5 @@
 /**
- * @deep-space/types — Shared type definitions for the DeepSpace SDK
+ * @deepspace/types — Shared type definitions for the DeepSpace SDK
  *
  * Types used by both client-side SDK and server-side workers.
  */

@@ -1,4 +1,4 @@
-import type { CollectionSchema } from '@deep-space/types'
+import type { CollectionSchema } from '@deepspace/types'
 
 export const schemas: CollectionSchema[] = [
   {

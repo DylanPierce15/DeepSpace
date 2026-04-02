@@ -1,5 +1,5 @@
 {
-  "name": "@deep-space/platform-worker",
+  "name": "@deepspace/platform-worker",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,15 +12,15 @@
     "clean": "rm -rf dist *.tsbuildinfo .wrangler"
   },
   "dependencies": {
-    "@deep-space/sdk-worker": "workspace:*",
-    "@deep-space/auth": "workspace:*",
-    "@deep-space/types": "workspace:*",
+    "@deepspace/sdk-worker": "workspace:*",
+    "@deepspace/auth": "workspace:*",
+    "@deepspace/types": "workspace:*",
     "hono": "^4.6.0"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "0.12.21",
     "@cloudflare/workers-types": "^4.20241205.0",
-    "@deep-space/test-utils": "workspace:*",
+    "@deepspace/test-utils": "workspace:*",
     "@types/node": "^22.10.0",
     "jose": "^6.1.0",
     "typescript": "^5.7.0",

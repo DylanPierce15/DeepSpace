@@ -19,7 +19,7 @@ import { useQuery } from './useQuery'
 import { useMutations } from './useMutations'
 import { useUser } from './useUser'
 import { getAuthToken } from '../../auth'
-import { getApiUrl } from '@deep-space/config'
+import { getApiUrl } from '@deepspace/config'
 import type { Team, TeamMember, TeamMemberIdentifier, AddMemberResult } from '../types'
 
 // ============================================================================
