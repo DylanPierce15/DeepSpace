@@ -10,7 +10,7 @@ export default defineWorkersConfig({
             BETTER_AUTH_SECRET: 'test-better-auth-secret-at-least-32-chars-long',
             AUTH_BASE_URL: 'https://auth.test.deep.space',
             // ES256 private key PEM — placeholder; tests that need real signing
-            // should use @deepspace/test-utils/jwt to generate a key pair at runtime.
+            // should use @deep-space/test-utils/jwt to generate a key pair at runtime.
             JWT_PRIVATE_KEY: 'placeholder-es256-private-key',
           },
         },

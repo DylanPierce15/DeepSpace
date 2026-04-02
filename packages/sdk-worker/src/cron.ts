@@ -10,7 +10,7 @@
  *   - ownerUserId: The app owner's user ID
  */
 
-import { signInternalPayload, buildInternalPayload } from '@deepspace/auth'
+import { signInternalPayload, buildInternalPayload } from '@deep-space/auth'
 
 /** Context passed to cron handler functions */
 export interface CronContext {

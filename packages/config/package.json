@@ -1,5 +1,5 @@
 {
-  "name": "@deepspace/config",
+  "name": "@deep-space/config",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -14,7 +14,7 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@deepspace/types": "workspace:*"
+    "@deep-space/types": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

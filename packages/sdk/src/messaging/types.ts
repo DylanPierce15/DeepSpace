@@ -8,7 +8,7 @@ import type {
   ConvReactionData,
   ConvMemberData,
   ConvReadCursorData,
-} from '@deepspace/types'
+} from '@deep-space/types'
 
 // Re-export the data interfaces for convenience
 export type { ConvMessageData, ConvReactionData, ConvMemberData, ConvReadCursorData }

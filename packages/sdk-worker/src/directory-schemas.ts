@@ -18,14 +18,14 @@
 
 import type { CollectionSchema } from './schemas'
 
-// Re-export data interfaces from @deepspace/types (single source of truth)
+// Re-export data interfaces from @deep-space/types (single source of truth)
 export type {
   DirectoryConversationData,
   ConversationStateData,
   DirectoryCommunityData,
   DirectoryMembershipData,
   DirectoryPostData,
-} from '@deepspace/types'
+} from '@deep-space/types'
 
 // ============================================================================
 // Schemas

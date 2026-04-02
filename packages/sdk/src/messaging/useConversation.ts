@@ -11,7 +11,7 @@ import { useQuery } from '../storage/hooks/useQuery'
 import { useMutations } from '../storage/hooks/useMutations'
 import { useRecordContext } from '../storage/context'
 import { useUser } from '../storage/hooks/useUser'
-import type { ConvMessageData, ConvReactionData, ConvMemberData } from '@deepspace/types'
+import type { ConvMessageData, ConvReactionData, ConvMemberData } from '@deep-space/types'
 import type { MessageRecord, ReactionRecord, MemberRecord, ConversationObject } from './types'
 
 interface UseConversationOptions {

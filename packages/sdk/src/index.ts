@@ -1,9 +1,9 @@
 /**
- * @deepspace/sdk — DeepSpace Client SDK
+ * @deep-space/sdk — DeepSpace Client SDK
  *
- * import { RecordProvider, RecordScope, useQuery, useMutations } from '@deepspace/sdk'
- * import { useMessages, useChannels } from '@deepspace/sdk/messaging'
- * import { useConversations } from '@deepspace/sdk/directory'
+ * import { RecordProvider, RecordScope, useQuery, useMutations } from '@deep-space/sdk'
+ * import { useMessages, useChannels } from '@deep-space/sdk/messaging'
+ * import { useConversations } from '@deep-space/sdk/directory'
  */
 
 // ── Auth ─────────────────────────────────────────────────────────────

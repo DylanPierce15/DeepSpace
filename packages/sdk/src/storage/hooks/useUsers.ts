@@ -8,7 +8,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useRecordContext } from '../context'
 import { getAuthToken } from '../../auth'
-import { getApiUrl } from '@deepspace/config'
+import { getApiUrl } from '@deep-space/config'
 import type { RoomUser } from '../types'
 
 export function useUsers(): {

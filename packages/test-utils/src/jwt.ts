@@ -42,7 +42,7 @@ export interface TestJwtOptions {
 }
 
 /**
- * Sign a test JWT. The token will be verifiable by @deepspace/auth's
+ * Sign a test JWT. The token will be verifiable by @deep-space/auth's
  * `verifyJwt()` when the matching public key is set in env.
  */
 export async function signTestJwt(

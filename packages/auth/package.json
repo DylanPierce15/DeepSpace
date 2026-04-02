@@ -1,5 +1,5 @@
 {
-  "name": "@deepspace/auth",
+  "name": "@deep-space/auth",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -19,7 +19,7 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@deepspace/types": "workspace:*",
+    "@deep-space/types": "workspace:*",
     "better-auth": "^1.2.0",
     "jose": "^6.1.0"
   },

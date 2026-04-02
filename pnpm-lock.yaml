@@ -29,13 +29,13 @@ importers:
 
   apps/dashboard:
     dependencies:
-      '@deepspace/config':
+      '@deep-space/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@deepspace/sdk':
+      '@deep-space/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
-      '@deepspace/types':
+      '@deep-space/types':
         specifier: workspace:*
         version: link:../../packages/shared-types
       better-auth:
@@ -75,7 +75,7 @@ importers:
 
   packages/auth:
     dependencies:
-      '@deepspace/types':
+      '@deep-space/types':
         specifier: workspace:*
         version: link:../shared-types
       better-auth:
@@ -103,10 +103,10 @@ importers:
       '@clack/prompts':
         specifier: ^0.8.0
         version: 0.8.2
-      '@deepspace/config':
+      '@deep-space/config':
         specifier: workspace:*
         version: link:../config
-      '@deepspace/types':
+      '@deep-space/types':
         specifier: workspace:*
         version: link:../shared-types
       citty:
@@ -122,7 +122,7 @@ importers:
 
   packages/config:
     dependencies:
-      '@deepspace/types':
+      '@deep-space/types':
         specifier: workspace:*
         version: link:../shared-types
     devDependencies:
@@ -132,13 +132,13 @@ importers:
 
   packages/sdk:
     dependencies:
-      '@deepspace/auth':
+      '@deep-space/auth':
         specifier: workspace:*
         version: link:../auth
-      '@deepspace/config':
+      '@deep-space/config':
         specifier: workspace:*
         version: link:../config
-      '@deepspace/types':
+      '@deep-space/types':
         specifier: workspace:*
         version: link:../shared-types
       better-auth:
@@ -184,10 +184,10 @@ importers:
 
   packages/sdk-worker:
     dependencies:
-      '@deepspace/auth':
+      '@deep-space/auth':
         specifier: workspace:*
         version: link:../auth
-      '@deepspace/types':
+      '@deep-space/types':
         specifier: workspace:*
         version: link:../shared-types
       hono:
@@ -225,10 +225,10 @@ importers:
 
   platform/api-worker:
     dependencies:
-      '@deepspace/auth':
+      '@deep-space/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@deepspace/types':
+      '@deep-space/types':
         specifier: workspace:*
         version: link:../../packages/shared-types
       drizzle-orm:
@@ -265,10 +265,10 @@ importers:
 
   platform/auth-worker:
     dependencies:
-      '@deepspace/auth':
+      '@deep-space/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@deepspace/types':
+      '@deep-space/types':
         specifier: workspace:*
         version: link:../../packages/shared-types
       better-auth:
@@ -287,7 +287,7 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^4.20241205.0
         version: 4.20260401.1
-      '@deepspace/test-utils':
+      '@deep-space/test-utils':
         specifier: workspace:*
         version: link:../../packages/test-utils
       '@types/node':
@@ -305,10 +305,10 @@ importers:
 
   platform/deploy-worker:
     dependencies:
-      '@deepspace/auth':
+      '@deep-space/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@deepspace/types':
+      '@deep-space/types':
         specifier: workspace:*
         version: link:../../packages/shared-types
       hono:
@@ -330,10 +330,10 @@ importers:
 
   platform/dispatch-worker:
     dependencies:
-      '@deepspace/auth':
+      '@deep-space/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@deepspace/types':
+      '@deep-space/types':
         specifier: workspace:*
         version: link:../../packages/shared-types
       hono:
@@ -361,13 +361,13 @@ importers:
 
   platform/platform-worker:
     dependencies:
-      '@deepspace/auth':
+      '@deep-space/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@deepspace/sdk-worker':
+      '@deep-space/sdk-worker':
         specifier: workspace:*
         version: link:../../packages/sdk-worker
-      '@deepspace/types':
+      '@deep-space/types':
         specifier: workspace:*
         version: link:../../packages/shared-types
       hono:
@@ -380,7 +380,7 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^4.20241205.0
         version: 4.20260401.1
-      '@deepspace/test-utils':
+      '@deep-space/test-utils':
         specifier: workspace:*
         version: link:../../packages/test-utils
       '@types/node':
@@ -403,16 +403,16 @@ importers:
 
   templates/starter:
     dependencies:
-      '@deepspace/auth':
+      '@deep-space/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@deepspace/sdk':
+      '@deep-space/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
-      '@deepspace/sdk-worker':
+      '@deep-space/sdk-worker':
         specifier: workspace:*
         version: link:../../packages/sdk-worker
-      '@deepspace/types':
+      '@deep-space/types':
         specifier: workspace:*
         version: link:../../packages/shared-types
       hono:

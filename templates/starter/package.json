@@ -1,5 +1,5 @@
 {
-  "name": "@deepspace/starter",
+  "name": "@deep-space/starter",
   "version": "0.1.0",
   "type": "module",
   "files": [
@@ -22,10 +22,10 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@deepspace/auth": "workspace:*",
-    "@deepspace/sdk": "workspace:*",
-    "@deepspace/sdk-worker": "workspace:*",
-    "@deepspace/types": "workspace:*",
+    "@deep-space/auth": "workspace:*",
+    "@deep-space/sdk": "workspace:*",
+    "@deep-space/sdk-worker": "workspace:*",
+    "@deep-space/types": "workspace:*",
     "hono": "^4.7.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

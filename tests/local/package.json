@@ -1,5 +1,5 @@
 {
-  "name": "@deepspace/tests-local",
+  "name": "@deep-space/tests-local",
   "version": "0.1.0",
   "private": true,
   "type": "module",

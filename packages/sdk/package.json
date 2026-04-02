@@ -1,5 +1,5 @@
 {
-  "name": "@deepspace/sdk",
+  "name": "@deep-space/sdk",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -24,9 +24,9 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@deepspace/types": "workspace:*",
-    "@deepspace/config": "workspace:*",
-    "@deepspace/auth": "workspace:*",
+    "@deep-space/types": "workspace:*",
+    "@deep-space/config": "workspace:*",
+    "@deep-space/auth": "workspace:*",
     "better-auth": "^1.2.0",
     "hono": "^4.6.0",
     "yjs": "^13.6.0",

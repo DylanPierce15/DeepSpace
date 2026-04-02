@@ -19,10 +19,10 @@ import {
   verifyInternalSignature,
   buildInternalPayload,
   signInternalPayload,
-} from '@deepspace/auth'
-import type { JwtVerifierConfig, VerifyResult } from '@deepspace/auth'
-import { RecordRoom, createScopedR2Handler, type ScopedR2Handler } from '@deepspace/sdk-worker'
-import type { ActionTools, ActionResult } from '@deepspace/types'
+} from '@deep-space/auth'
+import type { JwtVerifierConfig, VerifyResult } from '@deep-space/auth'
+import { RecordRoom, createScopedR2Handler, type ScopedR2Handler } from '@deep-space/sdk-worker'
+import type { ActionTools, ActionResult } from '@deep-space/types'
 import { actions } from './src/actions/index.js'
 import { handleCron } from './src/cron.js'
 import { schemas } from './src/schemas.js'

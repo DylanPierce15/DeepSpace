@@ -14,7 +14,7 @@ import { useQuery } from '../storage/hooks/useQuery'
 import { useMutations } from '../storage/hooks/useMutations'
 import { useUser } from '../storage/hooks/useUser'
 import type { RecordData } from '../storage/types'
-import type { DirectoryConversationData, ConversationStateData } from '@deepspace/types'
+import type { DirectoryConversationData, ConversationStateData } from '@deep-space/types'
 
 export function useConversations() {
   const { records: conversations, status } = useQuery<DirectoryConversationData>('conversations')

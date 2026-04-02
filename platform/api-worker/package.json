@@ -1,5 +1,5 @@
 {
-  "name": "@deepspace/api-worker",
+  "name": "@deep-space/api-worker",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,8 +12,8 @@
     "clean": "rm -rf dist *.tsbuildinfo .wrangler"
   },
   "dependencies": {
-    "@deepspace/auth": "workspace:*",
-    "@deepspace/types": "workspace:*",
+    "@deep-space/auth": "workspace:*",
+    "@deep-space/types": "workspace:*",
     "drizzle-orm": "^0.38.0",
     "hono": "^4.6.0",
     "stripe": "^17.4.0"

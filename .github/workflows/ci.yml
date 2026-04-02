@@ -30,7 +30,7 @@ jobs:
 
       # Unit + integration tests (vitest — all packages and workers)
       - name: Run unit tests
-        run: pnpm --filter @deepspace/auth --filter @deepspace/sdk --filter @deepspace/api-worker --filter @deepspace/auth-worker --filter @deepspace/dispatch-worker --filter @deepspace/platform-worker -r test
+        run: pnpm --filter @deep-space/auth --filter @deep-space/sdk --filter @deep-space/api-worker --filter @deep-space/auth-worker --filter @deep-space/dispatch-worker --filter @deep-space/platform-worker -r test
 
   deploy:
     needs: build-and-test
@@ -100,7 +100,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Build CLI
-        run: pnpm --filter @deepspace/cli build
+        run: pnpm --filter @deep-space/cli build
 
       - name: Install Playwright
         run: npx playwright install chromium

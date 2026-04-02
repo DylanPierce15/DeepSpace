@@ -5,7 +5,7 @@
  * Single source of truth — imported by both worker and frontend.
  */
 
-import type { CollectionSchema } from '@deepspace/sdk-worker'
+import type { CollectionSchema } from '@deep-space/sdk-worker'
 import {
   USERS_COLUMNS,
   CHANNELS_SCHEMA,
@@ -13,7 +13,7 @@ import {
   REACTIONS_SCHEMA,
   CHANNEL_MEMBERS_SCHEMA,
   READ_RECEIPTS_SCHEMA,
-} from '@deepspace/sdk-worker'
+} from '@deep-space/sdk-worker'
 import { settingsSchema } from './schemas/admin-schema'
 
 const usersSchema: CollectionSchema = {

@@ -2,7 +2,7 @@
 /**
  * Full E2E test runner — simulates a real user outside the monorepo.
  *
- * 1. Pack @deepspace/* packages as tarballs
+ * 1. Pack @deep-space/* packages as tarballs
  * 2. Scaffold app in /tmp (from starter template, with tarball deps)
  * 3. npm install (real install, no symlinks)
  * 4. deepspace login (non-interactive, real auth)
@@ -46,15 +46,15 @@ async function main() {
 
   try {
     // ── Step 1: Pack packages ───────────────────────────────────
-    step('Step 1: Pack @deepspace/* packages as tarballs')
+    step('Step 1: Pack @deep-space/* packages as tarballs')
     mkdirSync(PACKAGES_DIR, { recursive: true })
 
     const packOrder = [
-      { name: '@deepspace/types', dir: 'packages/shared-types' },
-      { name: '@deepspace/config', dir: 'packages/config' },
-      { name: '@deepspace/auth', dir: 'packages/auth' },
-      { name: '@deepspace/sdk', dir: 'packages/sdk' },
-      { name: '@deepspace/sdk-worker', dir: 'packages/sdk-worker' },
+      { name: '@deep-space/types', dir: 'packages/shared-types' },
+      { name: '@deep-space/config', dir: 'packages/config' },
+      { name: '@deep-space/auth', dir: 'packages/auth' },
+      { name: '@deep-space/sdk', dir: 'packages/sdk' },
+      { name: '@deep-space/sdk-worker', dir: 'packages/sdk-worker' },
     ]
 
     const tarballPaths: Record<string, string> = {}

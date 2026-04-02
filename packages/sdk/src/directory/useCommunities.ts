@@ -14,7 +14,7 @@ import { useQuery } from '../storage/hooks/useQuery'
 import { useMutations } from '../storage/hooks/useMutations'
 import { useUser } from '../storage/hooks/useUser'
 import type { RecordData } from '../storage/types'
-import type { DirectoryCommunityData, DirectoryMembershipData } from '@deepspace/types'
+import type { DirectoryCommunityData, DirectoryMembershipData } from '@deep-space/types'
 
 export function useCommunities() {
   const { records: communities, status } = useQuery<DirectoryCommunityData>('communities')

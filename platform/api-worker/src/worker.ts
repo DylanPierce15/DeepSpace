@@ -6,7 +6,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { drizzle, DrizzleD1Database } from 'drizzle-orm/d1'
-import type { JwtClaims } from '@deepspace/auth'
+import type { JwtClaims } from '@deep-space/auth'
 import stripeRoutes from './routes/stripe'
 import usersRoutes from './routes/users'
 import integrationsRoutes from './routes/integrations'

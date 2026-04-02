@@ -4,7 +4,7 @@
  * Type definitions for the RecordRoom storage system.
  */
 
-import type { CollectionSchema } from '@deepspace/types'
+import type { CollectionSchema } from '@deep-space/types'
 
 // ============================================================================
 // Query Types
