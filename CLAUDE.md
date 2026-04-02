@@ -1,16 +1,34 @@
 # DeepSpace SDK — Project Conventions
 
-## Package Naming
-All packages use the `@deepspace/*` scope:
-- `@deepspace/types` — Shared type definitions
-- `@deepspace/config` — Environment detection & URLs
-- `@deepspace/auth` — JWT verification, Better Auth, HMAC internal auth
-- `@deepspace/sdk` — React client SDK (hooks, providers, storage)
-- `@deepspace/sdk-worker` — Cloudflare Worker runtime (RecordRoom, GatewaySession)
-- `@deepspace/cli` — CLI tool (tsup-bundled)
-- `create-deepspace-app` — Project scaffolder
+## Published Packages
+Two npm packages, no scope needed:
+- `deepspace` — SDK (React client, Cloudflare Worker runtime, CLI)
+- `create-deepspace` — Project scaffolder (`npm create deepspace my-app`)
 
-Platform workers: `@deepspace/platform-worker`, `@deepspace/auth-worker`, `@deepspace/api-worker`, `@deepspace/dispatch-worker`
+Platform workers are private workspace packages (not published):
+`@deepspace/platform-worker`, `@deepspace/auth-worker`, `@deepspace/api-worker`, `@deepspace/dispatch-worker`
+
+## Package Structure
+The `deepspace` package has two entry points:
+- `deepspace` — React client SDK (hooks, providers, auth, storage, messaging, directory, theme, platform)
+- `deepspace/worker` — Cloudflare Worker SDK (RecordRoom, schemas, JWT verification, HMAC auth)
+
+Source is organized by folder inside `packages/deepspace/src/`:
+- `types/` — Shared type definitions
+- `env/` — Environment detection & URLs
+- `server-auth/` — JWT verification, Better Auth server config, HMAC internal auth
+- `auth/` — Client auth (React hooks, providers, Better Auth client)
+- `storage/` — RecordProvider, useQuery, useMutations, Yjs, R2 files
+- `messaging/` — useMessages, useChannels, useConversation
+- `directory/` — useConversations, useCommunities, usePosts
+- `platform/` — PlatformProvider, useInbox, usePlatformWS
+- `theme/` — DeepSpaceThemeProvider, applyTheme
+- `runtime/` — RecordRoom, schemas, handlers, tools API
+- `cli/` — CLI commands (deploy, login, undeploy)
+
+The `create-deepspace` package embeds templates and features:
+- `packages/create-deepspace/templates/starter/` — Starter app template
+- `packages/create-deepspace/features/` — Feature reference implementations
 
 ## Auth
 - **Better Auth** (not Clerk). The auth-worker handles sessions + JWT issuance.
@@ -41,13 +59,20 @@ Data is keyed by `scopeId`:
 ## Build System
 - **pnpm** (v9.15) workspace with **Turbo** for task orchestration.
 - TypeScript 5.7+, target ES2022, module ESNext, bundler resolution.
-- Packages that export raw `.ts` files: `@deepspace/types`, `@deepspace/config`, `@deepspace/auth`, `@deepspace/sdk`, `@deepspace/sdk-worker`.
-- CLI packages use `tsup` for bundling.
-- Dashboard and starter template use Vite + React 19.
+- **tsup** bundles `deepspace` (3 entry points: index, worker, cli) and `create-deepspace`.
+- External deps (react, better-auth, hono, yjs, etc.) are not bundled.
+- Dashboard uses Vite + React 19.
+
+## Testing
+- `./scripts/test-local.sh` — Scaffolds a fresh test app, starts local workers, runs Playwright (25 tests).
+- `npx tsx tests/production/scripts/run-full-e2e.ts` — Scaffolds, deploys to `*.app.space`, runs Playwright (29 tests), undeploys.
+- `./scripts/scaffold-test-app.sh <name>` — Creates a test app in `.test-apps/` using local tarballs.
+- Test apps are scaffolded from the template each time (single source of truth).
 
 ## Secrets
 - Managed via **Doppler** (project: `deepspace-sdk`, configs: `dev`, `prd`).
 - Local dev: `scripts/setup-env.sh` syncs to `.dev.vars` per worker.
+- Test app secrets are copied by `scaffold-test-app.sh`.
 
 ## Databases
 - **D1** (Cloudflare SQLite): `deepspace-auth` (auth-worker), `deepspace-billing` (api-worker).
