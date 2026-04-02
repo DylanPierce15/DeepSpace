@@ -7,7 +7,7 @@ export default defineConfig({
     outDir: 'dist',
   },
   resolve: {
-    dedupe: ['react', 'react-dom'],
+    dedupe: ['react', 'react-dom', 'better-auth'],
   },
   server: {
     proxy: {

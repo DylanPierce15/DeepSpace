@@ -122,6 +122,7 @@ PIDS+=($!); cd "$ROOT"
 wait_for_url "http://localhost:8792/api/health" "platform-worker"
 
 echo "→ Starting app worker (port 8780)..."
+mkdir -p "$APP_DIR/dist"
 cd "$APP_DIR" && npx wrangler dev --port 8780 > /tmp/ds-local-appworker.log 2>&1 &
 PIDS+=($!); cd "$ROOT"
 sleep 3
