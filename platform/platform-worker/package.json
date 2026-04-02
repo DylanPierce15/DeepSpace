@@ -12,15 +12,12 @@
     "clean": "rm -rf dist *.tsbuildinfo .wrangler"
   },
   "dependencies": {
-    "@deepspace/sdk-worker": "workspace:*",
-    "@deepspace/auth": "workspace:*",
-    "@deepspace/types": "workspace:*",
+    "deepspace": "workspace:*",
     "hono": "^4.6.0"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.14.0",
     "@cloudflare/workers-types": "^4.20241205.0",
-    "@deepspace/test-utils": "workspace:*",
     "@types/node": "^22.10.0",
     "jose": "^6.1.0",
     "typescript": "^5.7.0",

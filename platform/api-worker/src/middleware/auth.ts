@@ -1,9 +1,9 @@
 import { createMiddleware } from 'hono/factory'
-import { verifyJwt } from '@deepspace/auth'
+import { verifyJwt } from 'deepspace/worker'
 import type { Env } from '../worker'
 
 /**
- * Hono middleware that verifies JWT using @deepspace/auth's verifyJwt().
+ * Hono middleware that verifies JWT using deepspace/worker's verifyJwt().
  * On success, sets c.set('userId', sub) for downstream handlers.
  */
 export const authMiddleware = createMiddleware<Env>(async (c, next) => {

@@ -11,9 +11,8 @@
 
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { verifyJwt, verifyInternalSignature } from '@deepspace/auth'
-import type { JwtVerifierConfig, VerifiedAuth } from '@deepspace/auth'
-import { RecordRoom, getGlobalDOSchemas } from '@deepspace/sdk-worker'
+import { verifyJwt, verifyInternalSignature, RecordRoom, getGlobalDOSchemas } from 'deepspace/worker'
+import type { JwtVerifierConfig, VerifiedAuth } from 'deepspace/worker'
 
 // =============================================================================
 // Global RecordRoom DO — schemas determined by scope prefix at construction

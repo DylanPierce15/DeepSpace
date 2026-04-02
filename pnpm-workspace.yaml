@@ -2,5 +2,3 @@ packages:
   - 'packages/*'
   - 'platform/*'
   - 'apps/*'
-  - 'templates/starter'
-  - 'features'

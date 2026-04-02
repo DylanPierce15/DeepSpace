@@ -9,9 +9,8 @@
  */
 
 import { useState } from 'react'
-import { DeepSpaceAuthProvider } from '@deepspace/sdk/auth'
-import { RecordProvider } from '@deepspace/sdk/storage'
-// import { useQuery, useMutations } from '@deepspace/sdk/storage'
+import { DeepSpaceAuthProvider, RecordProvider } from 'deepspace'
+// import { useQuery, useMutations } from 'deepspace'
 import { schemas } from './schemas'
 
 function TodoList() {

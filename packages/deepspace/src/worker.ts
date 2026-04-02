@@ -5,5 +5,5 @@
  *
  * import { RecordRoom, verifyJwt, CHANNELS_SCHEMA } from 'deepspace/worker'
  */
-export * from '@deepspace/sdk-worker'
-export * from '@deepspace/auth'
+export * from './runtime'
+export * from './server-auth'

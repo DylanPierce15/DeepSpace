@@ -11,9 +11,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@deepspace/sdk": "workspace:*",
-    "@deepspace/config": "workspace:*",
-    "@deepspace/types": "workspace:*",
+    "deepspace": "workspace:*",
     "better-auth": "^1.2.0",
     "hono": "^4.6.0",
     "react": "^19.0.0",

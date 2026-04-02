@@ -12,8 +12,7 @@
     "clean": "rm -rf dist *.tsbuildinfo .wrangler"
   },
   "dependencies": {
-    "@deepspace/auth": "workspace:*",
-    "@deepspace/types": "workspace:*",
+    "deepspace": "workspace:*",
     "drizzle-orm": "^0.38.0",
     "hono": "^4.6.0",
     "stripe": "^21.0.0"

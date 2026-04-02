@@ -10,8 +10,7 @@
     "clean": "rm -rf dist *.tsbuildinfo .wrangler"
   },
   "dependencies": {
-    "@deepspace/auth": "workspace:*",
-    "@deepspace/types": "workspace:*",
+    "deepspace": "workspace:*",
     "hono": "^4.6.0"
   },
   "devDependencies": {
