@@ -13,8 +13,8 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@clack/prompts": "^0.8.0",
-    "citty": "^0.1.0",
+    "@clack/prompts": "^1.2.0",
+    "citty": "^0.2.0",
     "@deepspace/types": "workspace:*",
     "@deepspace/config": "workspace:*"
   },

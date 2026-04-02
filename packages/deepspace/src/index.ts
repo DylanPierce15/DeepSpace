@@ -5,6 +5,7 @@
  *
  * import { RecordProvider, useQuery, useAuth, useMessages, AuthOverlay } from 'deepspace'
  */
+export type { CollectionSchema } from '@deepspace/types'
 export * from '@deepspace/sdk'
 export * from '@deepspace/sdk/messaging'
 export * from '@deepspace/sdk/directory'

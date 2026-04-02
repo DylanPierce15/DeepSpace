@@ -45,14 +45,14 @@ export default defineCommand({
 
       const emailInput = await p.text({
         message: 'Email:',
-        validate: (v) => (!v.includes('@') ? 'Enter a valid email' : undefined),
+        validate: (v) => (!v?.includes('@') ? 'Enter a valid email' : undefined),
       })
       if (p.isCancel(emailInput)) return
       email = emailInput
 
       const passInput = await p.password({
         message: 'Password:',
-        validate: (v) => (v.length < 6 ? 'Password too short' : undefined),
+        validate: (v) => (!v || v.length < 6 ? 'Password too short' : undefined),
       })
       if (p.isCancel(passInput)) return
       password = passInput

@@ -1,4 +1,5 @@
-import { defineWorkersConfig } from '@cloudflare/vitest-pool-workers/config'
+import { cloudflareTest } from '@cloudflare/vitest-pool-workers'
+import { defineConfig } from 'vitest/config'
 
 /**
  * Static ES256 test key pair.
@@ -21,23 +22,22 @@ cExEiiTXkoKc24g6xxvnuTIT0hcvGLVn+qkrHXi6UatfaujW6R0VUioE
 
 const TEST_ISSUER = 'https://auth.test.deep.space'
 
-export default defineWorkersConfig({
-  test: {
-    fileParallelism: false,
-    poolOptions: {
-      workers: {
-        wrangler: { configPath: './wrangler.toml' },
-        isolatedStorage: false,
-        miniflare: {
-          bindings: {
-            AUTH_JWT_PUBLIC_KEY: TEST_PUBLIC_KEY_PEM,
-            AUTH_JWT_ISSUER: TEST_ISSUER,
-            INTERNAL_STORAGE_HMAC_SECRET: 'test-hmac-secret-key-for-internal-auth',
-            // Expose the private key PEM so tests can sign JWTs
-            TEST_PRIVATE_KEY_PEM: TEST_PRIVATE_KEY_PEM,
-          },
+export default defineConfig({
+  plugins: [
+    cloudflareTest({
+      wrangler: { configPath: './wrangler.toml' },
+      isolatedStorage: false,
+      miniflare: {
+        bindings: {
+          AUTH_JWT_PUBLIC_KEY: TEST_PUBLIC_KEY_PEM,
+          AUTH_JWT_ISSUER: TEST_ISSUER,
+          INTERNAL_STORAGE_HMAC_SECRET: 'test-hmac-secret-key-for-internal-auth',
+          TEST_PRIVATE_KEY_PEM: TEST_PRIVATE_KEY_PEM,
         },
       },
-    },
+    }),
+  ],
+  test: {
+    fileParallelism: false,
   },
 })

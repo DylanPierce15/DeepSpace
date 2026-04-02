@@ -16,15 +16,15 @@
     "@deepspace/types": "workspace:*",
     "drizzle-orm": "^0.38.0",
     "hono": "^4.6.0",
-    "stripe": "^17.4.0"
+    "stripe": "^21.0.0"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "0.12.21",
+    "@cloudflare/vitest-pool-workers": "^0.14.0",
     "@cloudflare/workers-types": "^4.20241205.0",
     "@types/node": "^22.10.0",
     "drizzle-kit": "^0.30.0",
     "typescript": "^5.7.0",
-    "vitest": "~3.2.0",
-    "wrangler": "^3.93.0"
+    "vitest": "^4.1.0",
+    "wrangler": "^3.100.0"
   }
 }

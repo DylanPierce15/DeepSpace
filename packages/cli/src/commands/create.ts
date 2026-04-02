@@ -74,20 +74,38 @@ function fetchAndExtract(packageName: string, destDir: string, local: boolean, m
 
 /** Find a workspace package directory by its package.json name. */
 function findWorkspacePackage(monorepoRoot: string, packageName: string): string | null {
-  const searchDirs = ['packages', 'templates', 'platform']
-  for (const base of searchDirs) {
-    const baseDir = join(monorepoRoot, base)
-    if (!existsSync(baseDir)) continue
-    for (const entry of readdirSync(baseDir, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue
-      const pkgPath = join(baseDir, entry.name, 'package.json')
-      if (!existsSync(pkgPath)) continue
-      try {
-        const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'))
-        if (pkg.name === packageName) return join(baseDir, entry.name)
-      } catch { /* skip */ }
+  // Read pnpm-workspace.yaml to get workspace patterns
+  const wsPath = join(monorepoRoot, 'pnpm-workspace.yaml')
+  if (!existsSync(wsPath)) return null
+  const wsContent = readFileSync(wsPath, 'utf-8')
+  const patterns = [...wsContent.matchAll(/- '([^']+)'/g)].map((m) => m[1])
+
+  for (const pattern of patterns) {
+    if (pattern.includes('*')) {
+      // Glob pattern like 'packages/*' — scan subdirectories
+      const baseDir = join(monorepoRoot, pattern.replace('/*', ''))
+      if (!existsSync(baseDir)) continue
+      for (const entry of readdirSync(baseDir, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue
+        const match = checkPackageName(join(baseDir, entry.name), packageName)
+        if (match) return match
+      }
+    } else {
+      // Exact path like 'features' or 'templates/starter'
+      const match = checkPackageName(join(monorepoRoot, pattern), packageName)
+      if (match) return match
     }
   }
+  return null
+}
+
+function checkPackageName(dir: string, packageName: string): string | null {
+  const pkgPath = join(dir, 'package.json')
+  if (!existsSync(pkgPath)) return null
+  try {
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'))
+    if (pkg.name === packageName) return dir
+  } catch { /* skip */ }
   return null
 }
 
@@ -131,7 +149,7 @@ export default defineCommand({
       const result = await p.text({
         message: 'What is your app name?',
         placeholder: 'my-app',
-        validate: (v) => validateAppName(v) ?? undefined,
+        validate: (v) => validateAppName(v ?? '') ?? undefined,
       })
       if (p.isCancel(result)) { p.cancel('Cancelled'); process.exit(0) }
       appName = result as string

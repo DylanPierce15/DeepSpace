@@ -3,4 +3,4 @@ packages:
   - 'platform/*'
   - 'apps/*'
   - 'templates/starter'
-  - 'templates/features'
+  - 'features'

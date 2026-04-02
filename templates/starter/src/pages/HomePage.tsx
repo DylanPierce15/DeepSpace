@@ -1,14 +1,15 @@
-import { useUser } from 'deepspace'
+import { useAuth, useUser } from 'deepspace'
 
 export function HomePage() {
-  const { user, isSignedIn } = useUser()
+  const { isSignedIn } = useAuth()
+  const { user } = useUser()
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-2xl px-6 py-20">
         <div className="mb-12">
           <h1 className="text-4xl font-bold tracking-tight">
-            {isSignedIn ? `Welcome, ${user?.fullName ?? 'there'}` : 'Welcome'}
+            {isSignedIn ? `Welcome, ${user?.name ?? 'there'}` : 'Welcome'}
           </h1>
           <p className="mt-3 text-lg text-muted-foreground">
             Your DeepSpace app is running.

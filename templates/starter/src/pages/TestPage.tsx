@@ -19,7 +19,8 @@ interface ItemData {
 export function TestPage() {
   const { isSignedIn } = useAuth()
   const { user } = useUser()
-  const { records: items, isLoading } = useQuery<ItemData>('items')
+  const { records: items, status } = useQuery<ItemData>('items')
+  const isLoading = status === 'loading'
   const { create, put, remove } = useMutations<ItemData>('items')
 
   const [lastResult, setLastResult] = useState<string>('')
@@ -30,8 +31,7 @@ export function TestPage() {
   const tryCreate = async () => {
     clearStatus()
     try {
-      const id = `test-${Date.now()}`
-      create({ title: 'Test Item', description: 'Created by test', status: 'draft', createdBy: user?.id ?? 'anonymous' }, id)
+      const id = await create({ title: 'Test Item', description: 'Created by test', status: 'draft', createdBy: user?.id ?? 'anonymous' })
       setLastResult(`created:${id}`)
     } catch (e: any) {
       setLastError(e.message ?? String(e))
@@ -41,8 +41,7 @@ export function TestPage() {
   const tryCreatePublished = async () => {
     clearStatus()
     try {
-      const id = `pub-${Date.now()}`
-      create({ title: 'Public Item', description: 'Visible to anonymous', status: 'published', createdBy: user?.id ?? 'anonymous' }, id)
+      const id = await create({ title: 'Public Item', description: 'Visible to anonymous', status: 'published', createdBy: user?.id ?? 'anonymous' })
       setLastResult(`created:${id}`)
     } catch (e: any) {
       setLastError(e.message ?? String(e))
@@ -52,7 +51,7 @@ export function TestPage() {
   const tryUpdate = async (recordId: string) => {
     clearStatus()
     try {
-      put({ title: 'Updated Title', description: 'Updated by test' }, recordId)
+      await put(recordId, { title: 'Updated Title', description: 'Updated by test', status: 'draft', createdBy: user?.id ?? 'anonymous' })
       setLastResult(`updated:${recordId}`)
     } catch (e: any) {
       setLastError(e.message ?? String(e))
