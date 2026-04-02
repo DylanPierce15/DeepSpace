@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /**
  * create-deepspace
  *
@@ -9,7 +7,9 @@
  *   3. Copies feature references → .deepspace/features/
  *   4. Installs dependencies
  *
- * Usage: npm create deepspace my-app
+ * Usage:
+ *   npm create deepspace my-app
+ *   create-deepspace my-app --local /path/to/deepspace-sdk
  */
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, cpSync } from 'node:fs'
@@ -21,6 +21,21 @@ import * as p from '@clack/prompts'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const TEMPLATES_DIR = join(__dirname, '..', 'templates')
 const FEATURES_DIR = join(__dirname, '..', 'features')
+
+function parseArgs(argv: string[]): { appName?: string; local?: string } {
+  let appName: string | undefined
+  let local: string | undefined
+
+  for (let i = 2; i < argv.length; i++) {
+    if (argv[i] === '--local') {
+      local = argv[++i]
+    } else if (!argv[i].startsWith('-')) {
+      appName = argv[i]
+    }
+  }
+
+  return { appName, local }
+}
 
 function validateAppName(name: string): string | null {
   if (!name) return 'App name is required'
@@ -45,11 +60,28 @@ function replaceInDir(dir: string, search: string, replace: string) {
   }
 }
 
+/**
+ * Pack the deepspace package from the monorepo root and return the tarball path.
+ */
+function packLocal(monorepoRoot: string, appDir: string): string {
+  const pkgDir = join(monorepoRoot, 'packages', 'deepspace')
+  if (!existsSync(join(pkgDir, 'dist'))) {
+    throw new Error(`deepspace not built — run: cd ${pkgDir} && pnpm build`)
+  }
+  const tgz = execSync('npm pack --pack-destination ' + JSON.stringify(appDir), {
+    cwd: pkgDir,
+    encoding: 'utf-8',
+  }).trim()
+  return join(appDir, tgz)
+}
+
 async function main() {
+  const args = parseArgs(process.argv)
+
   p.intro('Create a new DeepSpace app')
 
-  // Get app name from args or prompt
-  let appName = process.argv[2]
+  // Get app name
+  let appName = args.appName
   if (!appName) {
     const result = await p.text({
       message: 'What is your app name?',
@@ -92,8 +124,18 @@ async function main() {
   pkg.version = '0.0.1'
   pkg.private = true
   delete pkg.files
+
+  // --local: replace deepspace dep with local tarball
+  if (args.local) {
+    s.stop('Project configured')
+    s.start('Packing local deepspace')
+    const tarballPath = packLocal(args.local, appDir)
+    pkg.dependencies.deepspace = `file:${tarballPath}`
+    s.stop('Local deepspace packed')
+  }
+
   writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
-  s.stop('Project configured')
+  if (!args.local) s.stop('Project configured')
 
   // Copy features
   if (existsSync(FEATURES_DIR)) {

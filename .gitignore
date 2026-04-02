@@ -46,3 +46,4 @@ e2e/playwright-report/
 
 # DeepSpace local auth
 .deepspace/
+.test-apps/

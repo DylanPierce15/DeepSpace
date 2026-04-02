@@ -76,11 +76,5 @@ write_dev_vars "$ROOT/platform/platform-worker" \
 write_dev_vars "$ROOT/platform/dispatch-worker" \
   INTERNAL_STORAGE_HMAC_SECRET
 
-# ── Starter Template (local dev) ────────────────────────────────────────────
-write_dev_vars "$ROOT/templates/starter" \
-  AUTH_JWT_PUBLIC_KEY \
-  AUTH_JWT_ISSUER \
-  AUTH_WORKER_URL \
-  INTERNAL_STORAGE_HMAC_SECRET
-
 echo "✓ All .dev.vars synced from Doppler ($CONFIG)"
+echo "  Note: test app .dev.vars are created by scripts/scaffold-test-app.sh"

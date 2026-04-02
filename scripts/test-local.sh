@@ -3,16 +3,33 @@ set -euo pipefail
 
 # Run local integration tests against real Cloudflare workers.
 #
+# Usage: ./scripts/test-local.sh [app-name] [-- playwright-args...]
+#
+# If no app-name is given, defaults to "test-default".
+# Scaffolds the app fresh from the template if it doesn't exist.
+#
 # Architecture:
 #   auth-worker     (port 8794)  — Better Auth
 #   api-worker      (port 8795)  — Billing
 #   platform-worker (port 8792)  — Global DOs
-#   app worker      (port 8780)  — App RecordRoom DO (via wrangler.dev.toml)
+#   app worker      (port 8780)  — App RecordRoom DO
 #   vite dev        (port 5173)  — Frontend, proxies /api + /ws → app worker
 #
 # Prerequisites: ./scripts/setup-env.sh dev
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+# Parse args: app name before --, playwright args after --
+APP_NAME="test-default"
+PW_ARGS=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --) shift; PW_ARGS=("$@"); break ;;
+    *) APP_NAME="$1"; shift ;;
+  esac
+done
+
+APP_DIR="$ROOT/.test-apps/$APP_NAME"
 PIDS=()
 PORTS=(8794 8795 8792 8780 5173 9235 9236 9233 9237)
 
@@ -53,17 +70,32 @@ wait_for_url() {
   exit 1
 }
 
-echo "=== DeepSpace Local Tests ==="
+echo "=== DeepSpace Local Tests (app: $APP_NAME) ==="
 
-# ── Preflight ─────────────────────────────────────────────────────────
-for dir in platform/auth-worker platform/api-worker platform/platform-worker templates/starter; do
+# ── Scaffold fresh test app ───────────────────────────────────────────────────
+echo "→ Scaffolding fresh test app..."
+"$ROOT/scripts/scaffold-test-app.sh" "$APP_NAME"
+
+# ── Ensure secrets ────────────────────────────────────────────────────────────
+NEED_DOPPLER=false
+for dir in platform/auth-worker platform/api-worker platform/platform-worker; do
   if [ ! -f "$ROOT/$dir/.dev.vars" ]; then
-    echo "✗ Missing $dir/.dev.vars — run: ./scripts/setup-env.sh dev"
-    exit 1
+    NEED_DOPPLER=true
+    break
   fi
 done
 
-# ── Free ports + reset state ──────────────────────────────────────────
+if [ "$NEED_DOPPLER" = true ]; then
+  echo "→ Syncing secrets from Doppler..."
+  "$ROOT/scripts/setup-env.sh" dev
+fi
+
+if [ ! -f "$APP_DIR/.dev.vars" ]; then
+  echo "✗ Missing $APP_DIR/.dev.vars — scaffold may have failed"
+  exit 1
+fi
+
+# ── Free ports + reset state ─────────────────────────────────────────────────
 echo "→ Freeing ports..."
 free_ports
 
@@ -71,9 +103,9 @@ echo "→ Resetting local databases..."
 rm -rf "$ROOT/platform/auth-worker/.wrangler/state"
 rm -rf "$ROOT/platform/api-worker/.wrangler/state"
 rm -rf "$ROOT/platform/platform-worker/.wrangler/state"
-rm -rf "$ROOT/templates/starter/.wrangler/state"
+rm -rf "$APP_DIR/.wrangler/state"
 
-# ── Start workers ─────────────────────────────────────────────────────
+# ── Start workers ─────────────────────────────────────────────────────────────
 echo "→ Starting auth-worker (port 8794)..."
 cd "$ROOT/platform/auth-worker" && npx wrangler dev --port 8794 > /tmp/ds-local-auth.log 2>&1 &
 PIDS+=($!); cd "$ROOT"
@@ -90,19 +122,19 @@ PIDS+=($!); cd "$ROOT"
 wait_for_url "http://localhost:8792/api/health" "platform-worker"
 
 echo "→ Starting app worker (port 8780)..."
-cd "$ROOT/templates/starter" && npx wrangler dev --config wrangler.dev.toml --port 8780 > /tmp/ds-local-appworker.log 2>&1 &
+cd "$APP_DIR" && npx wrangler dev --port 8780 > /tmp/ds-local-appworker.log 2>&1 &
 PIDS+=($!); cd "$ROOT"
 sleep 3
 echo "  ✓ app worker"
 
 echo "→ Starting frontend (port 5173)..."
-cd "$ROOT/templates/starter" && npx vite --port 5173 > /tmp/ds-local-vite.log 2>&1 &
+cd "$APP_DIR" && npx vite --port 5173 > /tmp/ds-local-vite.log 2>&1 &
 PIDS+=($!); cd "$ROOT"
 wait_for_url "http://localhost:5173" "frontend"
 
-# ── Run tests ─────────────────────────────────────────────────────────
+# ── Run tests ─────────────────────────────────────────────────────────────────
 echo ""
 echo "→ Running Playwright tests..."
 cd "$ROOT/tests/local"
 npx playwright install chromium 2>/dev/null || true
-npx playwright test "$@"
+npx playwright test "${PW_ARGS[@]+"${PW_ARGS[@]}"}"
