@@ -63,23 +63,20 @@ describe('Platform worker routes', () => {
   // ── WebSocket auth gating ──────────────────────────────────────────────
 
   describe('GET /ws/:scopeId', () => {
-    it('returns 401 for app: scope without auth', async () => {
+    it('allows anonymous access for app: scopes', async () => {
       const res = await SELF.fetch('https://fake-host/ws/app:test')
-      expect(res.status).toBe(401)
-
-      const body = (await res.json()) as { error: string }
-      expect(body.error).toBe('Authentication required for app scopes')
+      await res.text()
+      // The DO returns 404 for non-WebSocket requests to root path,
+      // which confirms routing succeeded (we got past auth)
+      expect(res.status).toBe(404)
     })
 
     it('allows anonymous access for conv: scopes', async () => {
-      // conv: scopes are routed to the RecordRoom DO without auth.
-      // The stub DO returns 501 for non-WebSocket requests, which
-      // confirms routing succeeded (we got past the auth check).
       const res = await SELF.fetch('https://fake-host/ws/conv:test-conv')
-      // Consume body to ensure the DO response stream is fully read
       await res.text()
-      // The stub RecordRoom returns 501 for non-WebSocket fetch
-      expect(res.status).toBe(501)
+      // The DO returns 404 for non-WebSocket requests to root path,
+      // which confirms routing succeeded (we got past auth)
+      expect(res.status).toBe(404)
     })
   })
 

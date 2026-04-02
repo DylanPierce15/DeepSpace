@@ -26,7 +26,6 @@ export default defineConfig({
   plugins: [
     cloudflareTest({
       wrangler: { configPath: './wrangler.toml' },
-      isolatedStorage: false,
       miniflare: {
         bindings: {
           AUTH_JWT_PUBLIC_KEY: TEST_PUBLIC_KEY_PEM,
