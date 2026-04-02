@@ -32,6 +32,14 @@ export const MSG_LIST_SCHEMAS = 32
 // Team membership change — tells client to re-subscribe all active queries
 export const MSG_RESUBSCRIBE = 33
 
+// Built-in role names
+/** Role assigned to unauthenticated WebSocket connections */
+export const ROLE_ANONYMOUS = 'viewer'
+/** Default role for newly registered authenticated users */
+export const ROLE_DEFAULT = 'member'
+/** Admin role */
+export const ROLE_ADMIN = 'admin'
+
 // Gateway multiplexing (single-WS architecture)
 export const MSG_GW_SCOPE_CONNECT = 100
 export const MSG_GW_SCOPE_DISCONNECT = 101

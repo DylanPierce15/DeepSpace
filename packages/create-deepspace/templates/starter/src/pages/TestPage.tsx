@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react'
-import { useQuery, useMutations, useUser } from 'deepspace'
+import { useQuery, useMutations, useUser, useRecordContext } from 'deepspace'
 import { useAuth } from 'deepspace'
 
 interface ItemData {
@@ -19,9 +19,10 @@ interface ItemData {
 export function TestPage() {
   const { isSignedIn } = useAuth()
   const { user } = useUser()
+  const { roomRole } = useRecordContext()
   const { records: items, status } = useQuery<ItemData>('items')
   const isLoading = status === 'loading'
-  const { create, put, remove } = useMutations<ItemData>('items')
+  const { createConfirmed, putConfirmed, removeConfirmed } = useMutations<ItemData>('items')
 
   const [lastResult, setLastResult] = useState<string>('')
   const [lastError, setLastError] = useState<string>('')
@@ -31,7 +32,7 @@ export function TestPage() {
   const tryCreate = async () => {
     clearStatus()
     try {
-      const id = await create({ title: 'Test Item', description: 'Created by test', status: 'draft', createdBy: user?.id ?? 'anonymous' })
+      const id = await createConfirmed({ title: 'Test Item', description: 'Created by test', status: 'draft', createdBy: user?.id ?? 'anonymous' })
       setLastResult(`created:${id}`)
     } catch (e: any) {
       setLastError(e.message ?? String(e))
@@ -41,7 +42,7 @@ export function TestPage() {
   const tryCreatePublished = async () => {
     clearStatus()
     try {
-      const id = await create({ title: 'Public Item', description: 'Visible to anonymous', status: 'published', createdBy: user?.id ?? 'anonymous' })
+      const id = await createConfirmed({ title: 'Public Item', description: 'Visible to anonymous', status: 'published', createdBy: user?.id ?? 'anonymous' })
       setLastResult(`created:${id}`)
     } catch (e: any) {
       setLastError(e.message ?? String(e))
@@ -51,7 +52,7 @@ export function TestPage() {
   const tryUpdate = async (recordId: string) => {
     clearStatus()
     try {
-      await put(recordId, { title: 'Updated Title', description: 'Updated by test', status: 'draft', createdBy: user?.id ?? 'anonymous' })
+      await putConfirmed(recordId, { title: 'Updated Title', description: 'Updated by test', status: 'draft', createdBy: user?.id ?? 'anonymous' })
       setLastResult(`updated:${recordId}`)
     } catch (e: any) {
       setLastError(e.message ?? String(e))
@@ -61,7 +62,7 @@ export function TestPage() {
   const tryDelete = async (recordId: string) => {
     clearStatus()
     try {
-      remove(recordId)
+      await removeConfirmed(recordId)
       setLastResult(`deleted:${recordId}`)
     } catch (e: any) {
       setLastError(e.message ?? String(e))
@@ -76,7 +77,7 @@ export function TestPage() {
         <div className="space-y-1 text-sm">
           <div>Signed in: <span data-testid="test-signed-in">{String(isSignedIn)}</span></div>
           <div>User ID: <span data-testid="test-user-id">{user?.id ?? 'none'}</span></div>
-          <div>Role: <span data-testid="test-user-role">{user?.role ?? 'anonymous'}</span></div>
+          <div>Role: <span data-testid="test-user-role">{roomRole ?? 'connecting'}</span></div>
           <div>User Name: <span data-testid="test-user-name">{user?.name ?? 'Anonymous'}</span></div>
         </div>
       </div>

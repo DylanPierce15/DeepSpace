@@ -13,6 +13,7 @@ import {
   REACTIONS_SCHEMA,
   CHANNEL_MEMBERS_SCHEMA,
   READ_RECEIPTS_SCHEMA,
+  ROLE_ANONYMOUS,
 } from 'deepspace/worker'
 import { settingsSchema } from './schemas/admin-schema'
 
@@ -36,8 +37,7 @@ const itemsSchema: CollectionSchema = {
   ],
   ownerField: 'createdBy',
   permissions: {
-    anonymous: { read: 'published', create: false, update: false, delete: false },
-    viewer: { read: true, create: false, update: false, delete: false },
+    [ROLE_ANONYMOUS]: { read: 'published', create: false, update: false, delete: false },
     member: { read: true, create: true, update: 'own', delete: 'own' },
     admin: { read: true, create: true, update: true, delete: true },
   },

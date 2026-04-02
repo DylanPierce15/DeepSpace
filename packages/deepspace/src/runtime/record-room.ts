@@ -43,6 +43,7 @@ import {
   MSG_YJS_JOIN,
   MSG_YJS_LEAVE,
   MSG_LIST_SCHEMAS,
+  ROLE_ANONYMOUS,
 } from './constants'
 import {
   type CollectionSchema,
@@ -473,7 +474,7 @@ export class RecordRoom {
       const anonId = `anon-${crypto.randomUUID()}`
       attachment = {
         userId: anonId,
-        role: 'viewer',
+        role: ROLE_ANONYMOUS,
         subscriptions: [],
         yjsSubscriptions: [],
         yjsClientId: this.nextYjsClientId++,
@@ -483,7 +484,7 @@ export class RecordRoom {
         id: anonId,
         name: 'Anonymous',
         email: '',
-        role: 'viewer',
+        role: ROLE_ANONYMOUS,
         createdAt: new Date().toISOString(),
         lastSeenAt: new Date().toISOString(),
       }})

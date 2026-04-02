@@ -2,16 +2,26 @@
 set -euo pipefail
 
 # Run local integration tests.
-# Usage: ./scripts/test-local.sh [app-name] [-- playwright-args...]
+#
+# Usage:
+#   ./scripts/test-local.sh                           # full scaffold + all tests
+#   ./scripts/test-local.sh --no-scaffold              # reuse existing app, reset DBs
+#   ./scripts/test-local.sh --no-scaffold --no-reset   # reuse everything, just run tests
+#   ./scripts/test-local.sh -- --grep "RBAC"           # pass args to playwright
+#   ./scripts/test-local.sh -- tests/rbac-anonymous.spec.ts  # run one file
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source "$ROOT/scripts/lib/helpers.sh"
 
 # Parse args
 APP_NAME="test-default"
+SCAFFOLD=true
+RESET=true
 PW_ARGS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --no-scaffold) SCAFFOLD=false; shift ;;
+    --no-reset) RESET=false; shift ;;
     --) shift; PW_ARGS=("$@"); break ;;
     *) APP_NAME="$1"; shift ;;
   esac
@@ -32,8 +42,13 @@ trap cleanup EXIT
 
 echo "=== DeepSpace Local Tests (app: $APP_NAME) ==="
 
-# Scaffold fresh
-"$ROOT/scripts/lib/scaffold.sh" "$APP_NAME"
+# Scaffold
+if [ "$SCAFFOLD" = true ]; then
+  "$ROOT/scripts/lib/scaffold.sh" "$APP_NAME"
+elif [ ! -d "$APP_DIR" ]; then
+  echo "✗ No app at $APP_DIR — run without --no-scaffold first"
+  exit 1
+fi
 
 # Ensure secrets
 source "$ROOT/scripts/lib/ensure-secrets.sh"
@@ -44,11 +59,13 @@ if [ ! -f "$APP_DIR/.dev.vars" ]; then
 fi
 
 # Reset databases
-echo "→ Resetting local databases..."
-rm -rf "$ROOT/platform/auth-worker/.wrangler/state"
-rm -rf "$ROOT/platform/api-worker/.wrangler/state"
-rm -rf "$ROOT/platform/platform-worker/.wrangler/state"
-rm -rf "$APP_DIR/.wrangler/state"
+if [ "$RESET" = true ]; then
+  echo "→ Resetting local databases..."
+  rm -rf "$ROOT/platform/auth-worker/.wrangler/state"
+  rm -rf "$ROOT/platform/api-worker/.wrangler/state"
+  rm -rf "$ROOT/platform/platform-worker/.wrangler/state"
+  rm -rf "$APP_DIR/.wrangler/state"
+fi
 
 # Start everything
 source "$ROOT/scripts/lib/start-servers.sh"
