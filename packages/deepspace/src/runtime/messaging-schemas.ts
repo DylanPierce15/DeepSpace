@@ -6,7 +6,7 @@
  *
  * @example
  * ```typescript
- * import { CHANNELS_SCHEMA, MESSAGES_SCHEMA, REACTIONS_SCHEMA } from '@deepspace/sdk-worker'
+ * import { CHANNELS_SCHEMA, MESSAGES_SCHEMA, REACTIONS_SCHEMA } from 'deepspace/worker'
  * export const schemas = [usersSchema, CHANNELS_SCHEMA, MESSAGES_SCHEMA, REACTIONS_SCHEMA]
  * ```
  */

@@ -18,7 +18,7 @@
 
 import type { CollectionSchema } from './schemas'
 
-// Re-export data interfaces from @deepspace/types (single source of truth)
+// Re-export data interfaces from types (single source of truth)
 export type {
   DirectoryConversationData,
   ConversationStateData,

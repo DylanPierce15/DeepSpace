@@ -1,5 +1,5 @@
 /**
- * @deepspace/sdk-worker — Server-side Worker Module
+ * deepspace/worker — Server-side Worker Module
  *
  * Cloudflare Worker / Durable Object utilities for DeepSpace apps.
  *
@@ -9,7 +9,7 @@
  * - Yjs integration for collaborative fields
  *
  * @example
- * import { RecordRoom, handleMcAPIProxy } from '@deepspace/sdk-worker'
+ * import { RecordRoom, handleMcAPIProxy } from 'deepspace/worker'
  *
  * export { RecordRoom }
  *
