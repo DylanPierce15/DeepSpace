@@ -1,42 +1,16 @@
-# DeepSpace SDK
+# DeepSpace
 
-Full-stack framework for building collaborative, real-time applications on Cloudflare Workers.
+DeepSpace is a full-stack framework that lets you and your agents go from nothing to a deployed, real-time, secure, and scalable app at a custom domain in minutes. It runs at the edge with ultra-low latency and bundles everything a modern app needs: auth, real-time data subscriptions, RBAC, messaging, file storage, collaborative editing (Yjs), cron jobs, agentic chat, and zero-config deployment. It is fully customizable and built for developers who want to ship fast without sacrificing control.
 
-## Architecture
+If you've been building with Claude Code and have a growing collection of apps stuck on your local machine, DeepSpace is for you.
 
-```
-packages/           Shared libraries (npm-publishable)
-  auth/             Better Auth integration, JWT verification, HMAC signing
-  config/           Environment detection and service URL configuration
-  cli/              CLI tool (deepspace login, deploy, undeploy)
-  create-app/       App scaffolder (create-deepspace-app)
-  sdk/              React client SDK (auth, storage, Yjs, file uploads)
-  sdk-worker/       Server SDK (RecordRoom DO, schema validation, RBAC)
-  shared-types/     TypeScript types shared by client and server
-  test-utils/       JWT signing and D1 migration helpers for tests
+Our online app building product, in beta, is at [deep.space](https://deep.space).
 
-platform/           Cloudflare Workers (deployed infrastructure)
-  auth-worker/      User authentication, session management, JWT issuance
-  api-worker/       Billing, Stripe, user profiles, integration proxying
-  platform-worker/  Durable Objects (RecordRoom), R2 app registry, WebSocket
-  deploy-worker/    App deployment to Workers for Platforms
-  dispatch-worker/  Routes *.app.space to per-app user workers
-
-templates/          Project templates
-  starter/          Starter template (Vite + React + Tailwind + Hono worker)
-
-apps/               First-party applications
-  dashboard/        Builder console (React)
-
-e2e/                End-to-end tests (Playwright)
-examples/           Example apps
-```
-
-## Developer Workflow
+## Quick Start
 
 ```bash
 # Create an app
-npx create-deepspace-app my-app
+npm create deepspace my-app
 cd my-app
 
 # Develop locally
@@ -48,21 +22,74 @@ npx deepspace deploy
 # → Live at https://my-app.app.space
 ```
 
+## Packages
+
+| Package | Description |
+|---------|-------------|
+| `deepspace` | SDK — React client, Cloudflare Worker runtime, CLI |
+| `create-deepspace` | Project scaffolder (`npm create deepspace my-app`) |
+
+The `deepspace` package has two entry points:
+- `deepspace` — React client SDK (hooks, providers, auth, storage, messaging, directory, theme)
+- `deepspace/worker` — Cloudflare Worker SDK (RecordRoom, schemas, JWT verification, HMAC auth)
+
+## Architecture
+
+```
+packages/
+  deepspace/              SDK (published to npm)
+    src/
+      auth/               Client auth (React hooks, providers, Better Auth client)
+      cli/                CLI commands (deploy, login, undeploy)
+      directory/          useConversations, useCommunities, usePosts
+      env/                Environment detection & URLs
+      messaging/          useMessages, useChannels, useConversation
+      platform/           PlatformProvider, useInbox, usePlatformWS
+      runtime/            RecordRoom, schemas, handlers, tools API
+      server-auth/        JWT verification, Better Auth server config, HMAC auth
+      storage/            RecordProvider, useQuery, useMutations, Yjs, R2 files
+      theme/              DeepSpaceThemeProvider, applyTheme
+      types/              Shared type definitions
+  create-deepspace/       Project scaffolder (published to npm)
+    templates/starter/    Starter app template
+    features/             Feature reference implementations
+
+platform/                 Cloudflare Workers (deployed infrastructure)
+  auth-worker/            User authentication, session management, JWT issuance
+  api-worker/             Billing, Stripe, user profiles, integrations
+  platform-worker/        Durable Objects (RecordRoom), R2, WebSocket
+  deploy-worker/          App deployment to Workers for Platforms
+
+apps/
+  dashboard/              Builder console (React)
+
+examples/
+  todo-app/               Example app
+
+tests/
+  local/                  Local integration tests (Playwright)
+  production/             Production E2E tests (Playwright)
+
+scripts/
+  dev.sh                  Start local dev environment
+  setup-env.sh            Sync secrets from Doppler to .dev.vars
+  scaffold-test-app.sh    Scaffold a test app from the template
+  test-local.sh           Run local Playwright tests
+```
+
 ## Development
 
 ```bash
 pnpm install
 pnpm turbo build
-pnpm turbo test          # 176 unit/integration tests
-npx tsx e2e/scripts/run-full-e2e.ts  # 29 E2E tests
 ```
 
-## Platform Workers
+## Testing
 
-| Worker | Purpose | URL |
-|--------|---------|-----|
-| `deepspace-auth` | Better Auth + JWT issuance | `deepspace-auth.eudaimonicincorporated.workers.dev` |
-| `deepspace-api` | Billing, profiles, integrations | `deepspace-api.eudaimonicincorporated.workers.dev` |
-| `deepspace-platform-worker` | Durable Objects, WebSocket, app registry | `deepspace-platform-worker.eudaimonicincorporated.workers.dev` |
-| `deepspace-deploy` | App deployment to WfP | `deepspace-deploy.eudaimonicincorporated.workers.dev` |
-| `deepspace-dispatch` | Routes `*.app.space` to user apps | (shares `spaces-apps` namespace) |
+```bash
+# Local integration tests
+./scripts/test-local.sh
+
+# Production E2E tests
+npx tsx tests/production/scripts/run-full-e2e.ts
+```
