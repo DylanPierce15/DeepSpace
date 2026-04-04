@@ -145,8 +145,8 @@ export async function deployToWfP(
       assets: {
         jwt: completionToken,
         config: {
-          not_found_handling: 'single-page-application',
-          html_handling: 'auto-trailing-slash',
+          serve_directly: false,
+          not_found_handling: 'none',
         },
       },
       bindings: [

@@ -5,6 +5,8 @@ main = "worker.ts"
 
 [assets]
 directory = "dist"
+binding = "ASSETS"
+not_found_handling = "none"
 
 # App's own RecordRoom DO — schemas baked in at deploy time
 [[migrations]]

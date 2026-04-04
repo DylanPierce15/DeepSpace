@@ -307,6 +307,170 @@ app.get('/login/cli/:sessionId/complete', async (c) => {
   return c.html(loginCompletePage())
 })
 
+// ============================================================================
+// App Social Login — redirect-based OAuth for deployed apps
+// ============================================================================
+
+/** Ensure auth_codes table exists (idempotent) */
+async function ensureAuthCodesTable(db: D1Database) {
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS auth_codes (
+        id TEXT PRIMARY KEY,
+        code TEXT,
+        return_to TEXT NOT NULL,
+        session_token TEXT,
+        created_at INTEGER NOT NULL
+      )`,
+    )
+    .run()
+}
+
+/**
+ * GET /login/social?provider=google&returnTo=https://my-app.app.space
+ * App redirects here. Auto-initiates OAuth on the auth worker's domain
+ * so state cookies work correctly.
+ */
+app.get('/login/social', async (c) => {
+  const provider = c.req.query('provider')
+  const returnTo = c.req.query('returnTo')
+
+  if (!provider || !returnTo) {
+    return c.html('<h1>Bad request</h1><p>Missing provider or returnTo.</p>', 400)
+  }
+
+  await ensureAuthCodesTable(c.env.AUTH_DB)
+
+  const codeId = crypto.randomUUID()
+  await c.env.AUTH_DB
+    .prepare('INSERT INTO auth_codes (id, return_to, created_at) VALUES (?, ?, ?)')
+    .bind(codeId, returnTo, Date.now())
+    .run()
+
+  // Clean up expired entries
+  await c.env.AUTH_DB
+    .prepare('DELETE FROM auth_codes WHERE created_at < ?')
+    .bind(Date.now() - CLI_SESSION_TTL_MS)
+    .run()
+
+  const origin = new URL(c.env.AUTH_BASE_URL).origin
+  const authBaseURL = c.env.AUTH_BASE_URL
+
+  // Page that auto-initiates the OAuth redirect
+  return c.html(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Signing in...</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0a0a0a; color: #888;
+      display: flex; align-items: center; justify-content: center; min-height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <p>Redirecting to ${provider === 'google' ? 'Google' : 'GitHub'}...</p>
+  <script>
+    (async () => {
+      try {
+        const res = await fetch('${authBaseURL}/sign-in/social', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: '${provider}',
+            callbackURL: '${origin}/login/social/complete?code_id=${codeId}'
+          }),
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          document.body.textContent = 'Sign-in failed. Please close this tab and try again.';
+        }
+      } catch (e) {
+        document.body.textContent = 'Sign-in failed. Please close this tab and try again.';
+      }
+    })();
+  </script>
+</body>
+</html>`)
+})
+
+/**
+ * GET /login/social/complete?code_id=XXX
+ * After OAuth callback, Better Auth redirects here.
+ * Generates a one-time code and redirects back to the app.
+ */
+app.get('/login/social/complete', async (c) => {
+  const codeId = c.req.query('code_id')
+  if (!codeId) return c.html('<h1>Bad request</h1>', 400)
+
+  const row = await c.env.AUTH_DB
+    .prepare('SELECT return_to, created_at FROM auth_codes WHERE id = ?')
+    .bind(codeId)
+    .first<{ return_to: string; created_at: number }>()
+
+  if (!row || Date.now() - row.created_at > CLI_SESSION_TTL_MS) {
+    return c.html('<h1>Session expired</h1><p>Please try signing in again.</p>', 410)
+  }
+
+  // Extract session token from cookie
+  const cookieHeader = c.req.header('cookie') ?? ''
+  const cookieMatch = cookieHeader.match(/__Secure-better-auth\.session_token=([^;]+)/)
+  const cookieMatchDev = cookieHeader.match(/better-auth\.session_token=([^;]+)/)
+  const sessionToken = cookieMatch?.[1] ?? cookieMatchDev?.[1] ?? ''
+
+  if (!sessionToken) {
+    return c.html('<h1>Authentication failed</h1><p>No session found. Please try again.</p>', 401)
+  }
+
+  // Generate one-time exchange code
+  const exchangeCode = crypto.randomUUID()
+
+  await c.env.AUTH_DB
+    .prepare('UPDATE auth_codes SET code = ?, session_token = ? WHERE id = ?')
+    .bind(exchangeCode, decodeURIComponent(sessionToken), codeId)
+    .run()
+
+  // Redirect back to the app with the exchange code
+  const returnUrl = new URL(row.return_to)
+  returnUrl.searchParams.set('__ds_code', exchangeCode)
+
+  return c.redirect(returnUrl.toString())
+})
+
+/**
+ * POST /api/auth/exchange-code
+ * App worker exchanges a one-time code for a session token.
+ */
+app.post('/api/auth/exchange-code', async (c) => {
+  const { code } = await c.req.json<{ code: string }>()
+
+  const row = await c.env.AUTH_DB
+    .prepare('SELECT session_token, created_at FROM auth_codes WHERE code = ?')
+    .bind(code)
+    .first<{ session_token: string; created_at: number }>()
+
+  if (!row || Date.now() - row.created_at > CLI_SESSION_TTL_MS) {
+    return c.json({ error: 'Invalid or expired code' }, 400)
+  }
+
+  // Delete the code (one-time use)
+  await c.env.AUTH_DB
+    .prepare('DELETE FROM auth_codes WHERE code = ?')
+    .bind(code)
+    .run()
+
+  return c.json({ sessionToken: row.session_token })
+})
+
+// ============================================================================
+// HTML Templates
+// ============================================================================
+
 /** Login page HTML */
 function loginPage(sessionId: string, origin: string, authBaseURL: string, hasGithub: boolean, hasGoogle: boolean): string {
   const buttons: string[] = []

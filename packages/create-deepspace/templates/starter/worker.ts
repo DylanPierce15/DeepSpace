@@ -78,6 +78,55 @@ async function resolveAuth(req: Request, env: Env): Promise<VerifyResult | null>
 }
 
 // ---------------------------------------------------------------------------
+// Social OAuth redirect + code exchange
+// ---------------------------------------------------------------------------
+
+/** Redirect to auth worker for social sign-in */
+app.get('/api/auth/social-redirect', (c) => {
+  const provider = c.req.query('provider')
+  if (!provider) return c.json({ error: 'Missing provider' }, 400)
+
+  const appOrigin = new URL(c.req.url).origin
+  const authOrigin = new URL(c.env.AUTH_WORKER_URL).origin
+
+  return c.redirect(
+    `${authOrigin}/login/social?provider=${encodeURIComponent(provider)}&returnTo=${encodeURIComponent(appOrigin)}`,
+  )
+})
+
+/** Intercept one-time code from auth worker after social sign-in */
+app.use('*', async (c, next) => {
+  const url = new URL(c.req.url)
+  const code = url.searchParams.get('__ds_code')
+  if (!code) return next()
+
+  // Exchange code for session token
+  const res = await fetch(`${c.env.AUTH_WORKER_URL}/api/auth/exchange-code`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  })
+
+  // Redirect to clean URL (remove __ds_code param)
+  url.searchParams.delete('__ds_code')
+  const cleanUrl = url.toString()
+
+  if (!res.ok) {
+    return new Response(null, { status: 302, headers: { Location: cleanUrl } })
+  }
+
+  const { sessionToken } = (await res.json()) as { sessionToken: string }
+
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: cleanUrl,
+      'Set-Cookie': `__Secure-better-auth.session_token=${encodeURIComponent(sessionToken)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
+    },
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Auth proxy → auth-worker (same-origin cookies)
 // ---------------------------------------------------------------------------
 
