@@ -9,8 +9,8 @@ import { defineCommand } from 'citty'
 import { execSync } from 'node:child_process'
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { homedir } from 'node:os'
 import * as p from '@clack/prompts'
+import { ensureToken } from '../auth'
 
 const DEPLOY_URL = process.env.DEEPSPACE_DEPLOY_URL ?? 'https://deepspace-deploy.eudaimonicincorporated.workers.dev'
 
@@ -46,13 +46,14 @@ export default defineCommand({
     const appName = nameMatch[1]
     p.log.info(`App: ${appName}`)
 
-    // ── Read JWT from ~/.deepspace/token ──────────────────────
-    const tokenPath = join(homedir(), '.deepspace', 'token')
-    if (!existsSync(tokenPath)) {
-      p.cancel('Not logged in. Run `deepspace login` first.')
+    // ── Ensure valid JWT ───────────────────────────────────────
+    let token: string
+    try {
+      token = await ensureToken()
+    } catch (err: any) {
+      p.cancel(err.message)
       process.exit(1)
     }
-    const token = readFileSync(tokenPath, 'utf-8').trim()
 
     // ── Build frontend ────────────────────────────────────────
     const s = p.spinner()

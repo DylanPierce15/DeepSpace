@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react'
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom'
-import { DeepSpaceAuthProvider, useAuth, AuthOverlay } from 'deepspace'
+import { DeepSpaceAuthProvider, useAuth, AuthOverlay, signOut } from 'deepspace'
 import { RecordProvider, RecordScope, useUser } from 'deepspace'
 import { getGlobalDOSchemas } from 'deepspace/worker'
 import type { CollectionSchema } from 'deepspace'
@@ -32,6 +32,7 @@ function Navigation() {
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showAuthModal, setShowAuthModal] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
 
   const userRole = (user?.role ?? 'anonymous') as Role | 'anonymous'
   const roleConfig = ROLE_CONFIG[userRole as Role] ?? { title: 'Anonymous', badgeVariant: 'secondary' }
@@ -88,13 +89,39 @@ function Navigation() {
             </span>
 
             {isSignedIn && user ? (
-              <div className="flex items-center gap-2 rounded-full border border-border bg-secondary/50 px-2.5 py-1">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs text-muted-foreground">
-                  {user.name?.[0]?.toUpperCase() ?? '?'}
-                </div>
-                <span data-testid="nav-user-name" className="hidden text-sm text-muted-foreground sm:inline">
-                  {user.name || user.email}
-                </span>
+              <div className="relative">
+                <button
+                  onClick={() => setUserMenuOpen((prev) => !prev)}
+                  className="flex items-center gap-2 rounded-full border border-border bg-secondary/50 px-2.5 py-1 hover:bg-secondary transition-colors cursor-pointer"
+                >
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs text-muted-foreground overflow-hidden">
+                    {user.imageUrl ? (
+                      <img src={user.imageUrl} alt="" className="h-6 w-6 rounded-full object-cover" />
+                    ) : (
+                      user.name?.[0]?.toUpperCase() ?? '?'
+                    )}
+                  </div>
+                  <span data-testid="nav-user-name" className="hidden text-sm text-muted-foreground sm:inline">
+                    {user.name || user.email}
+                  </span>
+                </button>
+                {userMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
+                    <div className="absolute right-0 top-full mt-1 z-50 w-48 rounded-lg border border-border bg-card shadow-lg py-1">
+                      <div className="px-3 py-2 border-b border-border">
+                        <div className="text-sm font-medium text-foreground truncate">{user.name}</div>
+                        <div className="text-xs text-muted-foreground truncate">{user.email}</div>
+                      </div>
+                      <button
+                        onClick={() => { setUserMenuOpen(false); signOut() }}
+                        className="w-full text-left px-3 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                      >
+                        Sign out
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
               <button

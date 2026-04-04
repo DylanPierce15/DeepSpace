@@ -45,6 +45,7 @@ interface Env {
   ASSETS: Fetcher
   FILES: R2Bucket
   RECORD_ROOMS: DurableObjectNamespace
+  PLATFORM_WORKER: Fetcher
   AUTH_JWT_PUBLIC_KEY: string
   AUTH_JWT_ISSUER: string
   AUTH_WORKER_URL: string
@@ -94,11 +95,14 @@ app.get('/api/auth/social-redirect', (c) => {
   )
 })
 
-/** Intercept one-time code from auth worker after social sign-in */
-app.use('*', async (c, next) => {
-  const url = new URL(c.req.url)
-  const code = url.searchParams.get('__ds_code')
-  if (!code) return next()
+/** OAuth complete — exchange one-time code for session, redirect to app */
+app.get('/api/auth/oauth-complete', async (c) => {
+  const code = c.req.query('code')
+  const appOrigin = new URL(c.req.url).origin
+
+  if (!code) {
+    return c.redirect(appOrigin)
+  }
 
   // Exchange code for session token
   const res = await fetch(`${c.env.AUTH_WORKER_URL}/api/auth/exchange-code`, {
@@ -107,12 +111,8 @@ app.use('*', async (c, next) => {
     body: JSON.stringify({ code }),
   })
 
-  // Redirect to clean URL (remove __ds_code param)
-  url.searchParams.delete('__ds_code')
-  const cleanUrl = url.toString()
-
   if (!res.ok) {
-    return new Response(null, { status: 302, headers: { Location: cleanUrl } })
+    return c.redirect(appOrigin)
   }
 
   const { sessionToken } = (await res.json()) as { sessionToken: string }
@@ -120,7 +120,7 @@ app.use('*', async (c, next) => {
   return new Response(null, {
     status: 302,
     headers: {
-      Location: cleanUrl,
+      Location: appOrigin,
       'Set-Cookie': `__Secure-better-auth.session_token=${encodeURIComponent(sessionToken)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
     },
   })
@@ -147,11 +147,15 @@ app.all('/api/auth/*', async (c) => {
 })
 
 // ---------------------------------------------------------------------------
-// WebSocket → app's own RecordRoom DO
+// WebSocket → route to app DO or platform worker by scope type
 // ---------------------------------------------------------------------------
+
+/** Scopes handled by the app's own RecordRoom DO */
+const LOCAL_SCOPES = ['app:', 'workspace:']
 
 app.get('/ws/:roomId', async (c) => {
   const roomId = c.req.param('roomId')
+  const isLocal = LOCAL_SCOPES.some((prefix) => roomId.startsWith(prefix))
 
   // Authenticate (optional — anonymous connections get limited RBAC)
   const token = new URL(c.req.url).searchParams.get('token')
@@ -160,10 +164,6 @@ app.get('/ws/:roomId', async (c) => {
     auth = (await verifyJwt(jwtConfig(c.env), token)).result
   }
 
-  // Route to DO — each roomId maps to one DO instance
-  const doId = c.env.RECORD_ROOMS.idFromName(roomId)
-  const stub = c.env.RECORD_ROOMS.get(doId)
-
   // Forward the request with auth info in URL params
   const doUrl = new URL(c.req.url)
   if (auth) {
@@ -171,7 +171,15 @@ app.get('/ws/:roomId', async (c) => {
   }
   doUrl.searchParams.delete('token') // don't forward raw JWT to DO
 
-  return stub.fetch(new Request(doUrl.toString(), c.req.raw))
+  if (isLocal) {
+    // App-scoped data → app's own RecordRoom DO
+    const doId = c.env.RECORD_ROOMS.idFromName(roomId)
+    const stub = c.env.RECORD_ROOMS.get(doId)
+    return stub.fetch(new Request(doUrl.toString(), c.req.raw))
+  }
+
+  // Messaging/directory scopes (conv:*, dir:*) → platform worker
+  return c.env.PLATFORM_WORKER.fetch(new Request(doUrl.toString(), c.req.raw))
 })
 
 // ---------------------------------------------------------------------------

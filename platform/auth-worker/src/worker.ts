@@ -435,9 +435,9 @@ app.get('/login/social/complete', async (c) => {
     .bind(exchangeCode, decodeURIComponent(sessionToken), codeId)
     .run()
 
-  // Redirect back to the app with the exchange code
-  const returnUrl = new URL(row.return_to)
-  returnUrl.searchParams.set('__ds_code', exchangeCode)
+  // Redirect back to the app's oauth-complete endpoint with the exchange code
+  const returnUrl = new URL('/api/auth/oauth-complete', row.return_to)
+  returnUrl.searchParams.set('code', exchangeCode)
 
   return c.redirect(returnUrl.toString())
 })

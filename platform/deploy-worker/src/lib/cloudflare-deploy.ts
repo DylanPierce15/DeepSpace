@@ -67,6 +67,20 @@ export async function deployToWfP(
   const headers = { Authorization: `Bearer ${apiToken}` }
 
   try {
+    // ── Check if DO migration is needed ──────────────────────────
+    // If the script already has a RECORD_ROOMS DO binding, skip the migration.
+    const bindingsRes = await fetch(
+      `${base}/workers/dispatch/namespaces/${DISPATCH_NAMESPACE}/scripts/${scriptName}/bindings`,
+      { headers },
+    )
+    let needsMigration = true
+    if (bindingsRes.ok) {
+      const bindingsData = (await bindingsRes.json()) as { result?: Array<{ type: string; name: string }> }
+      needsMigration = !bindingsData.result?.some(
+        (b) => b.type === 'durable_object_namespace' && b.name === 'RECORD_ROOMS',
+      )
+    }
+
     // ── Step 1: Create asset upload session ─────────────────────
     const manifest: Record<string, { hash: string; size: number }> = {}
     for (const a of assets) {
@@ -138,19 +152,22 @@ export async function deployToWfP(
     }
 
     // ── Step 3: Deploy worker with metadata ─────────────────────
-    const metadata = {
+    const metadata: Record<string, unknown> = {
       main_module: 'index.js',
       compatibility_date: '2025-01-01',
       compatibility_flags: ['nodejs_compat'],
+      ...(needsMigration && {
+        migrations: { tag: 'v1', new_sqlite_classes: ['AppRecordRoom'] },
+      }),
       assets: {
         jwt: completionToken,
         config: {
-          serve_directly: false,
-          not_found_handling: 'none',
+          not_found_handling: 'single-page-application',
         },
       },
       bindings: [
         { type: 'assets', name: 'ASSETS' },
+        { type: 'durable_object_namespace', name: 'RECORD_ROOMS', class_name: 'AppRecordRoom' },
         { type: 'r2_bucket', name: 'FILES', bucket_name: 'deepspace-user-files' },
         { type: 'service', name: 'PLATFORM_WORKER', service: 'deepspace-platform-worker' },
         { type: 'plain_text', name: 'APP_NAME', text: bindings.appName },

@@ -6,9 +6,9 @@
 
 import { defineCommand } from 'citty'
 import { readFileSync, existsSync } from 'node:fs'
-import { join, resolve } from 'node:path'
-import { homedir } from 'node:os'
+import { join } from 'node:path'
 import * as p from '@clack/prompts'
+import { ensureToken } from '../auth'
 
 const DEPLOY_URL = process.env.DEEPSPACE_DEPLOY_URL ?? 'https://deepspace-deploy.eudaimonicincorporated.workers.dev'
 
@@ -42,12 +42,13 @@ export default defineCommand({
       process.exit(1)
     }
 
-    const tokenPath = join(homedir(), '.deepspace', 'token')
-    if (!existsSync(tokenPath)) {
-      p.cancel('Not logged in. Run `deepspace login` first.')
+    let token: string
+    try {
+      token = await ensureToken()
+    } catch (err: any) {
+      p.cancel(err.message)
       process.exit(1)
     }
-    const token = readFileSync(tokenPath, 'utf-8').trim()
 
     p.intro(`Undeploying ${appName}`)
     const s = p.spinner()
