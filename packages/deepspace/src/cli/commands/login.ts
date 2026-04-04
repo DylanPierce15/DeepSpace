@@ -134,17 +134,10 @@ async function pollForCompletion(sessionId: string): Promise<LoginResult | null>
 }
 
 function storeCredentials(sessionToken: string, jwt: string) {
-  // Store in ~/.deepspace/
-  const globalDir = join(homedir(), '.deepspace')
-  mkdirSync(globalDir, { recursive: true })
-  writeFileSync(join(globalDir, 'session'), sessionToken, { mode: 0o600 })
-  writeFileSync(join(globalDir, 'token'), jwt, { mode: 0o600 })
-
-  // Store in project-local .deepspace/ too
-  const localDir = join(process.cwd(), '.deepspace')
-  mkdirSync(localDir, { recursive: true })
-  writeFileSync(join(localDir, 'session'), sessionToken, { mode: 0o600 })
-  writeFileSync(join(localDir, 'token'), jwt, { mode: 0o600 })
+  const dir = join(homedir(), '.deepspace')
+  mkdirSync(dir, { recursive: true })
+  writeFileSync(join(dir, 'session'), sessionToken, { mode: 0o600 })
+  writeFileSync(join(dir, 'token'), jwt, { mode: 0o600 })
 }
 
 function openBrowser(url: string) {
