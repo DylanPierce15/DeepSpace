@@ -53,6 +53,17 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Sync Doppler secrets to all Cloudflare Workers
+      - name: Install Doppler CLI
+        run: curl -sLf https://cli.doppler.com/install.sh | sh
+
+      - name: Sync secrets to Cloudflare Workers
+        run: ./scripts/sync-secrets.sh prd
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_SERVICE_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
       # Deploy platform workers in dependency order
       - name: Deploy deepspace-auth
         working-directory: platform/auth-worker
