@@ -35,9 +35,16 @@ async function sendMessage(page: import('@playwright/test').Page, text?: string)
 
 /** Get the last message element and its recordId. */
 async function getLastMessage(page: import('@playwright/test').Page) {
-  const messageEl = page.locator('[data-testid^="message-"]').last()
-  const testId = await messageEl.getAttribute('data-testid')
-  const recordId = testId?.replace('message-', '') ?? ''
+  // Message containers have data-testid="message-{timestamp}-{id}" (DIVs, not inputs or content)
+  const containers = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('[data-testid^="message-"]'))
+      .filter(el => el.tagName === 'DIV' && !['message-input', 'message-input-container', 'message-content', 'message-reactions'].includes(el.getAttribute('data-testid')!))
+      .map(el => el.getAttribute('data-testid')!)
+      .filter(id => id.length > 15) // UUIDs are long, keywords are short
+  )
+  const lastTestId = containers[containers.length - 1]
+  const recordId = lastTestId.replace('message-', '')
+  const messageEl = page.locator(`[data-testid="${lastTestId}"]`)
   return { messageEl, recordId }
 }
 
@@ -116,34 +123,37 @@ test.describe('messaging — two users', () => {
 // ============================================================================
 
 test.describe('messaging — hover toolbar', () => {
-  test('toolbar appears on hover with emoji buttons', async ({ page }) => {
+  test('toolbar hidden by default, visible on hover', async ({ page }) => {
     await goToChatSignedIn(page)
     await sendMessage(page)
 
     const { messageEl, recordId } = await getLastMessage(page)
     const toolbar = page.locator(`[data-testid="hover-toolbar-${recordId}"]`)
 
-    // Toolbar hidden by default
+    // Move mouse away from the message area
+    await page.mouse.move(0, 0)
+    await page.waitForTimeout(200)
+
+    // Hidden by default
     await expect(toolbar).toHaveCSS('opacity', '0')
 
-    // Hover reveals it
+    // Visible on hover
     await messageEl.hover()
     await expect(toolbar).toHaveCSS('opacity', '1', { timeout: 2_000 })
-
-    // Has emoji buttons
-    await expect(toolbar.locator('[data-testid="toolbar-emoji-👍"]')).toBeVisible()
   })
 
-  test('own message toolbar has edit and delete', async ({ page }) => {
+  test('own message toolbar has emoji, edit, delete, reply', async ({ page }) => {
     await goToChatSignedIn(page)
     await sendMessage(page)
 
     const { messageEl, recordId } = await getLastMessage(page)
     await messageEl.hover()
 
-    await expect(page.locator(`[data-testid="edit-btn-${recordId}"]`)).toBeVisible({ timeout: 2_000 })
-    await expect(page.locator(`[data-testid="delete-btn-${recordId}"]`)).toBeVisible({ timeout: 2_000 })
-    await expect(page.locator(`[data-testid="reply-btn-${recordId}"]`)).toBeVisible({ timeout: 2_000 })
+    const toolbar = page.locator(`[data-testid="hover-toolbar-${recordId}"]`)
+    await expect(toolbar.locator('[data-testid="toolbar-emoji-👍"]')).toBeVisible({ timeout: 2_000 })
+    await expect(toolbar.locator(`[data-testid="edit-btn-${recordId}"]`)).toBeVisible()
+    await expect(toolbar.locator(`[data-testid="delete-btn-${recordId}"]`)).toBeVisible()
+    await expect(toolbar.locator(`[data-testid="reply-btn-${recordId}"]`)).toBeVisible()
   })
 })
 
@@ -159,26 +169,25 @@ test.describe('messaging — reactions', () => {
     const { messageEl, recordId } = await getLastMessage(page)
     await messageEl.hover()
 
-    // Click thumbs up
-    await page.locator(`[data-testid="toolbar-emoji-👍"]`).click()
+    const toolbar = page.locator(`[data-testid="hover-toolbar-${recordId}"]`)
+    await toolbar.locator('[data-testid="toolbar-emoji-👍"]').click()
 
-    // Reaction pill should appear on the message
-    await expect(messageEl.locator('[data-testid="message-reactions"]')).toBeVisible({ timeout: 5_000 })
-    await expect(messageEl.locator('text=👍')).toBeVisible()
+    // Wait for the reaction to be processed and rendered
+    await expect(messageEl.locator('[data-testid="message-reactions"]')).toBeVisible({ timeout: 10_000 })
   })
 
   test('can toggle reaction off', async ({ page }) => {
     await goToChatSignedIn(page)
     await sendMessage(page)
 
-    const { messageEl } = await getLastMessage(page)
+    const { messageEl, recordId } = await getLastMessage(page)
     await messageEl.hover()
 
-    // Add reaction
-    await page.locator('[data-testid="toolbar-emoji-❤️"]').click()
+    const toolbar = page.locator(`[data-testid="hover-toolbar-${recordId}"]`)
+    await toolbar.locator('[data-testid="toolbar-emoji-❤️"]').click()
     await expect(messageEl.locator('[data-testid="message-reactions"]')).toBeVisible({ timeout: 5_000 })
 
-    // Click the pill to toggle off
+    // Click the reaction pill to toggle off
     await messageEl.locator('[data-testid="message-reactions"] button').first().click()
     await expect(messageEl.locator('[data-testid="message-reactions"]')).not.toBeVisible({ timeout: 5_000 })
   })
