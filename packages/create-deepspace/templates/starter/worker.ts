@@ -22,10 +22,19 @@ import {
 } from 'deepspace/worker'
 import type { JwtVerifierConfig, VerifyResult } from 'deepspace/worker'
 import { RecordRoom, YjsRoom, createScopedR2Handler, type ScopedR2Handler } from 'deepspace/worker'
-import type { ActionTools, ActionResult } from 'deepspace/worker'
+import type { ActionTools, ActionResult, DOManifest, DOBindings } from 'deepspace/worker'
 import { actions } from './src/actions/index.js'
 import { handleCron } from './src/cron.js'
 import { schemas } from './src/schemas.js'
+
+// =============================================================================
+// DO Manifest — declares all Durable Objects for dynamic deploy bindings
+// =============================================================================
+
+export const __DO_MANIFEST__ = [
+  { binding: 'RECORD_ROOMS', className: 'AppRecordRoom', sqlite: true },
+  { binding: 'YJS_ROOMS', className: 'AppYjsRoom', sqlite: true },
+] as const satisfies DOManifest
 
 // =============================================================================
 // Durable Object — RecordRoom with app schemas baked in
@@ -44,11 +53,9 @@ export class AppYjsRoom extends YjsRoom {}
 // Types
 // =============================================================================
 
-interface Env {
+interface Env extends DOBindings<typeof __DO_MANIFEST__> {
   ASSETS: Fetcher
   FILES: R2Bucket
-  RECORD_ROOMS: DurableObjectNamespace
-  YJS_ROOMS: DurableObjectNamespace
   PLATFORM_WORKER: Fetcher
   AUTH_JWT_PUBLIC_KEY: string
   AUTH_JWT_ISSUER: string

@@ -26,6 +26,12 @@ export interface AssetEntry {
   contentBase64: string
 }
 
+export interface DOManifestEntry {
+  binding: string
+  className: string
+  sqlite: boolean
+}
+
 export interface WorkerBindings {
   appName: string
   ownerUserId: string
@@ -33,6 +39,7 @@ export interface WorkerBindings {
   jwtIssuer: string
   authWorkerUrl: string
   hmacSecret?: string
+  doManifest?: DOManifestEntry[]
 }
 
 export interface DeployResult {
@@ -67,22 +74,30 @@ export async function deployToWfP(
   const headers = { Authorization: `Bearer ${apiToken}` }
 
   try {
+    // ── Resolve DO manifest ─────────────────────────────────────
+    const doManifest: DOManifestEntry[] = bindings.doManifest ?? [
+      { binding: 'RECORD_ROOMS', className: 'AppRecordRoom', sqlite: true },
+    ]
+
     // ── Check if DO migration is needed ──────────────────────────
-    // If the script already has a RECORD_ROOMS DO binding, skip the migration.
+    // Diff manifest against existing bindings to find new SQLite classes.
     const bindingsRes = await fetch(
       `${base}/workers/dispatch/namespaces/${DISPATCH_NAMESPACE}/scripts/${scriptName}/bindings`,
       { headers },
     )
     let needsMigration = true
+    let newSqliteClasses: string[] = doManifest.filter(e => e.sqlite).map(e => e.className)
     if (bindingsRes.ok) {
       const bindingsData = (await bindingsRes.json()) as { result?: Array<{ type: string; name: string }> }
-      const hasRecordRooms = bindingsData.result?.some(
-        (b) => b.type === 'durable_object_namespace' && b.name === 'RECORD_ROOMS',
+      const existingDOBindings = new Set(
+        bindingsData.result
+          ?.filter((b) => b.type === 'durable_object_namespace')
+          .map((b) => b.name) ?? []
       )
-      const hasYjsRooms = bindingsData.result?.some(
-        (b) => b.type === 'durable_object_namespace' && b.name === 'YJS_ROOMS',
-      )
-      needsMigration = !hasRecordRooms || !hasYjsRooms
+      newSqliteClasses = doManifest
+        .filter(e => e.sqlite && !existingDOBindings.has(e.binding))
+        .map(e => e.className)
+      needsMigration = newSqliteClasses.length > 0
     }
 
     // ── Step 1: Create asset upload session ─────────────────────
@@ -156,14 +171,25 @@ export async function deployToWfP(
     }
 
     // ── Step 3: Deploy worker with metadata ─────────────────────
+    // Build DO bindings dynamically from manifest
+    const doBindingsList = doManifest.map(entry => ({
+      type: 'durable_object_namespace',
+      name: entry.binding,
+      class_name: entry.className,
+    }))
+
+    // Compute migration tag: v{N} where N = number of sqlite classes
+    const allSqliteClasses = doManifest.filter(e => e.sqlite).map(e => e.className)
+    const migrationTag = `v${allSqliteClasses.length}`
+
     const metadata: Record<string, unknown> = {
       main_module: 'index.js',
       compatibility_date: '2025-01-01',
       compatibility_flags: ['nodejs_compat'],
       ...(needsMigration && {
         migrations: {
-          tag: 'v2',
-          new_sqlite_classes: ['AppRecordRoom', 'AppYjsRoom'],
+          tag: migrationTag,
+          new_sqlite_classes: newSqliteClasses,
         },
       }),
       assets: {
@@ -174,8 +200,7 @@ export async function deployToWfP(
       },
       bindings: [
         { type: 'assets', name: 'ASSETS' },
-        { type: 'durable_object_namespace', name: 'RECORD_ROOMS', class_name: 'AppRecordRoom' },
-        { type: 'durable_object_namespace', name: 'YJS_ROOMS', class_name: 'AppYjsRoom' },
+        ...doBindingsList,
         { type: 'r2_bucket', name: 'FILES', bucket_name: 'deepspace-user-files' },
         { type: 'service', name: 'PLATFORM_WORKER', service: 'deepspace-platform-worker' },
         { type: 'plain_text', name: 'APP_NAME', text: bindings.appName },

@@ -1,4 +1,7 @@
 import { defineConfig } from 'tsup'
+import { resolve } from 'path'
+
+const alias = { '@': resolve(__dirname, 'src') }
 
 export default defineConfig([
   {
@@ -11,9 +14,13 @@ export default defineConfig([
       'react', 'react-dom', 'react/jsx-runtime',
       'better-auth', 'better-auth/react', 'better-auth/client/plugins',
       'jose', 'yjs', 'hono', 'zustand',
+      'lucide-react', 'framer-motion', 'react-router-dom',
+      'class-variance-authority', 'clsx', 'tailwind-merge',
+      /^@radix-ui\/.*/,
     ],
     esbuildOptions(options) {
       options.jsx = 'automatic'
+      options.alias = alias
     },
   },
   {
@@ -26,6 +33,9 @@ export default defineConfig([
       'jose', 'yjs', 'hono',
       /^cloudflare:.*/, /^node:.*/,
     ],
+    esbuildOptions(options) {
+      options.alias = alias
+    },
   },
   {
     entry: { cli: 'src/cli/cli.ts' },
@@ -33,5 +43,8 @@ export default defineConfig([
     sourcemap: true,
     external: ['citty', '@clack/prompts', /^node:.*/],
     banner: { js: '#!/usr/bin/env node' },
+    esbuildOptions(options) {
+      options.alias = alias
+    },
   },
 ])
