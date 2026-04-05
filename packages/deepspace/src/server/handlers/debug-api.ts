@@ -3,11 +3,8 @@
  */
 
 import * as Y from 'yjs'
-import type {
-  ConnectionAttachment,
-  Query,
-  YjsDocKey,
-} from '../../shared/protocol/types'
+import type { ConnectionAttachment } from '../../shared/protocol/types'
+import type { Query, YjsDocKey } from '../../shared/types'
 import {
   SchemaRegistry,
   resolveColumn,

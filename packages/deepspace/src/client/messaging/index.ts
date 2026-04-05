@@ -12,7 +12,8 @@ export type { Channel, Message, Reaction, ChannelMember, ReadReceipt, ChannelInv
 // ── Channel hooks ────────────────────────────────────────────────────────────
 export { useMessages } from './useMessages'
 export { useChannels } from './useChannels'
-export { useReactions, type GroupedReaction } from './useReactions'
+export { useReactions } from './useReactions'
+export type { GroupedReaction } from './types'
 export { useChannelMembers } from './useChannelMembers'
 export { useReadReceipts } from './useReadReceipts'
 

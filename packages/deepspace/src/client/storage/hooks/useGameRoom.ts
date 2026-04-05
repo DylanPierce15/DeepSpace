@@ -18,7 +18,7 @@ import {
   MSG_GAME_START,
   MSG_GAME_END,
   MSG_GAME_TICK,
-} from '../constants'
+} from '@/shared/protocol/constants'
 
 export interface GamePlayer {
   userId: string

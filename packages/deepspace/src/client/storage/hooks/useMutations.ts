@@ -9,7 +9,7 @@
 import { useCallback, useContext, useMemo } from 'react'
 import { RecordContext } from '../context'
 import { useScopeRegistry } from '../ScopeRegistry'
-import { MSG_PUT, MSG_DELETE } from '../constants'
+import { MSG_PUT, MSG_DELETE } from '@/shared/protocol/constants'
 
 /**
  * Get mutation functions for a collection.

@@ -8,13 +8,7 @@ import { useMutations } from '../storage/hooks/useMutations'
 import { useUser } from '../storage/hooks/useUser'
 import type { RecordData } from '../storage/types'
 import type { Reaction } from './channel-types'
-
-export interface GroupedReaction {
-  emoji: string
-  count: number
-  users: string[]
-  currentUserReacted: boolean
-}
+import type { GroupedReaction } from './types'
 
 export function useReactions(channelId: string | undefined) {
   const { user } = useUser()
@@ -35,11 +29,11 @@ export function useReactions(channelId: string | undefined) {
         grouped.get(r.data.emoji)!.push(r.data.userId)
       }
 
-      return Array.from(grouped.entries()).map(([emoji, users]) => ({
+      return Array.from(grouped.entries()).map(([emoji, userIds]) => ({
         emoji,
-        count: users.length,
-        users,
-        currentUserReacted: user ? users.includes(user.id) : false,
+        count: userIds.length,
+        userIds,
+        currentUserReacted: user ? userIds.includes(user.id) : false,
       }))
     },
     [records, user],

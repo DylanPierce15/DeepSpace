@@ -21,8 +21,8 @@
 
 import * as Y from 'yjs'
 import { BaseRoom, type UserAttachment } from './base-room'
+import type { ConnectionAttachment } from '../../shared/protocol/types'
 import type {
-  ConnectionAttachment,
   YjsDocKey,
   SubscribePayload,
   UnsubscribePayload,
@@ -31,7 +31,7 @@ import type {
   SetRolePayload,
   YjsJoinPayload,
   YjsLeavePayload,
-} from '../../shared/protocol/types'
+} from '../../shared/types'
 import {
   MSG_SUBSCRIBE,
   MSG_UNSUBSCRIBE,

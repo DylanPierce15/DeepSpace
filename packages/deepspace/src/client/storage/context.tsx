@@ -41,7 +41,7 @@ import {
   MSG_YJS_JOIN,
   MSG_ACK,
   MSG_RESUBSCRIBE,
-} from './constants'
+} from '@/shared/protocol/constants'
 
 // ============================================================================
 // RecordContext (per-scope connection state)

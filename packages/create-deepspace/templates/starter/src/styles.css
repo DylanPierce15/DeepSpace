@@ -1,4 +1,8 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+
+/* Scan local source + SDK components for Tailwind class usage */
+@source "./**/*.{ts,tsx}";
+@source "../node_modules/deepspace/dist/**/*.js";
 
 /*
  * Theme configuration — shadcn/ui-compatible token system.

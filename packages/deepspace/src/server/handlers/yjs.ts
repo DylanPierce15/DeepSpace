@@ -3,12 +3,8 @@
  */
 
 import * as Y from 'yjs'
-import type {
-  ConnectionAttachment,
-  YjsDocKey,
-  YjsJoinPayload,
-  YjsLeavePayload,
-} from '../../shared/protocol/types'
+import type { ConnectionAttachment } from '../../shared/protocol/types'
+import type { YjsDocKey, YjsJoinPayload, YjsLeavePayload } from '../../shared/types'
 import { MSG_ERROR, MSG_YJS_JOIN, MSG_YJS_SYNC, MSG_YJS_AWARENESS } from '../../shared/protocol/constants'
 import {
   MSG_SYNC_STEP1,
@@ -31,6 +27,18 @@ import {
   collectionTableName,
 } from '../schemas/registry'
 import { getRecord } from './records'
+
+/** Parse a Yjs doc key (collection:recordId:fieldName). recordId may contain colons. */
+function parseYjsDocKey(docKey: YjsDocKey): { collection: string; recordId: string; fieldName: string } | null {
+  const firstColon = docKey.indexOf(':')
+  const lastColon = docKey.lastIndexOf(':')
+  if (firstColon === -1 || lastColon === -1 || firstColon === lastColon) return null
+  return {
+    collection: docKey.slice(0, firstColon),
+    recordId: docKey.slice(firstColon + 1, lastColon),
+    fieldName: docKey.slice(lastColon + 1),
+  }
+}
 
 // ============================================================================
 // System Collections (permissive, no schema required)
@@ -263,13 +271,9 @@ export async function handleYjsBinaryMessage(
     const docKey = new TextDecoder().decode(docKeyBytes) as YjsDocKey
     const payload = readVarUint8Array(decoder)
 
-    const firstColon = docKey.indexOf(':')
-    const lastColon = docKey.lastIndexOf(':')
-    if (firstColon === -1 || lastColon === -1 || firstColon === lastColon) return
-
-    const collection = docKey.slice(0, firstColon)
-    const recordId = docKey.slice(firstColon + 1, lastColon)
-    const fieldName = docKey.slice(lastColon + 1)
+    const parsed = parseYjsDocKey(docKey)
+    if (!parsed) return
+    const { collection, recordId, fieldName } = parsed
 
     const isSubscribed = attachment.yjsSubscriptions.some(s =>
       s.collection === collection && s.recordId === recordId && s.fieldName === fieldName
@@ -300,13 +304,9 @@ export async function handleYjsBinaryMessage(
   const docKeyBytes = readVarUint8Array(decoder)
   const docKey = new TextDecoder().decode(docKeyBytes) as YjsDocKey
 
-  const firstColon = docKey.indexOf(':')
-  const lastColon = docKey.lastIndexOf(':')
-  if (firstColon === -1 || lastColon === -1 || firstColon === lastColon) return
-
-  const collection = docKey.slice(0, firstColon)
-  const recordId = docKey.slice(firstColon + 1, lastColon)
-  const fieldName = docKey.slice(lastColon + 1)
+  const parsed = parseYjsDocKey(docKey)
+  if (!parsed) return
+  const { collection, recordId, fieldName } = parsed
 
   // Verify subscription
   const isSubscribed = attachment.yjsSubscriptions.some(s =>
@@ -363,14 +363,9 @@ export function broadcastYjsUpdate(
   update: Uint8Array,
   excludeWs: WebSocket | null
 ): void {
-  // Parse doc key - recordId may contain colons
-  const firstColon = docKey.indexOf(':')
-  const lastColon = docKey.lastIndexOf(':')
-  if (firstColon === -1 || lastColon === -1 || firstColon === lastColon) return
-  
-  const collection = docKey.slice(0, firstColon)
-  const recordId = docKey.slice(firstColon + 1, lastColon)
-  const fieldName = docKey.slice(lastColon + 1)
+  const parsed = parseYjsDocKey(docKey)
+  if (!parsed) return
+  const { collection, recordId, fieldName } = parsed
 
   // Build message once
   const encoder = createEncoder()
@@ -407,13 +402,9 @@ export function broadcastAwareness(
   payload: Uint8Array,
   excludeWs: WebSocket | null
 ): void {
-  const firstColon = docKey.indexOf(':')
-  const lastColon = docKey.lastIndexOf(':')
-  if (firstColon === -1 || lastColon === -1 || firstColon === lastColon) return
-
-  const collection = docKey.slice(0, firstColon)
-  const recordId = docKey.slice(firstColon + 1, lastColon)
-  const fieldName = docKey.slice(lastColon + 1)
+  const parsed = parseYjsDocKey(docKey)
+  if (!parsed) return
+  const { collection, recordId, fieldName } = parsed
 
   // Build message once
   const encoder = createEncoder()

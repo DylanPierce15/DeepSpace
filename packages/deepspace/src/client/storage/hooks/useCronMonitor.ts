@@ -16,7 +16,7 @@ import {
   MSG_CRON_PAUSE,
   MSG_CRON_RESUME,
   MSG_CRON_STATUS,
-} from '../constants'
+} from '@/shared/protocol/constants'
 
 export interface CronTaskState {
   name: string

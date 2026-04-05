@@ -4,12 +4,8 @@
  * All collections use table-mode storage (c_* tables with typed columns).
  */
 
-import type {
-  ConnectionAttachment,
-  RecordResult,
-  PutPayload,
-  DeletePayload,
-} from '../../shared/protocol/types'
+import type { ConnectionAttachment } from '../../shared/protocol/types'
+import type { RecordResult, PutPayload, DeletePayload } from '../../shared/types'
 import type { ToolResult } from '../utils/tools'
 import { MSG_ERROR, MSG_ACK, MSG_RESUBSCRIBE } from '../../shared/protocol/constants'
 import {

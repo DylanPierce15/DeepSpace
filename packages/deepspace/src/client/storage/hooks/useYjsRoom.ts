@@ -26,7 +26,7 @@ import {
   writeVarUint8Array,
   readVarUint,
   readVarUint8Array,
-} from '../../../shared/protocol/yjs'
+} from '@/shared/protocol/yjs'
 
 // ============================================================================
 // Hook

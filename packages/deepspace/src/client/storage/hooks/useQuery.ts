@@ -10,7 +10,7 @@ import { useEffect, useCallback, useRef, useMemo, useContext, useSyncExternalSto
 import { RecordContext } from '../context'
 import { useScopeRegistry } from '../ScopeRegistry'
 import type { Query, RecordData } from '../types'
-import { MSG_SUBSCRIBE, MSG_UNSUBSCRIBE } from '../constants'
+import { MSG_SUBSCRIBE, MSG_UNSUBSCRIBE } from '@/shared/protocol/constants'
 
 /**
  * Subscribe to a query with real-time updates.

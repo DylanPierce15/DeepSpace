@@ -9,7 +9,7 @@
 import * as Y from 'yjs'
 import type { ToolResult } from '../utils/tools'
 import { BUILT_IN_TOOLS } from '../utils/tools'
-import type { YjsDocKey } from '../../shared/protocol/types'
+import type { YjsDocKey } from '../../shared/types'
 import { executeQuery, type SubscriptionContext } from './subscriptions'
 import { getRecord, putRecord, deleteRecord, readRecord, type RecordContext } from './records'
 import { getUser, getAllUsers } from './users'

@@ -4,13 +4,8 @@
  * All collections use table-mode storage (c_* tables with typed columns).
  */
 
-import type {
-  Query,
-  ConnectionAttachment,
-  RecordResult,
-  SubscribePayload,
-  UnsubscribePayload,
-} from '../../shared/protocol/types'
+import type { ConnectionAttachment } from '../../shared/protocol/types'
+import type { Query, RecordResult, SubscribePayload, UnsubscribePayload } from '../../shared/types'
 import { MSG_QUERY_RESULT, MSG_RECORD_CHANGE } from '../../shared/protocol/constants'
 import {
   type CollectionSchema,

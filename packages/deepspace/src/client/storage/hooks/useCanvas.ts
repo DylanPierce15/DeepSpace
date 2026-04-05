@@ -19,7 +19,7 @@ import {
   MSG_CANVAS_VIEWPORT,
   MSG_CANVAS_UNDO,
   MSG_CANVAS_REDO,
-} from '../constants'
+} from '@/shared/protocol/constants'
 
 export interface CanvasShapeClient {
   id: string

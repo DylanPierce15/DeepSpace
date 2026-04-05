@@ -17,7 +17,7 @@ import {
   MSG_MEDIA_ANSWER,
   MSG_MEDIA_ICE_CANDIDATE,
   MSG_MEDIA_PEERS,
-} from '../constants'
+} from '@/shared/protocol/constants'
 
 export interface MediaPeerClient {
   userId: string

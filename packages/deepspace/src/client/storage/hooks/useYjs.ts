@@ -7,7 +7,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import * as Y from 'yjs'
 import { useRecordContext } from '../context'
-import { MSG_YJS_JOIN, MSG_YJS_LEAVE, MSG_YJS_SYNC, MSG_YJS_AWARENESS } from '../constants'
+import { MSG_YJS_JOIN, MSG_YJS_LEAVE, MSG_YJS_SYNC, MSG_YJS_AWARENESS } from '@/shared/protocol/constants'
 import {
   MSG_SYNC_STEP1,
   MSG_SYNC_STEP2,
@@ -20,7 +20,7 @@ import {
   writeVarUint8Array,
   readVarUint,
   readVarUint8Array,
-} from '../../../shared/protocol/yjs'
+} from '@/shared/protocol/yjs'
 
 // ============================================================================
 // useYjsField

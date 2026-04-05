@@ -5,10 +5,8 @@
  * System-managed fields (email, name, role, etc.) can only be set by registerUser().
  */
 
-import type {
-  ConnectionAttachment,
-  SetRolePayload,
-} from '../../shared/protocol/types'
+import type { ConnectionAttachment } from '../../shared/protocol/types'
+import type { SetRolePayload } from '../../shared/types'
 import { MSG_USER_LIST, MSG_USER_INFO, MSG_ERROR } from '../../shared/protocol/constants'
 import {
   type User,

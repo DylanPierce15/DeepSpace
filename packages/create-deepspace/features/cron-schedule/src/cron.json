@@ -1,5 +1,0 @@
-{
-  "tasks": [
-    { "name": "my-scheduled-task", "intervalMinutes": 1440 }
-  ]
-}

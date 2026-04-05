@@ -77,7 +77,6 @@ export async function deployToWfP(
     // ── Resolve DO manifest ─────────────────────────────────────
     const doManifest: DOManifestEntry[] = bindings.doManifest ?? [
       { binding: 'RECORD_ROOMS', className: 'AppRecordRoom', sqlite: true },
-      { binding: 'YJS_ROOMS', className: 'AppYjsRoom', sqlite: true },
     ]
 
     // ── Check if DO migration is needed ──────────────────────────

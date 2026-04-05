@@ -12,7 +12,7 @@ import { useEffect, useCallback, useState } from 'react'
 import { useUser } from './useUser'
 import { useUsers } from './useUsers'
 import { useRecordContext } from '../context'
-import { MSG_USER_UPDATE } from '../constants'
+import { MSG_USER_UPDATE } from '@/shared/protocol/constants'
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
 const HEARTBEAT_INTERVAL_MS = 60 * 1000 // 1 minute

@@ -1,43 +1,13 @@
 /**
- * Types for RecordRoom Durable Object
+ * Server-specific protocol types
+ *
+ * These depend on Cloudflare Workers / Yjs imports and can't live in shared/types.
+ * All other protocol types (Query, payloads, etc.) live in shared/types/index.ts.
  */
 
 import * as Y from 'yjs'
 import type { UserAttachment } from '../../server/rooms/base-room'
-
-// ============================================================================
-// Query Types
-// ============================================================================
-
-export interface Query {
-  collection: string
-  where?: Record<string, unknown>
-  orderBy?: string
-  orderDir?: 'asc' | 'desc'
-  limit?: number
-}
-
-export interface Subscription {
-  id: string
-  query: Query
-}
-
-// ============================================================================
-// Yjs Types
-// ============================================================================
-
-/** Key for Yjs doc: collection:recordId:fieldName */
-export type YjsDocKey = string
-
-export interface YjsSubscription {
-  collection: string
-  recordId: string
-  fieldName: string
-}
-
-// ============================================================================
-// Connection Types
-// ============================================================================
+import type { Subscription, YjsSubscription, YjsDocKey } from '../types'
 
 /** Stored on WebSocket attachment (survives hibernation) */
 export interface ConnectionAttachment extends UserAttachment {
@@ -50,74 +20,6 @@ export interface ConnectionAttachment extends UserAttachment {
   /** Client-side Yjs awareness clientId (extracted from first awareness message) */
   awarenessClientId?: number
 }
-
-// ============================================================================
-// Database Row Types
-// ============================================================================
-
-export interface RecordRow {
-  collection: string
-  record_id: string
-  data: string
-  created_by: string
-  created_at: string
-  updated_at: string
-}
-
-export interface RecordResult {
-  recordId: string
-  data: Record<string, unknown>
-  createdBy: string
-  createdAt: string
-  updatedAt: string
-}
-
-// ============================================================================
-// Message Payload Types
-// ============================================================================
-
-export interface SubscribePayload {
-  subscriptionId: string
-  query: Query
-}
-
-export interface UnsubscribePayload {
-  subscriptionId: string
-}
-
-export interface PutPayload {
-  collection: string
-  recordId: string
-  data: Record<string, unknown>
-  requestId?: string
-}
-
-export interface DeletePayload {
-  collection: string
-  recordId: string
-  requestId?: string
-}
-
-export interface SetRolePayload {
-  userId: string
-  role: string
-}
-
-export interface YjsJoinPayload {
-  collection: string
-  recordId: string
-  fieldName: string
-}
-
-export interface YjsLeavePayload {
-  collection: string
-  recordId: string
-  fieldName: string
-}
-
-// ============================================================================
-// Handler Context
-// ============================================================================
 
 /**
  * Context passed to handlers for accessing shared resources

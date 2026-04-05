@@ -50,7 +50,7 @@ import {
   MSG_ACK,
   MSG_LIST_SCHEMAS,
   MSG_RESUBSCRIBE,
-} from './constants'
+} from '@/shared/protocol/constants'
 
 // ============================================================================
 // Helpers

@@ -4,11 +4,12 @@ set -euo pipefail
 # Run local integration tests.
 #
 # Usage:
-#   ./scripts/test-local.sh                           # full scaffold + all tests
-#   ./scripts/test-local.sh --no-scaffold              # reuse existing app, reset DBs
-#   ./scripts/test-local.sh --no-scaffold --no-reset   # reuse everything, just run tests
-#   ./scripts/test-local.sh -- --grep "RBAC"           # pass args to playwright
-#   ./scripts/test-local.sh -- tests/rbac-anonymous.spec.ts  # run one file
+#   ./scripts/test-local.sh                             # scaffold with all features + run all tests
+#   ./scripts/test-local.sh --no-scaffold                # reuse existing app, reset DBs
+#   ./scripts/test-local.sh --no-scaffold --no-reset     # reuse everything, just run tests
+#   ./scripts/test-local.sh my-app                       # use a specific app name
+#   ./scripts/test-local.sh -- --grep "messaging"        # pass args to playwright
+#   ./scripts/test-local.sh -- tests/messaging.spec.ts   # run one file
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source "$ROOT/scripts/lib/helpers.sh"
@@ -42,9 +43,9 @@ trap cleanup EXIT
 
 echo "=== DeepSpace Local Tests (app: $APP_NAME) ==="
 
-# Scaffold
+# Scaffold with all features enabled
 if [ "$SCAFFOLD" = true ]; then
-  "$ROOT/scripts/lib/scaffold.sh" "$APP_NAME"
+  "$ROOT/scripts/lib/scaffold.sh" "$APP_NAME" --full
 elif [ ! -d "$APP_DIR" ]; then
   echo "✗ No app at $APP_DIR — run without --no-scaffold first"
   exit 1
