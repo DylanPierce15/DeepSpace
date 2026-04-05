@@ -342,11 +342,13 @@ function ScopeConnection({
     params.set('appId', appId)
 
     const url = `${baseUrl}${wsPathPrefix}/${roomId}?${params.toString()}`
+    console.log(`[ds:ws] connecting → ${roomId}`)
     const ws = new WebSocket(url)
     ws.binaryType = 'arraybuffer'
     wsRef.current = ws
 
     ws.onopen = () => {
+      console.log(`[ds:ws] connected → ${roomId}`)
       setStatus('connected')
       // Re-subscribe all active queries
       for (const [subscriptionId, queryKey] of subscriptionMapRef.current) {
@@ -360,6 +362,7 @@ function ScopeConnection({
     ws.onmessage = handleMessage
 
     ws.onclose = () => {
+      console.log(`[ds:ws] disconnected → ${roomId}`)
       setStatus('disconnected')
       setReady(false)
       wsRef.current = null

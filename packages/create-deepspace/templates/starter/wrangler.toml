@@ -8,7 +8,7 @@ directory = "dist"
 binding = "ASSETS"
 not_found_handling = "none"
 
-# App's own RecordRoom DO — schemas baked in at deploy time
+# App's own RecordRoom DO (local dev only — production uses deploy worker API)
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["AppRecordRoom"]

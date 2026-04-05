@@ -15,14 +15,19 @@ import { verifyJwt, verifyInternalSignature, RecordRoom, getGlobalDOSchemas } fr
 import type { JwtVerifierConfig, VerifiedAuth } from 'deepspace/worker'
 
 // =============================================================================
-// Global RecordRoom DO — schemas determined by scope prefix at construction
+// Global RecordRoom DO — all cross-app schemas baked in
 // =============================================================================
+
+/** All schemas for workspace, conversation, and directory scopes. */
+const GLOBAL_SCHEMAS = [
+  ...getGlobalDOSchemas('workspace'),
+  ...getGlobalDOSchemas('conv'),
+  ...getGlobalDOSchemas('dir'),
+]
 
 export class GlobalRecordRoom extends RecordRoom {
   constructor(state: DurableObjectState, env: Env) {
-    // Schemas will be loaded dynamically based on the scope prefix
-    // when the first connection arrives. Pass empty for now.
-    super(state, env, [])
+    super(state, env, GLOBAL_SCHEMAS)
   }
 }
 

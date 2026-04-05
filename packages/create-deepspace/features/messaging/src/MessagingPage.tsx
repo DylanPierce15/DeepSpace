@@ -1,15 +1,17 @@
 /**
- * MessagingPage — channel-based messaging for testing.
+ * MessagingPage — channel-based messaging.
  *
- * Create channels, send/edit/delete messages, toggle reactions.
- * All data-testid attributes are used by Playwright tests.
+ * Channel list lives in the app's main DO.
+ * Each channel's messages live in a separate DO (chat:{channelId}), loaded lazily.
  */
 
 import { useState } from 'react'
-import { useMessages, useChannels, useReactions, useChannelMembers } from 'deepspace'
+import { useMessages, useChannels, useReactions, useChannelMembers, RecordScope } from 'deepspace'
 import { useUser } from 'deepspace'
 import type { RecordData } from 'deepspace'
 import type { Channel, Message } from 'deepspace'
+import { schemas } from '../schemas'
+import { APP_NAME } from '../constants'
 
 function ChannelList({
   channels,
@@ -253,7 +255,14 @@ export function MessagingPage() {
       />
       <div className="flex-1 flex flex-col">
         {selectedChannelId ? (
-          <MessageFeed channelId={selectedChannelId} />
+          <RecordScope
+            key={selectedChannelId}
+            roomId={`chat:${selectedChannelId}`}
+            schemas={schemas}
+            appId={APP_NAME}
+          >
+            <MessageFeed channelId={selectedChannelId} />
+          </RecordScope>
         ) : (
           <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm" data-testid="no-channel-selected">
             Select or create a channel

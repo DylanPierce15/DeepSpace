@@ -8,11 +8,6 @@
 import type { CollectionSchema } from 'deepspace/worker'
 import {
   USERS_COLUMNS,
-  CHANNELS_SCHEMA,
-  MESSAGES_SCHEMA,
-  REACTIONS_SCHEMA,
-  CHANNEL_MEMBERS_SCHEMA,
-  READ_RECEIPTS_SCHEMA,
   ROLE_ANONYMOUS,
 } from 'deepspace/worker'
 import { settingsSchema } from './schemas/admin-schema'
@@ -48,9 +43,4 @@ export const schemas: CollectionSchema[] = [
   usersSchema,
   settingsSchema,
   itemsSchema,
-  CHANNELS_SCHEMA,
-  MESSAGES_SCHEMA,
-  REACTIONS_SCHEMA,
-  CHANNEL_MEMBERS_SCHEMA,
-  READ_RECEIPTS_SCHEMA,
 ]

@@ -2,26 +2,14 @@ import { useState, useEffect, type ReactNode } from 'react'
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom'
 import { DeepSpaceAuthProvider, useAuth, AuthOverlay, signOut } from 'deepspace'
 import { RecordProvider, RecordScope, useUser } from 'deepspace'
-import { getGlobalDOSchemas } from 'deepspace/worker'
-import type { CollectionSchema } from 'deepspace'
-import { APP_NAME, SCOPE_ID, SHARED_CONNECTIONS, ROLES, ROLE_CONFIG, type Role } from './constants'
+import { APP_NAME, SCOPE_ID, ROLES, ROLE_CONFIG, type Role } from './constants'
 import { schemas } from './schemas'
 import { HomePage } from './pages/HomePage'
 import { TestPage } from './pages/TestPage'
-import { MessagingPage } from './pages/MessagingPage'
 
 // ============================================================================
 // Shared scope config
 // ============================================================================
-
-const sharedScopes: Array<{ roomId: string; schemas: CollectionSchema[] }> =
-  SHARED_CONNECTIONS
-    .map((conn) => ({
-      roomId: `${conn.type}:${conn.instanceId ?? conn.type}`,
-      schemas: getGlobalDOSchemas(conn.type),
-    }))
-    .filter((s) => s.schemas.length > 0)
-
 // ============================================================================
 // Navigation
 // ============================================================================
@@ -42,7 +30,6 @@ function Navigation() {
   const navItems: Array<{ path: string; label: string }> = [
     { path: '/home', label: 'Home' },
     { path: '/test', label: 'Test' },
-    { path: '/messaging', label: 'Messaging' },
   ]
 
   return (
@@ -228,7 +215,6 @@ function AppShell() {
         roomId={SCOPE_ID}
         schemas={schemas}
         appId={APP_NAME}
-        sharedScopes={sharedScopes}
       >
         <div className="flex min-h-screen flex-col bg-background">
           <Navigation />
@@ -237,7 +223,6 @@ function AppShell() {
               <Route path="/" element={<Navigate to="/home" replace />} />
               <Route path="/home" element={<HomePage />} />
               <Route path="/test" element={<TestPage />} />
-              <Route path="/messaging" element={<MessagingPage />} />
               <Route path="*" element={<Navigate to="/home" replace />} />
             </Routes>
           </main>

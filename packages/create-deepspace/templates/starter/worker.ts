@@ -147,15 +147,11 @@ app.all('/api/auth/*', async (c) => {
 })
 
 // ---------------------------------------------------------------------------
-// WebSocket → route to app DO or platform worker by scope type
+// WebSocket → app's RecordRoom DOs (each roomId = separate DO instance)
 // ---------------------------------------------------------------------------
-
-/** Scopes handled by the app's own RecordRoom DO */
-const LOCAL_SCOPES = ['app:', 'workspace:']
 
 app.get('/ws/:roomId', async (c) => {
   const roomId = c.req.param('roomId')
-  const isLocal = LOCAL_SCOPES.some((prefix) => roomId.startsWith(prefix))
 
   // Authenticate (optional — anonymous connections get limited RBAC)
   const token = new URL(c.req.url).searchParams.get('token')
@@ -164,22 +160,15 @@ app.get('/ws/:roomId', async (c) => {
     auth = (await verifyJwt(jwtConfig(c.env), token)).result
   }
 
-  // Forward the request with auth info in URL params
+  console.log(`[ws] ${roomId} (user: ${auth?.userId ?? 'anon'})`)
+
   const doUrl = new URL(c.req.url)
-  if (auth) {
-    doUrl.searchParams.set('userId', auth.userId)
-  }
-  doUrl.searchParams.delete('token') // don't forward raw JWT to DO
+  if (auth) doUrl.searchParams.set('userId', auth.userId)
+  doUrl.searchParams.delete('token')
 
-  if (isLocal) {
-    // App-scoped data → app's own RecordRoom DO
-    const doId = c.env.RECORD_ROOMS.idFromName(roomId)
-    const stub = c.env.RECORD_ROOMS.get(doId)
-    return stub.fetch(new Request(doUrl.toString(), c.req.raw))
-  }
-
-  // Messaging/directory scopes (conv:*, dir:*) → platform worker
-  return c.env.PLATFORM_WORKER.fetch(new Request(doUrl.toString(), c.req.raw))
+  const doId = c.env.RECORD_ROOMS.idFromName(roomId)
+  const stub = c.env.RECORD_ROOMS.get(doId)
+  return stub.fetch(new Request(doUrl.toString(), c.req.raw))
 })
 
 // ---------------------------------------------------------------------------

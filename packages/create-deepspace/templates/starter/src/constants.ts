@@ -4,13 +4,6 @@ export const APP_NAME = '__APP_NAME__'
 /** Primary scope ID for the app's RecordRoom DO */
 export const SCOPE_ID = `app:${APP_NAME}`
 
-/** Shared scopes that mount as headless RecordScopes alongside the app scope */
-export const SHARED_CONNECTIONS: { type: string; instanceId?: string }[] = [
-  { type: 'workspace', instanceId: 'default' },
-  // Uncomment for conversation/community/post features:
-  // { type: 'dir', instanceId: APP_NAME },
-]
-
 /** Available roles in the app */
 export const ROLES = {
   VIEWER: 'viewer',
