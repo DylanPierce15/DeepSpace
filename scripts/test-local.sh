@@ -10,6 +10,7 @@ set -euo pipefail
 #   ./scripts/test-local.sh my-app                       # use a specific app name
 #   ./scripts/test-local.sh -- --grep "messaging"        # pass args to playwright
 #   ./scripts/test-local.sh -- tests/messaging.spec.ts   # run one file
+#   ./scripts/test-local.sh --keep-servers               # leave servers running after tests
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source "$ROOT/scripts/lib/helpers.sh"
@@ -18,11 +19,13 @@ source "$ROOT/scripts/lib/helpers.sh"
 APP_NAME="test-default"
 SCAFFOLD=true
 RESET=true
+KEEP_SERVERS=false
 PW_ARGS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --no-scaffold) SCAFFOLD=false; shift ;;
     --no-reset) RESET=false; shift ;;
+    --keep-servers) KEEP_SERVERS=true; shift ;;
     --) shift; PW_ARGS=("$@"); break ;;
     *) APP_NAME="$1"; shift ;;
   esac
@@ -32,6 +35,11 @@ APP_DIR="$ROOT/.test-apps/$APP_NAME"
 PIDS=()
 
 cleanup() {
+  if [ "$KEEP_SERVERS" = true ]; then
+    echo ""
+    echo "→ Servers left running (--keep-servers). Kill with: kill ${PIDS[*]+"${PIDS[*]}"}"
+    return
+  fi
   echo ""
   echo "→ Stopping services..."
   for pid in "${PIDS[@]+"${PIDS[@]}"}"; do

@@ -28,7 +28,7 @@ interface CanvasToolbarProps {
   onRedo: () => void
 }
 
-const tools: { id: CanvasTool; label: string; icon: JSX.Element }[] = [
+const tools: { id: CanvasTool; label: string; icon: React.ReactNode }[] = [
   {
     id: 'select',
     label: 'Select',

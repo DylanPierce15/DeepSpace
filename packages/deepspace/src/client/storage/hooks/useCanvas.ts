@@ -1,7 +1,7 @@
 /**
  * useCanvas — Connect to a CanvasRoom Durable Object.
  *
- * Opens a WebSocket to /canvas/:roomId for collaborative spatial editing.
+ * Opens a WebSocket to /ws/canvas/:roomId for collaborative spatial editing.
  *
  * @example
  * const { shapes, addShape, moveShape, deleteShape, viewports } = useCanvas('my-canvas')
@@ -86,7 +86,7 @@ export function useCanvas(roomId: string): UseCanvasResult {
       const token = await getAuthToken()
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
       const baseUrl = `${protocol}//${window.location.host}`
-      const url = new URL(`/canvas/${encodeURIComponent(roomId)}`, baseUrl)
+      const url = new URL(`/ws/canvas/${encodeURIComponent(roomId)}`, baseUrl)
       if (token) url.searchParams.set('token', token)
 
       ws = new WebSocket(url.toString())

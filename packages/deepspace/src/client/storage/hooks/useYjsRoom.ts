@@ -2,7 +2,7 @@
  * useYjsRoom — Connect to a dedicated YjsRoom Durable Object.
  *
  * Unlike useYjsField (which piggybacks on RecordRoom's WebSocket),
- * this hook opens a direct WebSocket to a YjsRoom DO at /yjs/:docId.
+ * this hook opens a direct WebSocket to a YjsRoom DO at /ws/yjs/:docId.
  * Each document gets its own DO for horizontal scaling.
  *
  * Uses the shared yjs-protocol.ts encoding — no duplication.
@@ -88,7 +88,7 @@ export function useYjsRoom(docId: string, fieldName: string): UseYjsRoomResult {
       const token = await getAuthToken()
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
       const baseUrl = `${protocol}//${window.location.host}`
-      const url = new URL(`/yjs/${encodeURIComponent(docId)}`, baseUrl)
+      const url = new URL(`/ws/yjs/${encodeURIComponent(docId)}`, baseUrl)
       if (token) url.searchParams.set('token', token)
 
       ws = new WebSocket(url.toString())

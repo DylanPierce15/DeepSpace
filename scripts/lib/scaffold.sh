@@ -4,20 +4,23 @@
 # Usage:
 #   ./scripts/lib/scaffold.sh <app-name>                   # bare starter + test-page
 #   ./scripts/lib/scaffold.sh <app-name> --with-messaging   # add messaging feature
+#   ./scripts/lib/scaffold.sh <app-name> --with-canvas      # add canvas feature
 #   ./scripts/lib/scaffold.sh <app-name> --full             # all test features
 
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-APP_NAME="${1:?Usage: scaffold.sh <app-name> [--with-messaging] [--full]}"
+APP_NAME="${1:?Usage: scaffold.sh <app-name> [--with-messaging] [--with-canvas] [--full]}"
 shift
 APP_DIR="$ROOT/.test-apps/$APP_NAME"
 
 # Parse feature flags
 WITH_MESSAGING=false
+WITH_CANVAS=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --with-messaging) WITH_MESSAGING=true; shift ;;
-    --full) WITH_MESSAGING=true; shift ;;
+    --with-canvas) WITH_CANVAS=true; shift ;;
+    --full) WITH_MESSAGING=true; WITH_CANVAS=true; shift ;;
     *) shift ;;
   esac
 done
@@ -55,6 +58,11 @@ fi
 # Install messaging if requested
 if [ "$WITH_MESSAGING" = true ]; then
   "$ROOT/scripts/lib/install-feature.sh" "$APP_DIR" "messaging"
+fi
+
+# Install canvas if requested
+if [ "$WITH_CANVAS" = true ]; then
+  "$ROOT/scripts/lib/install-feature.sh" "$APP_DIR" "canvas"
 fi
 
 echo ""

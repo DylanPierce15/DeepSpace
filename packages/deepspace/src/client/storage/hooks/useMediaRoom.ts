@@ -1,7 +1,7 @@
 /**
  * useMediaRoom — Connect to a MediaRoom Durable Object for WebRTC signaling.
  *
- * Opens a WebSocket to /media/:roomId for peer-to-peer media connections.
+ * Opens a WebSocket to /ws/media/:roomId for peer-to-peer media connections.
  * Handles SDP offer/answer exchange and ICE candidate relay.
  *
  * @example
@@ -71,7 +71,7 @@ export function useMediaRoom(roomId: string): UseMediaRoomResult {
       const token = await getAuthToken()
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
       const baseUrl = `${protocol}//${window.location.host}`
-      const url = new URL(`/media/${encodeURIComponent(roomId)}`, baseUrl)
+      const url = new URL(`/ws/media/${encodeURIComponent(roomId)}`, baseUrl)
       if (token) url.searchParams.set('token', token)
 
       ws = new WebSocket(url.toString())

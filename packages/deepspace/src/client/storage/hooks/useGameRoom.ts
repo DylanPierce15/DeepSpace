@@ -1,7 +1,7 @@
 /**
  * useGameRoom — Connect to a GameRoom Durable Object.
  *
- * Opens a WebSocket to /game/:roomId for real-time game state.
+ * Opens a WebSocket to /ws/game/:roomId for real-time game state.
  *
  * @example
  * const { state, sendInput, players, connected } = useGameRoom('my-game')
@@ -68,7 +68,7 @@ export function useGameRoom(roomId: string): UseGameRoomResult {
       const token = await getAuthToken()
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
       const baseUrl = `${protocol}//${window.location.host}`
-      const url = new URL(`/game/${encodeURIComponent(roomId)}`, baseUrl)
+      const url = new URL(`/ws/game/${encodeURIComponent(roomId)}`, baseUrl)
       if (token) url.searchParams.set('token', token)
 
       ws = new WebSocket(url.toString())
