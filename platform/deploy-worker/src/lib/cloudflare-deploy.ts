@@ -186,6 +186,7 @@ export async function deployToWfP(
       main_module: 'index.js',
       compatibility_date: '2025-01-01',
       compatibility_flags: ['nodejs_compat'],
+      tags: [`user-${bindings.ownerUserId}`],
       ...(needsMigration && {
         migrations: {
           tag: migrationTag,

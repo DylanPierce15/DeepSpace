@@ -8,6 +8,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import deployRoutes from './routes/deploy'
+import appsRoutes from './routes/apps'
 
 export type Env = {
   Bindings: {
@@ -43,6 +44,7 @@ app.get('/api/health', (c) =>
 )
 
 app.route('/api/deploy', deployRoutes)
+app.route('/api/apps', appsRoutes)
 
 app.notFound((c) => c.json({ error: 'Not found' }, 404))
 app.onError((err, c) => {

@@ -10,6 +10,7 @@ import type { JwtClaims } from 'deepspace/worker'
 import stripeRoutes from './routes/stripe'
 import usersRoutes from './routes/users'
 import integrationsRoutes from './routes/integrations'
+import usageRoutes from './routes/usage'
 
 // ============================================================================
 // Env type — Cloudflare bindings + Hono variables
@@ -94,6 +95,7 @@ app.get('/api/health', (c) =>
 app.route('/api/stripe', stripeRoutes)
 app.route('/api/users', usersRoutes)
 app.route('/api/integrations', integrationsRoutes)
+app.route('/api/usage', usageRoutes)
 
 // 404 fallback
 app.notFound((c) => c.json({ error: 'Not found' }, 404))

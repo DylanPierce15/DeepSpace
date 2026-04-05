@@ -21,11 +21,6 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
-      '/yjs': {
-        target: 'http://localhost:8780',
-        changeOrigin: true,
-        ws: true,
-      },
     },
   },
 })

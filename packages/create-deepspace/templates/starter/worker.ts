@@ -21,7 +21,7 @@ import {
   signInternalPayload,
 } from 'deepspace/worker'
 import type { JwtVerifierConfig, VerifyResult } from 'deepspace/worker'
-import { RecordRoom, YjsRoom, createScopedR2Handler, type ScopedR2Handler } from 'deepspace/worker'
+import { RecordRoom, createScopedR2Handler, type ScopedR2Handler } from 'deepspace/worker'
 import type { ActionTools, ActionResult, DOManifest, DOBindings } from 'deepspace/worker'
 import { actions } from './src/actions/index.js'
 import { handleCron } from './src/cron.js'
@@ -33,7 +33,6 @@ import { schemas } from './src/schemas.js'
 
 export const __DO_MANIFEST__ = [
   { binding: 'RECORD_ROOMS', className: 'AppRecordRoom', sqlite: true },
-  { binding: 'YJS_ROOMS', className: 'AppYjsRoom', sqlite: true },
 ] as const satisfies DOManifest
 
 // =============================================================================
@@ -45,9 +44,6 @@ export class AppRecordRoom extends RecordRoom {
     super(state, env, schemas, { ownerUserId: env.OWNER_USER_ID })
   }
 }
-
-export class AppYjsRoom extends YjsRoom {}
-
 
 // =============================================================================
 // Types
@@ -179,34 +175,6 @@ app.get('/ws/:roomId', async (c) => {
 
   const doId = c.env.RECORD_ROOMS.idFromName(roomId)
   const stub = c.env.RECORD_ROOMS.get(doId)
-  return stub.fetch(new Request(doUrl.toString(), c.req.raw))
-})
-
-// ---------------------------------------------------------------------------
-// WebSocket → YjsRoom DOs (one DO per collaborative document)
-// ---------------------------------------------------------------------------
-
-app.get('/yjs/:docId', async (c) => {
-  const docId = c.req.param('docId')
-
-  const token = new URL(c.req.url).searchParams.get('token')
-  let auth: VerifyResult | null = null
-  if (token) {
-    auth = (await verifyJwt(jwtConfig(c.env), token)).result
-  }
-
-  console.log(`[yjs] doc:${docId} (user: ${auth?.userId ?? 'anon'})`)
-
-  // Auth verified at edge — pass userId + role to the DO
-  const doUrl = new URL(c.req.url)
-  if (auth) {
-    doUrl.searchParams.set('userId', auth.userId)
-    doUrl.searchParams.set('role', 'member') // Authenticated users get member role
-  }
-  doUrl.searchParams.delete('token')
-
-  const doId = c.env.YJS_ROOMS.idFromName(docId)
-  const stub = c.env.YJS_ROOMS.get(doId)
   return stub.fetch(new Request(doUrl.toString(), c.req.raw))
 })
 

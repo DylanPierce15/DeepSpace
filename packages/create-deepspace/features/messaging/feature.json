@@ -1,0 +1,48 @@
+{
+  "id": "messaging",
+  "name": "Messaging",
+  "category": "data",
+  "description": "Real-time chat with channels, threads, reactions, and multi-channel support",
+  "details": "Complete messaging system with single-channel chat (ChatPage) and multi-channel Slack-like interface (ChatMultiPage). Includes message threads, reactions, read receipts, user profile popovers, channel management (create, browse, settings), DMs, invitations, and member management. Uses SDK messaging hooks (useChannels, useMessages, useReadReceipts).",
+  "files": [
+    { "src": "src/messaging-schema.ts", "dest": "src/features/messaging/messaging-schema.ts" },
+    { "src": "src/ChatPage.tsx", "dest": "src/features/messaging/ChatPage.tsx" },
+    { "src": "src/ChatMultiPage.tsx", "dest": "src/features/messaging/ChatMultiPage.tsx" },
+    { "src": "src/hooks/useChatChannel.ts", "dest": "src/features/messaging/hooks/useChatChannel.ts" },
+    { "src": "src/hooks/useLongPress.ts", "dest": "src/features/messaging/hooks/useLongPress.ts" },
+    { "src": "src/hooks/useMultiChannel.ts", "dest": "src/features/messaging/hooks/useMultiChannel.ts" },
+    { "src": "src/components/chat/ChatHeader.tsx", "dest": "src/features/messaging/components/chat/ChatHeader.tsx" },
+    { "src": "src/components/chat/MessageList.tsx", "dest": "src/features/messaging/components/chat/MessageList.tsx" },
+    { "src": "src/components/chat/MessageInput.tsx", "dest": "src/features/messaging/components/chat/MessageInput.tsx" },
+    { "src": "src/components/chat/MessageItem.tsx", "dest": "src/features/messaging/components/chat/MessageItem.tsx" },
+    { "src": "src/components/chat/ThreadPanel.tsx", "dest": "src/features/messaging/components/chat/ThreadPanel.tsx" },
+    { "src": "src/components/chat/UserProfilePopover.tsx", "dest": "src/features/messaging/components/chat/UserProfilePopover.tsx" },
+    { "src": "src/components/chat/MessageActionSheet.tsx", "dest": "src/features/messaging/components/chat/MessageActionSheet.tsx" },
+    { "src": "src/components/chat/ReactionPicker.tsx", "dest": "src/features/messaging/components/chat/ReactionPicker.tsx" },
+    { "src": "src/components/chat-multi/ChannelSidebar.tsx", "dest": "src/features/messaging/components/chat-multi/ChannelSidebar.tsx" },
+    { "src": "src/components/chat-multi/ChannelListItem.tsx", "dest": "src/features/messaging/components/chat-multi/ChannelListItem.tsx" },
+    { "src": "src/components/chat-multi/CreateGroupModal.tsx", "dest": "src/features/messaging/components/chat-multi/CreateGroupModal.tsx" },
+    { "src": "src/components/chat-multi/NewMessageModal.tsx", "dest": "src/features/messaging/components/chat-multi/NewMessageModal.tsx" },
+    { "src": "src/components/chat-multi/BrowseGroupsModal.tsx", "dest": "src/features/messaging/components/chat-multi/BrowseGroupsModal.tsx" },
+    { "src": "src/components/chat-multi/ChannelSettingsPanel.tsx", "dest": "src/features/messaging/components/chat-multi/ChannelSettingsPanel.tsx" },
+    { "src": "src/components/chat-multi/AddMemberModal.tsx", "dest": "src/features/messaging/components/chat-multi/AddMemberModal.tsx" },
+    { "src": "src/components/chat-multi/InvitationList.tsx", "dest": "src/features/messaging/components/chat-multi/InvitationList.tsx" }
+  ],
+  "schema": {
+    "exportName": "messagingSchemas",
+    "importPath": "./features/messaging/messaging-schema",
+    "spreadOperator": true
+  },
+  "route": {
+    "path": "/chat",
+    "component": "ChatPage",
+    "importPath": "./features/messaging/ChatPage",
+    "protected": true
+  },
+  "requires": [],
+  "instructions": [
+    "All files are co-located under src/features/messaging/ so relative imports within the feature work as-is",
+    "Optionally add a second route for /chat-multi -> ChatMultiPage"
+  ],
+  "patterns": []
+}

@@ -2,13 +2,7 @@
  * Page Registry
  *
  * Add one line per page. App.tsx reads this to generate routes and nav items.
- * Features installed via add-feature.cjs append lines here automatically.
- *
- * Format: { path, label, component, roles? }
- *   - path: URL path (e.g., '/items')
- *   - label: Nav bar label (e.g., 'Items'). Set to null to hide from nav.
- *   - component: Lazy-loaded React component
- *   - roles: Optional array of roles that can access this page (admin-only, etc.)
+ * Features installed via add-feature append entries here automatically.
  */
 
 import { lazy } from 'react'

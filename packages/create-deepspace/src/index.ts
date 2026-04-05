@@ -13,7 +13,7 @@
  *   create-deepspace my-app --local /path/to/deepspace-sdk
  */
 
-import { existsSync, readdirSync, readFileSync, writeFileSync, cpSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, cpSync } from 'node:fs'
 import { join, resolve, dirname, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execSync } from 'node:child_process'
@@ -21,6 +21,7 @@ import * as p from '@clack/prompts'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const TEMPLATES_DIR = join(__dirname, '..', 'templates')
+const FEATURES_DIR = join(__dirname, '..', 'features')
 
 function parseArgs(argv: string[]): { appName?: string; local?: string } {
   let appName: string | undefined
@@ -137,6 +138,26 @@ async function main() {
   writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
   if (!args.local) s.stop('Project configured')
 
+  // Copy features & add-feature script
+  if (existsSync(FEATURES_DIR)) {
+    s.start('Copying features')
+    const deepspaceDir = join(appDir, '.deepspace')
+    const featuresDir = join(deepspaceDir, 'features')
+    const scriptsDir = join(deepspaceDir, 'scripts')
+    mkdirSync(deepspaceDir, { recursive: true })
+    mkdirSync(scriptsDir, { recursive: true })
+    cpSync(FEATURES_DIR, featuresDir, {
+      recursive: true,
+      filter: (src) => !src.includes('/tests/') && !src.endsWith('/tests'),
+    })
+    const addFeatureScript = join(__dirname, '..', 'scripts', 'add-feature.cjs')
+    if (existsSync(addFeatureScript)) {
+      cpSync(addFeatureScript, join(scriptsDir, 'add-feature.cjs'))
+    }
+    writeFileSync(join(deepspaceDir, '.gitignore'), '*\n')
+    s.stop('Features ready')
+  }
+
   // Install dependencies
   s.start('Installing dependencies')
   try {
@@ -152,9 +173,9 @@ async function main() {
       'npx deepspace login',
       'npx deepspace deploy',
       '',
-      'Add features by importing from the SDK:',
-      "  import { ChatPage, messagingSchemas } from 'deepspace'",
-      "  import { ItemsPage, itemsSchema } from 'deepspace'",
+      'Add features:',
+      '  node .deepspace/scripts/add-feature.cjs --list',
+      '  node .deepspace/scripts/add-feature.cjs messaging .',
     ].join('\n'),
     'Next steps',
   )

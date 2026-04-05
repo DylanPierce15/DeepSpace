@@ -19,9 +19,7 @@
     }
   },
   "files": [
-    "dist",
-    "src/features",
-    "src/ui"
+    "dist"
   ],
   "scripts": {
     "build": "tsup",
