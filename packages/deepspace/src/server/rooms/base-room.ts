@@ -84,11 +84,14 @@ export abstract class BaseRoom {
 
     this.state.acceptWebSocket(server)
 
+    const role = url.searchParams.get('role') || undefined
+
     const attachment: UserAttachment = {
       userId: userId ?? `anon-${crypto.randomUUID()}`,
       userName,
       userEmail,
       userImageUrl,
+      role,
     }
 
     // Let subclass augment the attachment and perform setup
