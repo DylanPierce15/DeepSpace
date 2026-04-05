@@ -390,6 +390,7 @@ function ScopeConnection({
     }
     const ws = wsRef.current
     if (ws) {
+      console.log(`[ds:ws] closing → ${roomId}`)
       ws.onclose = null
       ws.onmessage = null
       ws.onerror = null
@@ -399,7 +400,7 @@ function ScopeConnection({
     setStatus('connecting')
     setReady(false)
     reconnectAttemptRef.current = 0
-  }, [])
+  }, [roomId])
 
   // ── Auth identity change → disconnect and reconnect ──────────────────
   // Fires when: sign-in, sign-out, account switch, or initial load completes.
