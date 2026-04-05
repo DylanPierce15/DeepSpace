@@ -1,0 +1,42 @@
+name = "collab-docs"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+main = "worker.ts"
+
+[assets]
+directory = "dist"
+binding = "ASSETS"
+not_found_handling = "none"
+
+# App's own RecordRoom DO (local dev only — production uses deploy worker API)
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["AppRecordRoom"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["AppYjsRoom"]
+
+[durable_objects]
+bindings = [
+  { name = "RECORD_ROOMS", class_name = "AppRecordRoom" },
+  { name = "YJS_ROOMS", class_name = "AppYjsRoom" },
+]
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "collab-docs-files"
+
+[vars]
+APP_NAME = "collab-docs"
+
+[dev]
+port = 8780
+inspector_port = 9237
+
+# Secrets (set via `wrangler secret put`):
+#   AUTH_JWT_PUBLIC_KEY
+#   AUTH_JWT_ISSUER
+#   AUTH_WORKER_URL
+#   OWNER_USER_ID
+#   INTERNAL_STORAGE_HMAC_SECRET

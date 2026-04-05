@@ -76,9 +76,13 @@ export async function deployToWfP(
     let needsMigration = true
     if (bindingsRes.ok) {
       const bindingsData = (await bindingsRes.json()) as { result?: Array<{ type: string; name: string }> }
-      needsMigration = !bindingsData.result?.some(
+      const hasRecordRooms = bindingsData.result?.some(
         (b) => b.type === 'durable_object_namespace' && b.name === 'RECORD_ROOMS',
       )
+      const hasYjsRooms = bindingsData.result?.some(
+        (b) => b.type === 'durable_object_namespace' && b.name === 'YJS_ROOMS',
+      )
+      needsMigration = !hasRecordRooms || !hasYjsRooms
     }
 
     // ── Step 1: Create asset upload session ─────────────────────
@@ -157,7 +161,10 @@ export async function deployToWfP(
       compatibility_date: '2025-01-01',
       compatibility_flags: ['nodejs_compat'],
       ...(needsMigration && {
-        migrations: { tag: 'v1', new_sqlite_classes: ['AppRecordRoom'] },
+        migrations: {
+          tag: 'v2',
+          new_sqlite_classes: ['AppRecordRoom', 'AppYjsRoom'],
+        },
       }),
       assets: {
         jwt: completionToken,
@@ -168,6 +175,7 @@ export async function deployToWfP(
       bindings: [
         { type: 'assets', name: 'ASSETS' },
         { type: 'durable_object_namespace', name: 'RECORD_ROOMS', class_name: 'AppRecordRoom' },
+        { type: 'durable_object_namespace', name: 'YJS_ROOMS', class_name: 'AppYjsRoom' },
         { type: 'r2_bucket', name: 'FILES', bucket_name: 'deepspace-user-files' },
         { type: 'service', name: 'PLATFORM_WORKER', service: 'deepspace-platform-worker' },
         { type: 'plain_text', name: 'APP_NAME', text: bindings.appName },

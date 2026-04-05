@@ -4,13 +4,24 @@
 
 import { expect, type Page } from '@playwright/test'
 
-/** Sign in via the nav bar auth overlay. */
-export async function signIn(page: Page) {
+const USER_1 = {
+  email: 'local-test@deepspace.test',
+  password: 'LocalTestPass123!',
+}
+
+const USER_2 = {
+  email: 'local-test-2@deepspace.test',
+  password: 'LocalTestPass456!',
+}
+
+/** Sign in via the nav bar auth overlay. Defaults to user 1. */
+export async function signIn(page: Page, user: 1 | 2 = 1) {
+  const creds = user === 1 ? USER_1 : USER_2
   await page.locator('[data-testid="nav-sign-in-button"]').click()
   const overlay = page.locator('[data-testid="auth-overlay"]')
   await expect(overlay).toBeVisible({ timeout: 5_000 })
-  await overlay.locator('input[type="email"]').fill('local-test@deepspace.test')
-  await overlay.locator('input[type="password"]').fill('LocalTestPass123!')
+  await overlay.locator('input[type="email"]').fill(creds.email)
+  await overlay.locator('input[type="password"]').fill(creds.password)
   await overlay.locator('button[type="submit"]').click()
   await expect(overlay).not.toBeVisible({ timeout: 15_000 })
 }

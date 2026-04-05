@@ -5,6 +5,7 @@
  */
 
 import type { IntegrationHandler, BillingConfig } from './_types'
+import { endpoints as amazon } from './amazon'
 import { endpoints as anthropic } from './anthropic'
 import { endpoints as cloudconvert } from './cloudconvert'
 import { endpoints as elevenlabs } from './elevenlabs'
@@ -32,10 +33,12 @@ import { endpoints as speech } from './speech'
 import { endpoints as sports } from './sports'
 import { endpoints as submagic } from './submagic'
 import { endpoints as tiktok } from './tiktok'
+import { endpoints as websearch } from './websearch'
 import { endpoints as wikipedia } from './wikipedia'
 import { endpoints as youtube } from './youtube'
 
 const ALL_ENDPOINTS = {
+  ...amazon,
   ...anthropic,
   ...cloudconvert,
   ...elevenlabs,
@@ -63,6 +66,7 @@ const ALL_ENDPOINTS = {
   ...sports,
   ...submagic,
   ...tiktok,
+  ...websearch,
   ...wikipedia,
   ...youtube,
 }

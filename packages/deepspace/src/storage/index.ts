@@ -25,6 +25,9 @@ export {
 export { useUserLookup, type UserInfo } from './hooks/useUserLookup'
 export { usePresence } from './hooks/usePresence'
 
+// Dedicated YjsRoom hook (direct WebSocket to YjsRoom DO)
+export { useYjsRoom, type UseYjsRoomResult } from './hooks/useYjsRoom'
+
 // Connection status
 export { type ConnectionStatus, toConnectionStatus } from './connection-status'
 

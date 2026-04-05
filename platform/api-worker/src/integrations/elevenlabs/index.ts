@@ -1,6 +1,6 @@
 /**
- * ElevenLabs integration — text-to-speech and voice listing.
- * Ported from Miyagi3 ElevenLabsTextToSpeechService.ts.
+ * ElevenLabs integration — text-to-speech, voice listing, and conversational AI.
+ * Ported from Miyagi3 ElevenLabsTextToSpeechService.ts and ElevenLabsConversationService.ts.
  */
 
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
@@ -143,6 +143,120 @@ const generateSpeech: IntegrationHandler = async (env, body) => {
 }
 
 // ============================================================================
+// create-agent — POST /v1/convai/agents/create
+// ============================================================================
+
+const createAgent: IntegrationHandler = async (env, body) => {
+  if (!env.ELEVENLABS_API_KEY) throw new Error('ELEVENLABS_API_KEY not configured')
+
+  const name = body.name as string
+  if (!name) throw new Error('name is required')
+  const prompt = body.prompt as string
+  if (!prompt) throw new Error('prompt is required')
+  const firstMessage = body.firstMessage as string
+  if (!firstMessage) throw new Error('firstMessage is required')
+
+  const voiceId = String(body.voiceId || DEFAULT_VOICE_ID)
+  const language = (body.language as string) || 'en'
+  const clientTools = body.clientTools as Array<{
+    name: string
+    description: string
+    parameters: Record<string, { type: string; description: string; required?: boolean }>
+    wait_for_response?: boolean
+  }> | undefined
+
+  // Build tools array
+  const tools: Array<Record<string, unknown>> = [
+    { type: 'system', name: 'language_detection', description: '' },
+  ]
+
+  if (clientTools) {
+    for (const tool of clientTools) {
+      const properties: Record<string, { type: string; description: string }> = {}
+      const required: string[] = []
+      for (const [key, param] of Object.entries(tool.parameters)) {
+        properties[key] = { type: param.type, description: param.description }
+        if (param.required) required.push(key)
+      }
+      tools.push({
+        type: 'client',
+        name: tool.name,
+        description: tool.description,
+        parameters: { type: 'object', properties, required },
+        wait_for_response: tool.wait_for_response ?? false,
+      })
+    }
+  }
+
+  const requestBody = {
+    name,
+    conversation_config: {
+      agent: {
+        prompt: {
+          prompt,
+          first_message: firstMessage,
+          llm: (body.llm as string) || 'gemini-2.0-flash-001',
+          temperature: 0.7,
+          tools,
+        },
+        language,
+      },
+      tts: {
+        model_id: (body.model as string) || 'eleven_turbo_v2',
+        voice_id: voiceId,
+      },
+      turn: {
+        turn_timeout: 10,
+        silence_end_call_timeout: 120,
+      },
+    },
+  }
+
+  const response = await fetch(
+    `${ELEVENLABS_API_BASE}/convai/agents/create`,
+    {
+      method: 'POST',
+      headers: elevenlabsHeaders(env.ELEVENLABS_API_KEY),
+      body: JSON.stringify(requestBody),
+    },
+  )
+
+  if (!response.ok) {
+    const errorBody = await response.text()
+    throw new Error(`ElevenLabs API error ${response.status}: ${errorBody}`)
+  }
+
+  const data = (await response.json()) as { agent_id: string }
+  return { agent_id: data.agent_id }
+}
+
+// ============================================================================
+// get-signed-url — GET /v1/convai/conversation/get-signed-url
+// ============================================================================
+
+const getSignedUrl: IntegrationHandler = async (env, body) => {
+  if (!env.ELEVENLABS_API_KEY) throw new Error('ELEVENLABS_API_KEY not configured')
+
+  const agent_id = body.agent_id as string
+  if (!agent_id) throw new Error('agent_id is required')
+
+  const response = await fetch(
+    `${ELEVENLABS_API_BASE}/convai/conversation/get-signed-url?agent_id=${encodeURIComponent(agent_id)}`,
+    {
+      headers: { 'xi-api-key': env.ELEVENLABS_API_KEY },
+    },
+  )
+
+  if (!response.ok) {
+    const errorBody = await response.text()
+    throw new Error(`ElevenLabs API error ${response.status}: ${errorBody}`)
+  }
+
+  const data = (await response.json()) as { signed_url: string }
+  return { signed_url: data.signed_url }
+}
+
+// ============================================================================
 // Exports
 // ============================================================================
 
@@ -154,5 +268,13 @@ export const endpoints: Record<string, EndpointDefinition> = {
   'elevenlabs/generate-speech': {
     handler: generateSpeech,
     billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+  },
+  'elevenlabs/create-agent': {
+    handler: createAgent,
+    billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+  },
+  'elevenlabs/get-signed-url': {
+    handler: getSignedUrl,
+    billing: { model: 'per_request', baseCost: 0.001, currency: 'USD' },
   },
 }

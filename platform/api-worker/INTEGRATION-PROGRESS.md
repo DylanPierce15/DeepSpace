@@ -48,3 +48,7 @@
 
 ## Obstacles
 - **YOUTUBE_API_KEY** — key in Doppler is invalid (API_KEY_INVALID). Handler code is correct. Tests force-skipped until key is rotated.
+- **API_SPORTS_KEY** — API-Sports account is suspended. Tests force-skipped until account is reactivated.
+- **ElevenLabs create-agent** — Conversational AI agent creation fails with model validation error. May require specific account tier. Test skipped.
+- **DocumentTextExtractionService** — Skipped. Depends on pdf-parse and mammoth (Node.js-only libs).
+- **BookingCalendarService** — Skipped. Internal service that reads stored OAuth tokens from DB. Already covered by google/calendar-create-event.

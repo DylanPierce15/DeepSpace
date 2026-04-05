@@ -10,11 +10,9 @@
  */
 
 import { useState, useMemo, useCallback } from 'react'
-import { useUser, useUsers, useTeams, useQuery, useMutations, useYjsText, RecordScope } from 'deepspace'
+import { useUser, useUsers, useTeams, useQuery, useMutations, useYjsRoom } from 'deepspace'
 import { Button, Modal, Badge, Avatar, EmptyState } from '../components/ui'
 import { ROLES, type Role } from '../constants'
-import { schemas } from '../schemas'
-import { APP_NAME } from '../constants'
 
 // ============================================================================
 // Types
@@ -79,8 +77,8 @@ interface DocumentEditorProps {
 }
 
 function DocumentEditor({ documentId, title }: DocumentEditorProps) {
-  // useYjsText provides real-time collaborative text editing
-  const { text, setText, synced, canWrite } = useYjsText('team-docs', documentId, 'content')
+  // useYjsRoom provides real-time collaborative text editing via dedicated YjsRoom DO
+  const { text, setText, synced, canWrite } = useYjsRoom(documentId, 'content')
 
   return (
     <div className="bg-muted/40 rounded-xl border border-border overflow-hidden">
@@ -275,17 +273,11 @@ function TeamDetail({ teamId, onBack }: TeamDetailProps) {
             <p className="text-muted-foreground text-sm text-center py-4">No documents yet. Create one above!</p>
           ) : (
             documents.map(doc => (
-              <RecordScope
+              <DocumentEditor
                 key={doc.recordId}
-                roomId={`doc:${doc.recordId}`}
-                schemas={schemas}
-                appId={APP_NAME}
-              >
-                <DocumentEditor
-                  documentId={doc.recordId}
-                  title={doc.data.title}
-                />
-              </RecordScope>
+                documentId={doc.recordId}
+                title={doc.data.title}
+              />
             ))
           )}
         </div>

@@ -171,7 +171,7 @@ export async function handleYjsJoin(
       record = getRecord(ctx.sql, collection, recordId, schema)
     }
   } else {
-    // Regular collections: require schema
+    // Regular collections: require schema and record
     if (!schema) {
       ctx.send(ws, { type: MSG_ERROR, payload: { error: `Schema not registered for collection: ${collection}` } })
       return

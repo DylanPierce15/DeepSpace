@@ -39,6 +39,7 @@ export * from './app-presets'
 export * from './linked-ref'
 export { type CronContext, buildCronContext } from './cron'
 export { RecordRoom, type RecordRoomConfig } from './record-room'
+export { YjsRoom } from './yjs-room'
 
 // System collections and legacy storage constants
 export { SYSTEM_COLLECTIONS, LEGACY_STORAGE_COLLECTION, LEGACY_STORAGE_FIELD } from './handlers/yjs'

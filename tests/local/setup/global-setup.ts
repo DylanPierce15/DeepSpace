@@ -19,6 +19,12 @@ const TEST_USER = {
   name: 'Local Test User',
 }
 
+const TEST_USER_2 = {
+  email: 'local-test-2@deepspace.test',
+  password: 'LocalTestPass456!',
+  name: 'Second Test User',
+}
+
 const STATE_PATH = resolve(import.meta.dirname, '../.auth-state.json')
 
 async function waitForService(url: string, name: string, timeoutMs = 15_000) {
@@ -49,38 +55,40 @@ function extractCookieHeader(res: Response): string {
     .join('; ')
 }
 
-async function ensureTestUser(): Promise<{ sessionToken: string; jwt: string; userId: string }> {
+async function ensureUser(
+  creds: { email: string; password: string; name: string }
+): Promise<{ sessionToken: string; jwt: string; userId: string }> {
   // Try sign-up
   let res = await fetch(`${AUTH_URL}/api/auth/sign-up/email`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Origin: AUTH_URL },
-    body: JSON.stringify(TEST_USER),
+    body: JSON.stringify(creds),
     redirect: 'manual',
   })
 
   if (!res.ok) {
     const signUpError = await res.clone().text()
-    console.log(`[local] Sign-up returned ${res.status}: ${signUpError}`)
+    console.log(`[local] Sign-up returned ${res.status} for ${creds.email}: ${signUpError}`)
     // User exists — sign in
     res = await fetch(`${AUTH_URL}/api/auth/sign-in/email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Origin: AUTH_URL },
-      body: JSON.stringify({ email: TEST_USER.email, password: TEST_USER.password }),
+      body: JSON.stringify({ email: creds.email, password: creds.password }),
       redirect: 'manual',
     })
   }
 
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`Auth failed: ${res.status} ${text}`)
+    throw new Error(`Auth failed for ${creds.email}: ${res.status} ${text}`)
   }
 
   const body = (await res.json()) as { user?: { id: string } }
-  if (!body.user?.id) throw new Error('No user ID in auth response')
+  if (!body.user?.id) throw new Error(`No user ID in auth response for ${creds.email}`)
 
   // Forward the raw session cookies to the token endpoint
   const cookieHeader = extractCookieHeader(res)
-  if (!cookieHeader) throw new Error('No session cookie in auth response')
+  if (!cookieHeader) throw new Error(`No session cookie for ${creds.email}`)
 
   const tokenRes = await fetch(`${AUTH_URL}/api/auth/token`, {
     method: 'POST',
@@ -89,11 +97,11 @@ async function ensureTestUser(): Promise<{ sessionToken: string; jwt: string; us
 
   if (!tokenRes.ok) {
     const text = await tokenRes.text()
-    throw new Error(`Failed to get JWT: ${tokenRes.status} ${text}`)
+    throw new Error(`Failed to get JWT for ${creds.email}: ${tokenRes.status} ${text}`)
   }
 
   const tokenBody = (await tokenRes.json()) as { token?: string }
-  if (!tokenBody.token) throw new Error('No token in JWT response')
+  if (!tokenBody.token) throw new Error(`No token for ${creds.email}`)
 
   return { sessionToken: cookieHeader, jwt: tokenBody.token, userId: body.user.id }
 }
@@ -116,8 +124,12 @@ export default async function globalSetup() {
   console.log('[local] Running auth DB migration...')
   await migrateAuthDb()
 
-  console.log('[local] Ensuring test user...')
-  const auth = await ensureTestUser()
-  console.log(`[local] Authenticated as ${auth.userId}`)
-  writeFileSync(STATE_PATH, JSON.stringify(auth))
+  console.log('[local] Ensuring test users...')
+  const auth = await ensureUser(TEST_USER)
+  console.log(`[local] User 1 authenticated as ${auth.userId}`)
+
+  const auth2 = await ensureUser(TEST_USER_2)
+  console.log(`[local] User 2 authenticated as ${auth2.userId}`)
+
+  writeFileSync(STATE_PATH, JSON.stringify({ user1: auth, user2: auth2 }))
 }
