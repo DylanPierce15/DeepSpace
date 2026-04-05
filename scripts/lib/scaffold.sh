@@ -30,8 +30,11 @@ if [ -d "$APP_DIR" ]; then
   rm -rf "$APP_DIR"
 fi
 
-# Build
+# Build (always rebuilds to ensure dist/ is fresh before npm pack)
 "$ROOT/scripts/lib/build.sh"
+
+# Delete any stale tarballs so npm pack creates a fresh one
+rm -f "$ROOT/.test-apps"/deepspace-*.tgz 2>/dev/null || true
 
 # Scaffold
 cd "$ROOT/.test-apps"

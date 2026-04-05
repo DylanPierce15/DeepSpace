@@ -234,9 +234,9 @@ export function MessageItem({
         ) : (
           <p className="text-sm text-foreground/90 whitespace-pre-wrap break-words leading-relaxed" data-testid="message-content">
             {message.data.content}
-            {message.data.edited && (
+            {message.data.edited ? (
               <span className="text-[10px] ml-1.5 text-muted-foreground italic">(edited)</span>
-            )}
+            ) : null}
           </p>
         )}
 

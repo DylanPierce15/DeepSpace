@@ -185,9 +185,9 @@ function ProtectedRoute({ children, allowedRoles }: { children: ReactNode; allow
 
 export default function App() {
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex h-screen flex-col bg-background overflow-hidden">
       <Navigation />
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto min-h-0">
         <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground">Loading...</div>}>
           <Routes>
             <Route path="/" element={<Navigate to="/home" replace />} />
