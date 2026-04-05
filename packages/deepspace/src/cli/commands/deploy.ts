@@ -96,12 +96,22 @@ export default defineCommand({
 
     const workerJs = readFileSync(workerOut, 'utf-8')
 
+    // ── Extract DO manifest from worker source ────────────────
+    const workerSource = readFileSync(workerTs, 'utf-8')
+    const doManifest = extractDOManifest(workerSource)
+    if (doManifest) {
+      p.log.info(`DO manifest: ${doManifest.length} binding(s)`)
+    }
+
     // ── Upload to deploy worker ───────────────────────────────
     s.start(`Deploying to ${appName}.app.space...`)
 
     const form = new FormData()
     form.append('worker', new Blob([workerJs], { type: 'application/javascript' }), 'worker.js')
     form.append('assets', JSON.stringify(assets))
+    if (doManifest) {
+      form.append('doManifest', JSON.stringify(doManifest))
+    }
 
     const res = await fetch(`${DEPLOY_URL}/api/deploy/${appName}`, {
       method: 'POST',
@@ -122,6 +132,33 @@ export default defineCommand({
     p.outro('Done')
   },
 })
+
+/**
+ * Extract __DO_MANIFEST__ from worker.ts source via regex.
+ * Returns null if no manifest is found (backward compat → deploy worker uses default).
+ */
+function extractDOManifest(source: string): Array<{ binding: string; className: string; sqlite: boolean }> | null {
+  // Match: export const __DO_MANIFEST__ = [ ... ] as const satisfies DOManifest
+  // or:    export const __DO_MANIFEST__ = [ ... ]
+  const match = source.match(
+    /export\s+const\s+__DO_MANIFEST__\s*=\s*\[([\s\S]*?)\]/
+  )
+  if (!match) return null
+
+  const entries: Array<{ binding: string; className: string; sqlite: boolean }> = []
+  // Match individual entries: { binding: '...', className: '...', sqlite: true/false }
+  const entryRegex = /\{\s*binding:\s*['"]([^'"]+)['"]\s*,\s*className:\s*['"]([^'"]+)['"]\s*,\s*sqlite:\s*(true|false)\s*\}/g
+  let m: RegExpExecArray | null
+  while ((m = entryRegex.exec(match[1])) !== null) {
+    entries.push({
+      binding: m[1],
+      className: m[2],
+      sqlite: m[3] === 'true',
+    })
+  }
+
+  return entries.length > 0 ? entries : null
+}
 
 function collectAssets(distDir: string): Array<{ path: string; contentBase64: string }> {
   const assets: Array<{ path: string; contentBase64: string }> = []

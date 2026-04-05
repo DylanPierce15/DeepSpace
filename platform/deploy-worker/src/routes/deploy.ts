@@ -41,6 +41,7 @@ deploy.post('/:appName', authMiddleware, async (c) => {
   const workerFile = formData.get('worker') as File | null
   const assetsJson = formData.get('assets') as string | null
   const cronConfigJson = formData.get('cronConfig') as string | null
+  const doManifestJson = formData.get('doManifest') as string | null
 
   if (!workerFile) {
     return c.json({ error: 'Missing "worker" field (bundled worker.js)' }, 400)
@@ -74,6 +75,16 @@ deploy.post('/:appName', authMiddleware, async (c) => {
     }
   }
 
+  // Parse optional DO manifest
+  let doManifest: Array<{ binding: string; className: string; sqlite: boolean }> | undefined
+  if (doManifestJson) {
+    try {
+      doManifest = JSON.parse(doManifestJson)
+    } catch {
+      return c.json({ error: 'Invalid doManifest JSON' }, 400)
+    }
+  }
+
   // Build asset entries with hashes
   const assets: AssetEntry[] = []
   for (const raw of rawAssets) {
@@ -103,6 +114,7 @@ deploy.post('/:appName', authMiddleware, async (c) => {
       jwtIssuer: c.env.AUTH_JWT_ISSUER,
       authWorkerUrl: c.env.AUTH_WORKER_URL,
       hmacSecret: c.env.INTERNAL_HMAC_SECRET,
+      doManifest,
     },
   )
 
