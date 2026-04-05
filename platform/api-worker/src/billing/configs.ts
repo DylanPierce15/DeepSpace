@@ -9,7 +9,7 @@ import { BILLING_CONFIGS } from '../integrations/_registry'
 export interface IntegrationConfig {
   integrationName: string
   endpoint: string
-  billingModel: 'per_request' | 'per_second' | 'per_token' | 'per_pixel'
+  billingModel: 'per_request' | 'per_second' | 'per_token' | 'per_pixel' | 'per_participant_minute'
   baseCostPerUnit: number
   currency: string
   costModifiers?: {

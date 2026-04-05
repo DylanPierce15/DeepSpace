@@ -25,12 +25,34 @@ export type Env = {
     STRIPE_PUBLISHABLE_KEY: string
     // Integration API keys
     OPENAI_API_KEY: string
+    ANTHROPIC_API_KEY: string
     FREEPIK_API_KEY: string
     SERPAPI_API_KEY: string
     OPENWEATHER_API_KEY: string
     NASA_API_KEY: string
     EXA_API_KEY: string
     NEWS_API_KEY: string
+    YOUTUBE_API_KEY: string
+    GITHUB_TOKEN: string
+    FINNHUB_API_KEY: string
+    ALPHA_VANTAGE_API_KEY: string
+    ELEVENLABS_API_KEY: string
+    FIRECRAWL_API_KEY: string
+    API_SPORTS_KEY: string
+    CLOUDCONVERT_API_KEY: string
+    GEMINI_API_KEY: string
+    RESEND_API_KEY: string
+    LATEX_COMPILER_URL: string
+    TIKTOK_API_KEY: string
+    SUBMAGIC_API_KEY: string
+    LIVEKIT_API_KEY: string
+    LIVEKIT_API_SECRET: string
+    LIVEKIT_URL: string
+    // OAuth integration credentials
+    GOOGLE_CLIENT_ID: string
+    GOOGLE_CLIENT_SECRET: string
+    SLACK_CLIENT_ID: string
+    SLACK_CLIENT_SECRET: string
   }
   Variables: {
     userId: string

@@ -12,10 +12,11 @@
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { useUser, useQuery, useMutations, useYjsField } from 'deepspace'
+import { useUser, useQuery, useMutations, useYjsField, RecordScope } from 'deepspace'
 import * as Y from 'yjs'
 import { Button, Modal, EmptyState, Badge } from '../components/ui'
-import { ROLES, type Role } from '../constants'
+import { APP_NAME, ROLES, type Role } from '../constants'
+import { schemas } from '../schemas'
 
 // ============================================================================
 // Types
@@ -175,9 +176,9 @@ function CollabEditor({ documentId, title }: CollabEditorProps) {
             </span>
           )}
           {canWrite ? (
-            <Badge variant="success" size="sm">Edit</Badge>
+            <Badge variant="success" >Edit</Badge>
           ) : (
-            <Badge variant="secondary" size="sm">View</Badge>
+            <Badge variant="secondary" >View</Badge>
           )}
         </div>
       </div>
@@ -279,7 +280,7 @@ export default function YjsDocPage() {
 
   const isLoading = status === 'loading'
 
-  // If a document is selected, show the editor
+  // If a document is selected, show the editor in a per-document DO
   if (selectedDoc) {
     return (
       <div className="h-full bg-background overflow-y-auto">
@@ -297,7 +298,15 @@ export default function YjsDocPage() {
             <h2 className="text-xl font-semibold text-foreground">{selectedDoc.data.title}</h2>
           </div>
 
-          <CollabEditor documentId={selectedDoc.recordId} title={selectedDoc.data.title} />
+          {/* Each document gets its own Durable Object for Yjs isolation */}
+          <RecordScope
+            key={selectedDoc.recordId}
+            roomId={`doc:${selectedDoc.recordId}`}
+            schemas={schemas}
+            appId={APP_NAME}
+          >
+            <CollabEditor documentId={selectedDoc.recordId} title={selectedDoc.data.title} />
+          </RecordScope>
         </div>
       </div>
     )

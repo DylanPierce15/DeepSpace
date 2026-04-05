@@ -10,10 +10,11 @@
  */
 
 import { useState, useMemo, useCallback } from 'react'
-import { useUser, useUsers, useTeams, useQuery, useMutations, useYjsText } from 'deepspace'
-// After copying to src/pages/, these imports will work:
+import { useUser, useUsers, useTeams, useQuery, useMutations, useYjsText, RecordScope } from 'deepspace'
 import { Button, Modal, Badge, Avatar, EmptyState } from '../components/ui'
 import { ROLES, type Role } from '../constants'
+import { schemas } from '../schemas'
+import { APP_NAME } from '../constants'
 
 // ============================================================================
 // Types
@@ -274,11 +275,17 @@ function TeamDetail({ teamId, onBack }: TeamDetailProps) {
             <p className="text-muted-foreground text-sm text-center py-4">No documents yet. Create one above!</p>
           ) : (
             documents.map(doc => (
-              <DocumentEditor
+              <RecordScope
                 key={doc.recordId}
-                documentId={doc.recordId}
-                title={doc.data.title}
-              />
+                roomId={`doc:${doc.recordId}`}
+                schemas={schemas}
+                appId={APP_NAME}
+              >
+                <DocumentEditor
+                  documentId={doc.recordId}
+                  title={doc.data.title}
+                />
+              </RecordScope>
             ))
           )}
         </div>

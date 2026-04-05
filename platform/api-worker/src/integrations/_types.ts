@@ -26,7 +26,7 @@ export type IntegrationHandler = (
  * Billing configuration for a single endpoint.
  */
 export interface BillingConfig {
-  model: 'per_request' | 'per_token' | 'per_second' | 'per_pixel'
+  model: 'per_request' | 'per_token' | 'per_second' | 'per_pixel' | 'per_participant_minute'
   baseCost: number
   currency: string
   costModifiers?: {
