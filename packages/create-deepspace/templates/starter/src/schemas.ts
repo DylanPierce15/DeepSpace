@@ -6,10 +6,7 @@
  */
 
 import type { CollectionSchema } from 'deepspace/worker'
-import {
-  USERS_COLUMNS,
-  ROLE_ANONYMOUS,
-} from 'deepspace/worker'
+import { USERS_COLUMNS } from 'deepspace/worker'
 import { settingsSchema } from './schemas/admin-schema'
 
 const usersSchema: CollectionSchema = {
@@ -22,25 +19,7 @@ const usersSchema: CollectionSchema = {
   },
 }
 
-const itemsSchema: CollectionSchema = {
-  name: 'items',
-  columns: [
-    { name: 'title', storage: 'text', interpretation: 'plain' },
-    { name: 'description', storage: 'text', interpretation: 'plain' },
-    { name: 'status', storage: 'text', interpretation: { kind: 'select', options: ['draft', 'published', 'archived'] } },
-    { name: 'createdBy', storage: 'text', interpretation: 'plain' },
-  ],
-  ownerField: 'createdBy',
-  permissions: {
-    [ROLE_ANONYMOUS]: { read: 'published', create: false, update: false, delete: false },
-    member: { read: true, create: true, update: 'own', delete: 'own' },
-    admin: { read: true, create: true, update: true, delete: true },
-  },
-  visibilityField: { field: 'status', value: 'published' },
-}
-
 export const schemas: CollectionSchema[] = [
   usersSchema,
   settingsSchema,
-  itemsSchema,
 ]

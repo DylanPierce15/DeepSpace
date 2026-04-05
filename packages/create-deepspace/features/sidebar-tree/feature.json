@@ -1,0 +1,36 @@
+{
+  "id": "sidebar-tree",
+  "name": "Tree Sidebar",
+  "category": "nav",
+  "description": "Hierarchical navigation with drag-and-drop",
+  "details": "An advanced sidebar with hierarchical project tree navigation and drag-and-drop support. Features nested projects with expand/collapse, drag-and-drop reordering (before/after/inside), item assignment via drag, and view-based navigation (All, Today, Upcoming, etc.).",
+  "files": [
+    {
+      "src": "src/TreeSidebar.tsx",
+      "dest": "src/components/TreeSidebar.tsx"
+    },
+    {
+      "src": "src/tree-sidebar-hooks.ts",
+      "dest": "src/hooks/tree-sidebar-hooks.ts"
+    },
+    {
+      "src": "src/tree-sidebar-constants.ts",
+      "dest": "src/constants/tree-sidebar-constants.ts"
+    }
+  ],
+  "schema": null,
+  "route": null,
+  "instructions": [
+    "Import: import TreeSidebar from './components/TreeSidebar'",
+    "Import: import { VIEWS, type CurrentView } from './constants/tree-sidebar-constants'",
+    "Add state: const [currentView, setCurrentView] = useState<CurrentView>({ type: VIEWS.ALL })",
+    "Use: <TreeSidebar currentView={currentView} onViewChange={setCurrentView} projectTree={...} />"
+  ],
+  "patterns": [
+    "ProjectNode: { id, title, color?, parentId?, children? }",
+    "CurrentView: { type: ViewType, id?: string }",
+    "VIEWS: ALL, TODAY, UPCOMING, LOGBOOK, TRASH, PROJECT, USER",
+    "onReorderProject(draggedId, targetId, 'before'|'after'|'inside')",
+    "onItemDrop(itemId, projectId) \u2192 assign via drag"
+  ]
+}

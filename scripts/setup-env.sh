@@ -62,7 +62,14 @@ write_dev_vars "$ROOT/platform/api-worker" \
   STRIPE_CONNECT_WEBHOOK_SECRET \
   AUTH_JWT_PUBLIC_KEY \
   AUTH_JWT_ISSUER \
-  INTERNAL_STORAGE_HMAC_SECRET
+  INTERNAL_STORAGE_HMAC_SECRET \
+  OPENAI_API_KEY \
+  FREEPIK_API_KEY \
+  SERPAPI_API_KEY \
+  OPENWEATHER_API_KEY \
+  NASA_API_KEY \
+  EXA_API_KEY \
+  NEWS_API_KEY
 
 # ── Platform Worker ──────────────────────────────────────────────────────────
 write_dev_vars "$ROOT/platform/platform-worker" \

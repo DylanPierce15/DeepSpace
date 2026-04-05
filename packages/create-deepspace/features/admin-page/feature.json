@@ -1,0 +1,45 @@
+{
+  "id": "admin-page",
+  "name": "Admin Panel",
+  "category": "data",
+  "description": "User management and app settings",
+  "details": "Admin panel for managing users and app settings. Demonstrates useUsers hook for listing all users, setRole for changing user roles, admin-only collections, and protected routes.",
+  "files": [
+    {
+      "src": "src/admin-schema.ts",
+      "dest": "src/schemas/admin-schema.ts"
+    },
+    {
+      "src": "src/AdminPage.tsx",
+      "dest": "src/pages/AdminPage.tsx"
+    }
+  ],
+  "schema": {
+    "exportName": "settingsSchema",
+    "importPath": "./schemas/admin-schema",
+    "spreadOperator": false
+  },
+  "route": {
+    "path": "/admin/*",
+    "component": "AdminPage",
+    "importPath": "./pages/AdminPage",
+    "protected": true,
+    "allowedRoles": [
+      "admin"
+    ]
+  },
+  "requires": [],
+  "instructions": [
+    "Add to schemas.ts: import { settingsSchema } from './schemas/admin-schema'",
+    "Add to schemas array: settingsSchema",
+    "Add to App.tsx: import AdminPage from './pages/AdminPage'",
+    "Add protected route: <ProtectedRoute allowedRoles={[ROLES.ADMIN]}><AdminPage /></ProtectedRoute>",
+    "Add navigation link for '/admin' (admin only)"
+  ],
+  "patterns": [
+    "useUsers() \u2192 { users, setRole }",
+    "setRole(userId, 'member') \u2192 change user role",
+    "Admin-only collection: all permissions false for viewer/member",
+    "Check: user.role === 'admin'"
+  ]
+}

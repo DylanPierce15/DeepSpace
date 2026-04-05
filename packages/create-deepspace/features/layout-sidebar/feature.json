@@ -1,0 +1,29 @@
+{
+  "id": "layout-sidebar",
+  "name": "Sidebar Layout",
+  "category": "layout",
+  "description": "App shell with collapsible sidebar and main content area",
+  "details": "A complete app shell layout with responsive sidebar navigation. Features mobile drawer, desktop collapse/expand, and compound component pattern for flexible composition. Includes NavItem component for navigation links with icons and badges.",
+  "files": [
+    {
+      "src": "src/AppShell.tsx",
+      "dest": "src/components/AppShell.tsx"
+    }
+  ],
+  "schema": null,
+  "route": null,
+  "instructions": [
+    "Import: import AppShell, { NavItem, useSidebar } from './components/AppShell'",
+    "Wrap your app content with <AppShell>",
+    "Use compound components: AppShell.Sidebar, AppShell.Main, AppShell.Header, etc.",
+    "See usage example below"
+  ],
+  "patterns": [
+    "<AppShell> wraps entire layout",
+    "<AppShell.Sidebar> \u2192 collapsible sidebar",
+    "<AppShell.Main> \u2192 main content area",
+    "<NavItem icon={...} label='Home' active /> for nav links",
+    "useSidebar() \u2192 { isCollapsed, toggleCollapse }"
+  ],
+  "example": "<AppShell>\n  <AppShell.Sidebar>\n    <AppShell.SidebarHeader>Logo</AppShell.SidebarHeader>\n    <AppShell.SidebarContent>\n      <NavItem icon={<Home />} label=\"Home\" active />\n    </AppShell.SidebarContent>\n    <AppShell.SidebarFooter>\n      <AppShell.SidebarToggle />\n    </AppShell.SidebarFooter>\n  </AppShell.Sidebar>\n  <AppShell.Main>\n    <AppShell.Header>Page Title</AppShell.Header>\n    <AppShell.Content>Content here</AppShell.Content>\n  </AppShell.Main>\n</AppShell>"
+}

@@ -23,9 +23,14 @@ export type Env = {
     STRIPE_SECRET_KEY: string
     STRIPE_WEBHOOK_SECRET: string
     STRIPE_PUBLISHABLE_KEY: string
+    // Integration API keys
     OPENAI_API_KEY: string
     FREEPIK_API_KEY: string
     SERPAPI_API_KEY: string
+    OPENWEATHER_API_KEY: string
+    NASA_API_KEY: string
+    EXA_API_KEY: string
+    NEWS_API_KEY: string
   }
   Variables: {
     userId: string

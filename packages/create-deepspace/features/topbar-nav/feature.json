@@ -1,0 +1,27 @@
+{
+  "id": "topbar-nav",
+  "name": "Top Navigation Bar",
+  "category": "nav",
+  "description": "Horizontal nav with search and user menu",
+  "details": "A horizontal top navigation bar with logo, nav links, search input, notification bell, and user dropdown menu. Good for simpler apps or mobile-first designs.",
+  "files": [
+    {
+      "src": "src/Topbar.tsx",
+      "dest": "src/components/Topbar.tsx"
+    }
+  ],
+  "schema": null,
+  "route": null,
+  "instructions": [
+    "Import: import Topbar, { type NavItem } from './components/Topbar'",
+    "Define items: const navItems: NavItem[] = [{ id: 'home', label: 'Home', path: '/' }]",
+    "Use: <Topbar logo={...} navItems={navItems} activeId={...} onNavigate={...} user={...} />",
+    "Optional: showSearch, onSearch, notificationCount, onNotificationClick"
+  ],
+  "patterns": [
+    "NavItem: { id, label, path?, icon?, badge? }",
+    "logo \u2192 ReactNode for brand area",
+    "userMenuItems \u2192 [{ id, label, onClick, danger? }]",
+    "sticky={true} \u2192 fixed with blur effect"
+  ]
+}

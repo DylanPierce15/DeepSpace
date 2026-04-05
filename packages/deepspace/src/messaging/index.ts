@@ -7,7 +7,7 @@
  */
 
 // ── Channel types ────────────────────────────────────────────────────────────
-export type { Channel, Message, Reaction, ChannelMember, ReadReceipt } from './channel-types'
+export type { Channel, Message, Reaction, ChannelMember, ReadReceipt, ChannelInvitation } from './channel-types'
 
 // ── Channel hooks ────────────────────────────────────────────────────────────
 export { useMessages } from './useMessages'

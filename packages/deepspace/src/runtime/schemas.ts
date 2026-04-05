@@ -29,6 +29,16 @@ export interface ColumnDefinition {
   storage: 'number' | 'text'
   interpretation: ColumnInterpretation | string
   expression?: string
+  /** Auto-populate with current user ID on create. */
+  userBound?: boolean
+  /** Cannot be changed after initial creation. */
+  immutable?: boolean
+  /** Must be provided on create (non-null). */
+  required?: boolean
+  /** Default value if not provided on create. */
+  default?: unknown
+  /** Auto-set ISO timestamp when the named field changes (optionally to a specific value). */
+  timestampTrigger?: { field: string; value?: unknown }
 }
 
 export interface ResolvedColumn {
@@ -38,6 +48,11 @@ export interface ResolvedColumn {
   interpretation: ColumnInterpretation
   expression?: string
   readonly: boolean
+  userBound?: boolean
+  immutable?: boolean
+  required?: boolean
+  default?: unknown
+  timestampTrigger?: { field: string; value?: unknown }
 }
 
 // ============================================================================
@@ -64,6 +79,11 @@ export function resolveColumn(col: ColumnDefinition): ResolvedColumn {
     interpretation: interp,
     expression: col.expression,
     readonly: !!col.expression,
+    userBound: col.userBound,
+    immutable: col.immutable,
+    required: col.required,
+    default: col.default,
+    timestampTrigger: col.timestampTrigger,
   }
 }
 

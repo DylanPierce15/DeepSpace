@@ -1,8 +1,11 @@
 /**
- * Static integration pricing configurations.
- * Subset ported from Miyagi3's IntegrationConfigs.ts — AI text, AI image, web search only.
+ * Billing configs — derived from co-located EndpointDefinitions in each integration.
+ * This file re-exports from the registry so billing/service.ts imports stay clean.
  */
 
+import { BILLING_CONFIGS } from '../integrations/_registry'
+
+/** Legacy IntegrationConfig shape used by billing/service.ts */
 export interface IntegrationConfig {
   integrationName: string
   endpoint: string
@@ -20,73 +23,19 @@ export interface IntegrationConfig {
   isActive: boolean
 }
 
-export const INTEGRATION_CONFIGS: Record<string, IntegrationConfig> = {
-  // ---- AI Text Generation (OpenAI) ---- per-token billing
-  'openai/chat-completion': {
-    integrationName: 'openai',
-    endpoint: 'chat-completion',
-    billingModel: 'per_token',
-    baseCostPerUnit: 0.00003, // ~$0.03/1K tokens (GPT-4o class)
-    currency: 'USD',
-    costModifiers: {
-      baseMultipliers: {
-        model: {
-          'gpt-4o': 1.0,
-          'gpt-4o-mini': 0.1,
-          'gpt-4.1': 1.0,
-          'gpt-4.1-mini': 0.13,
-          'gpt-4.1-nano': 0.033,
-        },
-      },
-    },
-    isActive: true,
-  },
+/** Build INTEGRATION_CONFIGS from the registry's billing data. */
+export const INTEGRATION_CONFIGS: Record<string, IntegrationConfig> = {}
 
-  // ---- AI Image Generation (Freepik text-to-image) ---- per-request billing
-  'freepik/text-to-image-classic': {
-    integrationName: 'freepik',
-    endpoint: 'text-to-image-classic',
-    billingModel: 'per_request',
-    baseCostPerUnit: 0.005,
-    currency: 'USD',
-    costModifiers: {
-      unitCalculation: { formula: 'num_images', minUnits: 1, roundUp: false },
-    },
+for (const [key, billing] of Object.entries(BILLING_CONFIGS)) {
+  INTEGRATION_CONFIGS[key] = {
+    integrationName: billing.integrationName,
+    endpoint: billing.endpoint,
+    billingModel: billing.model,
+    baseCostPerUnit: billing.baseCost,
+    currency: billing.currency,
+    costModifiers: billing.costModifiers,
     isActive: true,
-  },
-
-  'freepik/generate-image-mystic': {
-    integrationName: 'freepik',
-    endpoint: 'generate-image-mystic',
-    billingModel: 'per_request',
-    baseCostPerUnit: 0.069,
-    currency: 'USD',
-    costModifiers: {
-      baseMultipliers: {
-        resolution: { '1k': 1.0, '2k': 1.72464, '4k': 5.50725 },
-      },
-    },
-    isActive: true,
-  },
-
-  'freepik/generate-image-flux-dev': {
-    integrationName: 'freepik',
-    endpoint: 'generate-image-flux-dev',
-    billingModel: 'per_request',
-    baseCostPerUnit: 0.012,
-    currency: 'USD',
-    isActive: true,
-  },
-
-  // ---- Web Search (SerpAPI) ---- per-request billing
-  'serpapi/search': {
-    integrationName: 'serpapi',
-    endpoint: 'search',
-    billingModel: 'per_request',
-    baseCostPerUnit: 0.01,
-    currency: 'USD',
-    isActive: true,
-  },
+  }
 }
 
 export function getIntegrationConfig(

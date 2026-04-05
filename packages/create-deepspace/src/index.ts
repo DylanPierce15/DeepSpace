@@ -137,13 +137,22 @@ async function main() {
   writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
   if (!args.local) s.stop('Project configured')
 
-  // Copy features
+  // Copy features & add-feature script
   if (existsSync(FEATURES_DIR)) {
     s.start('Copying features')
     const deepspaceDir = join(appDir, '.deepspace')
     const featuresDir = join(deepspaceDir, 'features')
+    const scriptsDir = join(deepspaceDir, 'scripts')
     mkdirSync(deepspaceDir, { recursive: true })
-    cpSync(FEATURES_DIR, featuresDir, { recursive: true })
+    mkdirSync(scriptsDir, { recursive: true })
+    cpSync(FEATURES_DIR, featuresDir, {
+      recursive: true,
+      filter: (src) => !src.includes('/tests/') && !src.endsWith('/tests'),
+    })
+    const addFeatureScript = join(__dirname, '..', 'scripts', 'add-feature.cjs')
+    if (existsSync(addFeatureScript)) {
+      cpSync(addFeatureScript, join(scriptsDir, 'add-feature.cjs'))
+    }
     writeFileSync(join(deepspaceDir, '.gitignore'), '*\n')
     s.stop('Features ready')
   }
@@ -158,7 +167,15 @@ async function main() {
   }
 
   p.note(
-    [`cd ${appName}`, 'npx deepspace login', 'npx deepspace deploy'].join('\n'),
+    [
+      `cd ${appName}`,
+      'npx deepspace login',
+      'npx deepspace deploy',
+      '',
+      'Add features:',
+      '  node .deepspace/scripts/add-feature.cjs --list',
+      '  node .deepspace/scripts/add-feature.cjs items-crud .',
+    ].join('\n'),
     'Next steps',
   )
   p.outro(`${appName} is ready`)

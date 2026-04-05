@@ -1,0 +1,46 @@
+{
+  "id": "rbac-test",
+  "name": "RBAC Test Harness",
+  "category": "data",
+  "description": "Interactive test page for every RBAC permission pattern",
+  "details": "Comprehensive test harness that exercises all RBAC patterns: collection-level deny, ownership ('own'), writableFields, immutable fields, userBound fields, unclaimed-or-own claiming, team-scoped permissions, and admin-only collections. Each test has buttons that trigger allowed or denied operations, with built-in toast notifications for permission errors.",
+  "files": [
+    {
+      "src": "src/rbac-test-schema.ts",
+      "dest": "src/schemas/rbac-test-schema.ts"
+    },
+    {
+      "src": "src/RbacTestPage.tsx",
+      "dest": "src/pages/RbacTestPage.tsx"
+    }
+  ],
+  "schema": {
+    "exportName": "rbacTestSchemas",
+    "importPath": "./schemas/rbac-test-schema",
+    "spreadOperator": true
+  },
+  "route": {
+    "path": "/rbac-test",
+    "component": "RbacTestPage",
+    "importPath": "./pages/RbacTestPage",
+    "protected": false
+  },
+  "requires": [],
+  "instructions": [
+    "Add to schemas.ts: import { rbacTestSchemas } from './schemas/rbac-test-schema'",
+    "Add to schemas array: ...rbacTestSchemas (spread)",
+    "Add to App.tsx: import RbacTestPage from './pages/RbacTestPage'",
+    "Add route: <Route path=\"/rbac-test\" element={<RbacTestPage />} />",
+    "Add navigation link for '/rbac-test'"
+  ],
+  "patterns": [
+    "Tests collection-level deny (viewer can't create/update/delete)",
+    "Tests 'own' permission with ownerField",
+    "Tests writableFields restriction (member can't update excluded fields)",
+    "Tests immutable + userBound fields",
+    "Tests 'unclaimed-or-own' claiming pattern",
+    "Tests 'team' permission with teamField + useTeams",
+    "Tests admin-only collection (viewer/member fully denied)",
+    "All denied operations trigger built-in RBAC toast notifications"
+  ]
+}

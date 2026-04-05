@@ -1,0 +1,31 @@
+{
+  "id": "sidebar-nav",
+  "name": "Sidebar Navigation",
+  "category": "nav",
+  "description": "Collapsible sidebar with routing, role filtering, mobile drawer, and persistent collapse state",
+  "details": "Replaces the default top-bar Navigation with a collapsible sidebar. Role-based nav filtering, localStorage collapse persistence, raised content panel layout (.app-shell + .app-content), and mobile overlay drawer. CSS is auto-appended to styles.css by the installer.",
+  "files": [
+    {
+      "src": "src/AppSidebar.tsx",
+      "dest": "src/components/AppSidebar.tsx"
+    }
+  ],
+  "css": [
+    "sidebar-nav.css"
+  ],
+  "schema": null,
+  "route": null,
+  "instructions": [
+    "Delete the inline Navigation function and its mobile menu from App.tsx. Keep the isChromeless variable and LANDING_PAGE_ROUTE.",
+    "Import { AppSidebar, SidebarMobileHeader, type SidebarNavItem } from './components/AppSidebar' and lucide-react icons for nav items. Build NAV_ITEMS: SidebarNavItem[] from the routes the app already has.",
+    "Replace the layout below isLoading: {!isChromeless && <SidebarMobileHeader appName={APP_NAME} onOpenMenu={openMobile} />}, then a flex wrapper with className={isChromeless ? 'flex-1 min-h-0' : 'app-shell flex-1 min-h-0'} containing {!isChromeless && <AppSidebar ... logoHref={LANDING_PAGE_ROUTE ?? undefined} />} and <main className={isChromeless ? 'flex-1 overflow-hidden' : 'app-content overflow-y-auto'}>. Add mobile open/close state (useState + useCallback).",
+    "Clean up unused imports from the old Navigation (useNavigate, NotificationBell, Badge if unused elsewhere)."
+  ],
+  "patterns": [
+    "SidebarNavItem: { path, label, icon: ReactNode, roles: Role[] }",
+    "AppSidebar: appName, navItems, isMobileOpen, onMobileClose, logoHref? \u2192 pass LANDING_PAGE_ROUTE ?? undefined when landing page is installed",
+    "SidebarMobileHeader: appName, onOpenMenu",
+    ".app-shell \u2192 flex row shell; .app-content \u2192 raised panel with border-radius + border",
+    "Mobile (<=768px): sidebar becomes overlay drawer; .app-shell padding removed; .app-content full-bleed"
+  ]
+}

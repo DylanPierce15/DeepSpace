@@ -1,6 +1,6 @@
 import { useAuth, useUser } from 'deepspace'
 
-export function HomePage() {
+export default function HomePage() {
   const { isSignedIn } = useAuth()
   const { user } = useUser()
 

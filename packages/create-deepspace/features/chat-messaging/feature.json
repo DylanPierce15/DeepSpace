@@ -1,0 +1,91 @@
+{
+  "id": "chat-messaging",
+  "name": "Chat Messaging",
+  "category": "data",
+  "description": "Real-time chat with threads, reactions, presence, user profiles, edit/delete, and mobile context menu",
+  "details": "Channel-based messaging with threaded replies, reactions, presence indicators, and user profile popovers. Desktop uses a hover toolbar; mobile uses a long-press context menu. A default channel is auto-created and auto-joined via useChatChannel.",
+  "files": [
+    {
+      "src": "src/schemas/messaging-schema.ts",
+      "dest": "src/schemas/messaging-schema.ts"
+    },
+    {
+      "src": "src/hooks/useChatChannel.ts",
+      "dest": "src/hooks/useChatChannel.ts"
+    },
+    {
+      "src": "src/hooks/usePresence.ts",
+      "dest": "src/hooks/usePresence.ts"
+    },
+    {
+      "src": "src/pages/ChatPage.tsx",
+      "dest": "src/pages/ChatPage.tsx"
+    },
+    {
+      "src": "src/components/chat/ChatHeader.tsx",
+      "dest": "src/components/chat/ChatHeader.tsx"
+    },
+    {
+      "src": "src/components/chat/MessageList.tsx",
+      "dest": "src/components/chat/MessageList.tsx"
+    },
+    {
+      "src": "src/components/chat/MessageInput.tsx",
+      "dest": "src/components/chat/MessageInput.tsx"
+    },
+    {
+      "src": "src/components/chat/MessageItem.tsx",
+      "dest": "src/components/chat/MessageItem.tsx"
+    },
+    {
+      "src": "src/components/chat/ReactionPicker.tsx",
+      "dest": "src/components/chat/ReactionPicker.tsx"
+    },
+    {
+      "src": "src/components/chat/MessageActionSheet.tsx",
+      "dest": "src/components/chat/MessageActionSheet.tsx"
+    },
+    {
+      "src": "src/components/chat/ThreadPanel.tsx",
+      "dest": "src/components/chat/ThreadPanel.tsx"
+    },
+    {
+      "src": "src/components/chat/UserProfilePopover.tsx",
+      "dest": "src/components/chat/UserProfilePopover.tsx"
+    },
+    {
+      "src": "src/hooks/useLongPress.ts",
+      "dest": "src/hooks/useLongPress.ts"
+    }
+  ],
+  "schema": {
+    "exportName": "messagingSchemas",
+    "importPath": "./schemas/messaging-schema",
+    "spreadOperator": true
+  },
+  "css": [
+    "chat.css"
+  ],
+  "route": {
+    "path": "/chat",
+    "component": "ChatPage",
+    "importPath": "./pages/ChatPage",
+    "protected": true
+  },
+  "requires": [],
+  "instructions": [
+    "Add to schemas.ts: import { messagingSchemas } from './schemas/messaging-schema'",
+    "Add to schemas array: ...messagingSchemas (spread)",
+    "Add to App.tsx: import ChatPage from './pages/ChatPage'",
+    "Add protected route: <ProtectedRoute allowedRoles={[ROLES.MEMBER, ROLES.ADMIN]}><ChatPage /></ProtectedRoute>",
+    "Add navigation link for '/chat' (member+ only)",
+    "Parent route container needs a definite height (h-full or flex-1) \u2014 ChatPage uses h-full"
+  ],
+  "patterns": [
+    "useChatChannel() \u2192 { channelId, status, isMember, join } \u2014 auto-creates and auto-joins default channel",
+    "useMessages(channelId) \u2192 { messages, send, edit, remove }",
+    "useMessages(channelId, { parentMessageId }) \u2192 thread replies",
+    "usePresence() \u2192 { isOnline } \u2014 online status from lastSeenAt",
+    "MessageList includes composer + thread panel \u2014 do not render MessageInput alongside it"
+  ]
+}

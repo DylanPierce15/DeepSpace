@@ -229,7 +229,55 @@ export function putRecord(
   const existing = getRecord(ctx.sql, collection, recordId, schema)
   const isUpdate = existing !== null
 
-  const mergedData = isUpdate ? { ...existing!.data, ...data } : data
+  let mergedData = isUpdate ? { ...existing!.data, ...data } : { ...data }
+
+  // Enforce column-level field behaviors
+  for (const col of columns) {
+    if (col.readonly) continue
+
+    if (!isUpdate) {
+      // CREATE: apply defaults, userBound, required checks
+      if (col.default !== undefined && mergedData[col.name] === undefined) {
+        mergedData[col.name] = col.default
+      }
+      if (col.userBound) {
+        mergedData[col.name] = userId
+      }
+      if (col.required && (mergedData[col.name] === undefined || mergedData[col.name] === null || mergedData[col.name] === '')) {
+        return { success: false, error: `Required field '${col.name}' is missing` }
+      }
+    } else {
+      // UPDATE: enforce immutable, preserve userBound
+      if (col.immutable && data[col.name] !== undefined && data[col.name] !== existing!.data[col.name]) {
+        return { success: false, error: `Cannot modify immutable field '${col.name}'` }
+      }
+      if (col.userBound && data[col.name] !== undefined) {
+        mergedData[col.name] = existing!.data[col.name] // preserve original
+      }
+    }
+
+    // timestampTrigger: auto-set timestamp when trigger field changes
+    if (col.timestampTrigger) {
+      const { field: triggerField, value: triggerValue } = col.timestampTrigger
+      if (!isUpdate) {
+        // CREATE: set timestamp if trigger field is present and matches value (if specified)
+        if (mergedData[triggerField] !== undefined && mergedData[triggerField] !== null) {
+          if (triggerValue === undefined || mergedData[triggerField] === triggerValue) {
+            mergedData[col.name] = new Date().toISOString()
+          }
+        }
+      } else {
+        // UPDATE: set timestamp if trigger field changed (and optionally to specified value)
+        const oldVal = existing!.data[triggerField]
+        const newVal = mergedData[triggerField]
+        if (newVal !== oldVal) {
+          if (triggerValue === undefined || newVal === triggerValue) {
+            mergedData[col.name] = new Date().toISOString()
+          }
+        }
+      }
+    }
+  }
 
   // Strip system-managed columns (email, name, role, etc.) unless this is a system update
   let finalData = mergedData

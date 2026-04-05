@@ -1,0 +1,46 @@
+{
+  "id": "items-crud",
+  "name": "Items CRUD",
+  "category": "data",
+  "description": "Basic CRUD with ownership and RBAC permissions",
+  "details": "A simple collection demonstrating ownership-based CRUD operations. Shows how to use ownerField for 'own' permission checks, userBound fields that auto-populate with current user ID, and immutable fields that cannot be changed after creation.",
+  "files": [
+    {
+      "src": "src/items-schema.ts",
+      "dest": "src/schemas/items-schema.ts"
+    },
+    {
+      "src": "src/items-constants.ts",
+      "dest": "src/constants/items-constants.ts"
+    },
+    {
+      "src": "src/ItemsPage.tsx",
+      "dest": "src/pages/ItemsPage.tsx"
+    }
+  ],
+  "schema": {
+    "exportName": "itemsSchema",
+    "importPath": "./schemas/items-schema",
+    "spreadOperator": false
+  },
+  "route": {
+    "path": "/items",
+    "component": "ItemsPage",
+    "importPath": "./pages/ItemsPage",
+    "protected": false
+  },
+  "requires": [],
+  "instructions": [
+    "Add to schemas.ts: import { itemsSchema } from './schemas/items-schema'",
+    "Add to schemas array: itemsSchema",
+    "Add to App.tsx: import ItemsPage from './pages/ItemsPage'",
+    "Add route: <Route path=\"/items\" element={<ItemsPage />} />",
+    "Add navigation link for '/items'"
+  ],
+  "patterns": [
+    "useQuery<Item>('items', { orderBy: 'createdAt' })",
+    "useMutations<Item>('items') \u2192 { create, put, remove }",
+    "ownerField: 'ownerId' \u2192 enables 'own' permission",
+    "userBound: true \u2192 auto-populates with current user ID"
+  ]
+}

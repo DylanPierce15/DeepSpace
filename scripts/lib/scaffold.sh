@@ -31,5 +31,8 @@ if [ -f "$ROOT/platform/platform-worker/.dev.vars" ]; then
   } > "$APP_DIR/.dev.vars"
 fi
 
+# Install test-page feature (needed for core e2e tests)
+"$ROOT/scripts/lib/install-feature.sh" "$APP_DIR" "test-page"
+
 echo ""
 echo "✓ App ready at .test-apps/$APP_NAME"

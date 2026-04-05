@@ -1,0 +1,42 @@
+{
+  "id": "yjs-doc",
+  "name": "Yjs Document",
+  "category": "data",
+  "description": "Collaborative document editing with character-by-character Yjs sync",
+  "details": "Real-time collaborative document editor using Yjs with character-level diffing. Unlike useYjsText which replaces the entire text on every keystroke, this feature computes minimal inserts and deletes from input events so that concurrent edits merge cleanly. Demonstrates useYjsField for raw Y.Doc access, Y.Text observation for remote changes, and ownership-based CRUD for document management.",
+  "files": [
+    {
+      "src": "src/yjs-doc-schema.ts",
+      "dest": "src/schemas/yjs-doc-schema.ts"
+    },
+    {
+      "src": "src/YjsDocPage.tsx",
+      "dest": "src/pages/YjsDocPage.tsx"
+    }
+  ],
+  "schema": {
+    "exportName": "yjsDocSchema",
+    "importPath": "./schemas/yjs-doc-schema",
+    "spreadOperator": false
+  },
+  "route": {
+    "path": "/docs",
+    "component": "YjsDocPage",
+    "importPath": "./pages/YjsDocPage",
+    "protected": false
+  },
+  "requires": [],
+  "instructions": [
+    "Add to schemas.ts: import { yjsDocSchema } from './schemas/yjs-doc-schema'",
+    "Add to schemas array: yjsDocSchema",
+    "Add to App.tsx: import YjsDocPage from './pages/YjsDocPage'",
+    "Add route: <Route path=\"/docs\" element={<YjsDocPage />} />",
+    "Add navigation link for '/docs'"
+  ],
+  "patterns": [
+    "useYjsField('documents', recordId, 'content') -> raw Y.Doc access",
+    "Y.Text.insert(pos, chars) / Y.Text.delete(pos, len) -> character-level ops",
+    "doc.getText(field).observe(cb) -> listen for remote changes",
+    "Input event diffing -> minimal Yjs operations per keystroke"
+  ]
+}

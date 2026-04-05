@@ -20,7 +20,18 @@ export interface SchemaPermissions {
 
 export interface CollectionSchema {
   name: string
-  columns: Array<{ name: string; storage: string; interpretation: string | Record<string, unknown> }>
+  columns: Array<{
+    name: string
+    storage: string
+    interpretation: string | Record<string, unknown>
+    id?: string
+    expression?: string
+    userBound?: boolean
+    immutable?: boolean
+    required?: boolean
+    default?: unknown
+    timestampTrigger?: { field: string; value?: unknown }
+  }>
   uniqueOn?: string[]
   permissions: Record<string, SchemaPermissions>
   ownerField?: string

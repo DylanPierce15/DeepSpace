@@ -39,3 +39,10 @@ export interface ReadReceipt {
   userId: string
   lastReadAt: string
 }
+
+export interface ChannelInvitation {
+  channelId: string
+  invitedUserId: string
+  invitedBy: string
+  status: 'pending' | 'accepted' | 'declined'
+}

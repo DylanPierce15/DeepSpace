@@ -1,0 +1,41 @@
+/* Channel sidebar smooth transitions */
+[data-testid="channel-sidebar"] {
+  transition: transform 200ms ease-out;
+}
+
+/* Scrollbar styling for sidebar */
+.channel-sidebar-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+.channel-sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.channel-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+  transition: background 200ms;
+}
+.channel-sidebar-scroll:hover::-webkit-scrollbar-thumb {
+  background: var(--border);
+}
+.channel-sidebar-scroll:hover::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+/* Firefox scrollbar */
+.channel-sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.channel-sidebar-scroll:hover {
+  scrollbar-color: var(--border) transparent;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  [data-testid="channel-sidebar"],
+  [data-testid="channel-sidebar"] * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

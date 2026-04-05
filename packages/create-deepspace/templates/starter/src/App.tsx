@@ -1,15 +1,18 @@
-import { useState, useEffect, type ReactNode } from 'react'
-import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom'
-import { DeepSpaceAuthProvider, useAuth, AuthOverlay, signOut } from 'deepspace'
-import { RecordProvider, RecordScope, useUser } from 'deepspace'
-import { APP_NAME, SCOPE_ID, ROLES, ROLE_CONFIG, type Role } from './constants'
-import { schemas } from './schemas'
-import { HomePage } from './pages/HomePage'
-import { TestPage } from './pages/TestPage'
+/**
+ * App — Navigation + page routing.
+ *
+ * Routes and nav items are driven by the pages registry (pages.ts).
+ * Features add pages by appending one line to pages.ts.
+ * Provider wiring lives in AppShell.tsx.
+ */
 
-// ============================================================================
-// Shared scope config
-// ============================================================================
+import { Suspense, useState, useEffect, type ReactNode } from 'react'
+import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom'
+import { useAuth, AuthOverlay, signOut } from 'deepspace'
+import { useUser } from 'deepspace'
+import { APP_NAME, ROLES, ROLE_CONFIG, type Role } from './constants'
+import { pages } from './pages'
+
 // ============================================================================
 // Navigation
 // ============================================================================
@@ -27,10 +30,12 @@ function Navigation() {
 
   useEffect(() => { setMobileMenuOpen(false) }, [location.pathname])
 
-  const navItems: Array<{ path: string; label: string }> = [
-    { path: '/home', label: 'Home' },
-    { path: '/test', label: 'Test' },
-  ]
+  const navItems = pages.filter((p) => {
+    if (!p.label) return false
+    if (!p.roles) return true
+    if (userRole === 'admin') return true
+    return p.roles.includes(userRole as Role)
+  })
 
   return (
     <>
@@ -43,7 +48,6 @@ function Navigation() {
             {APP_NAME}
           </Link>
 
-          {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-1">
             {navItems.map((item) => (
               <Link
@@ -60,7 +64,6 @@ function Navigation() {
             ))}
           </div>
 
-          {/* Right side: role badge + user/sign-in + hamburger */}
           <div className="flex items-center gap-2.5">
             <span
               data-testid="nav-role-badge"
@@ -120,7 +123,6 @@ function Navigation() {
               </button>
             )}
 
-            {/* Hamburger (mobile) */}
             <button
               className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground md:hidden"
               onClick={() => setMobileMenuOpen((prev) => !prev)}
@@ -137,7 +139,6 @@ function Navigation() {
           </div>
         </div>
 
-        {/* Mobile dropdown */}
         {mobileMenuOpen && (
           <div className="border-t border-border bg-card/95 backdrop-blur-xl md:hidden">
             <div className="px-4 py-2">
@@ -159,7 +160,6 @@ function Navigation() {
         )}
       </nav>
 
-      {/* Auth modal — closeable overlay */}
       {showAuthModal && (
         <AuthOverlay onClose={() => setShowAuthModal(false)} />
       )}
@@ -171,12 +171,7 @@ function Navigation() {
 // Protected Route
 // ============================================================================
 
-interface ProtectedRouteProps {
-  children: ReactNode
-  allowedRoles: Role[]
-}
-
-function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+function ProtectedRoute({ children, allowedRoles }: { children: ReactNode; allowedRoles: Role[] }) {
   const { user } = useUser()
   if (user?.role === 'admin') return <>{children}</>
   const userRole = (user?.role ?? ROLES.VIEWER) as Role
@@ -185,61 +180,36 @@ function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
 }
 
 // ============================================================================
-// App Shell
+// App — routes from pages registry
 // ============================================================================
 
-function AppShell() {
-  const { isLoaded } = useAuth()
-
-  if (!isLoaded) {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '100vh',
-          background: '#0a0f1a',
-          color: 'rgba(255,255,255,0.55)',
-          fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-        }}
-      >
-        Loading...
-      </div>
-    )
-  }
-
+export default function App() {
   return (
-    <RecordProvider allowAnonymous>
-      <RecordScope
-        roomId={SCOPE_ID}
-        schemas={schemas}
-        appId={APP_NAME}
-      >
-        <div className="flex min-h-screen flex-col bg-background">
-          <Navigation />
-          <main className="flex-1 overflow-y-auto">
-            <Routes>
-              <Route path="/" element={<Navigate to="/home" replace />} />
-              <Route path="/home" element={<HomePage />} />
-              <Route path="/test" element={<TestPage />} />
-              <Route path="*" element={<Navigate to="/home" replace />} />
-            </Routes>
-          </main>
-        </div>
-      </RecordScope>
-    </RecordProvider>
-  )
-}
-
-// ============================================================================
-// App (entry)
-// ============================================================================
-
-export function App() {
-  return (
-    <DeepSpaceAuthProvider>
-      <AppShell />
-    </DeepSpaceAuthProvider>
+    <div className="flex min-h-screen flex-col bg-background">
+      <Navigation />
+      <main className="flex-1 overflow-y-auto">
+        <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground">Loading...</div>}>
+          <Routes>
+            <Route path="/" element={<Navigate to="/home" replace />} />
+            {pages.map((page) =>
+              page.roles ? (
+                <Route
+                  key={page.path}
+                  path={page.path}
+                  element={
+                    <ProtectedRoute allowedRoles={page.roles}>
+                      <page.component />
+                    </ProtectedRoute>
+                  }
+                />
+              ) : (
+                <Route key={page.path} path={page.path} element={<page.component />} />
+              )
+            )}
+            <Route path="*" element={<Navigate to="/home" replace />} />
+          </Routes>
+        </Suspense>
+      </main>
+    </div>
   )
 }
