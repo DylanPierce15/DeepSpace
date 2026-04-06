@@ -230,8 +230,8 @@ async function main() {
       'npx deepspace deploy',
       '',
       'Add features:',
-      '  node .deepspace/scripts/add-feature.cjs --list',
-      '  node .deepspace/scripts/add-feature.cjs messaging .',
+      '  npx deepspace add --list',
+      '  npx deepspace add messaging',
     ].join('\n'),
     'Next steps',
   )

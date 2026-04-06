@@ -19,6 +19,7 @@
     "login": "deepspace login",
     "deploy": "deepspace deploy",
     "undeploy": "deepspace undeploy",
+    "add": "deepspace add",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit"
