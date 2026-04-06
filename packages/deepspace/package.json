@@ -1,6 +1,6 @@
 {
   "name": "deepspace",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "DeepSpace SDK — build real-time collaborative apps on Cloudflare Workers",
   "type": "module",
   "main": "./dist/index.js",
