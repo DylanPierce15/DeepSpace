@@ -5,24 +5,30 @@
   "description": "Score-based leaderboard with categories, rankings, and admin editing",
   "details": "Ranked leaderboard table with score submission, category filtering, medal badges for top 3, and admin score editing. Uses useQuery with ordering for real-time rankings and useMutations for CRUD.",
   "files": [
-    { "src": "src/LeaderboardPage.tsx", "dest": "src/features/leaderboard/LeaderboardPage.tsx" },
-    { "src": "src/leaderboard-schema.ts", "dest": "src/features/leaderboard/leaderboard-schema.ts" },
-    { "src": "src/leaderboard-constants.ts", "dest": "src/features/leaderboard/leaderboard-constants.ts" }
+    {
+      "src": "src/LeaderboardPage.tsx",
+      "dest": "src/pages/leaderboard.tsx"
+    },
+    {
+      "src": "src/leaderboard-schema.ts",
+      "dest": "src/schemas/leaderboard-schema.ts"
+    },
+    {
+      "src": "src/leaderboard-constants.ts",
+      "dest": "src/components/leaderboard/leaderboard-constants.ts"
+    }
   ],
   "schema": {
     "exportName": "leaderboardSchema",
-    "importPath": "./features/leaderboard/leaderboard-schema",
+    "importPath": "./schemas/leaderboard-schema",
     "spreadOperator": false
   },
   "route": {
     "path": "/leaderboard",
     "component": "LeaderboardPage",
-    "importPath": "./features/leaderboard/LeaderboardPage",
     "protected": true
   },
   "requires": [],
-  "instructions": [
-    "All files are co-located under src/features/leaderboard/ so relative imports within the feature work as-is"
-  ],
+  "instructions": [],
   "patterns": []
 }

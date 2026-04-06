@@ -5,13 +5,21 @@
   "description": "Hierarchical tree navigation with drag-and-drop reordering",
   "details": "Tree sidebar with main navigation views (All, Today, Upcoming, Logbook, Trash), hierarchical project tree with drag-and-drop reordering, user list with task assignment via drag-and-drop, and collapsible sections.",
   "files": [
-    { "src": "src/TreeSidebar.tsx", "dest": "src/features/tree/TreeSidebar.tsx" },
-    { "src": "src/tree-constants.ts", "dest": "src/features/tree/tree-constants.ts" },
-    { "src": "src/tree-hooks.ts", "dest": "src/features/tree/tree-hooks.ts" }
+    {
+      "src": "src/TreeSidebar.tsx",
+      "dest": "src/components/tree/TreeSidebar.tsx"
+    },
+    {
+      "src": "src/tree-constants.ts",
+      "dest": "src/components/tree/tree-constants.ts"
+    },
+    {
+      "src": "src/tree-hooks.ts",
+      "dest": "src/components/tree/tree-hooks.ts"
+    }
   ],
   "requires": [],
   "instructions": [
-    "All files are co-located under src/features/tree/ so relative imports within the feature work as-is",
     "Configure project nodes and user list to populate the tree"
   ],
   "patterns": []

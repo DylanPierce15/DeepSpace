@@ -14,7 +14,7 @@ import { useQuery } from 'deepspace'
 import { useMutations } from 'deepspace'
 import { Button, Modal, EmptyState, Badge } from 'deepspace'
 import { ROLES, type Role } from 'deepspace'
-import { ITEM_STATUS } from './items-constants'
+import { ITEM_STATUS } from '../components/items/items-constants'
 
 // ============================================================================
 // Types

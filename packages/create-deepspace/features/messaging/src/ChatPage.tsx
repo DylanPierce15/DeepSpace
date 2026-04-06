@@ -4,13 +4,13 @@
  */
 
 import { useEffect, useRef } from 'react'
-import { useChatChannel } from './hooks/useChatChannel'
+import { useChatChannel } from '../components/messaging/hooks/useChatChannel'
 import { useReadReceipts } from 'deepspace'
 import { RecordScope } from 'deepspace'
 import type { CollectionSchema } from 'deepspace/worker'
-import { messagingSchemas } from './messaging-schema'
-import { ChatHeader } from './components/chat/ChatHeader'
-import { MessageList } from './components/chat/MessageList'
+import { messagingSchemas } from '../schemas/messaging-schema'
+import { ChatHeader } from '../components/messaging/chat/ChatHeader'
+import { MessageList } from '../components/messaging/chat/MessageList'
 
 interface ChatPageProps {
   schemas?: CollectionSchema[]

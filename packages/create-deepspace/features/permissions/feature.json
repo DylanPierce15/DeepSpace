@@ -5,12 +5,14 @@
   "description": "Auto-generated RBAC permission matrix from schemas",
   "details": "Displays a per-collection CRUD permission matrix (role x operation) derived from the app's schemas. Highlights the current user's role, shows team context for team-scoped collections, and includes expandable field details.",
   "files": [
-    { "src": "src/PermissionsPage.tsx", "dest": "src/features/permissions/PermissionsPage.tsx" }
+    {
+      "src": "src/PermissionsPage.tsx",
+      "dest": "src/pages/permissions.tsx"
+    }
   ],
   "route": {
     "path": "/permissions",
     "component": "PermissionsPage",
-    "importPath": "./features/permissions/PermissionsPage",
     "protected": true
   },
   "requires": [],

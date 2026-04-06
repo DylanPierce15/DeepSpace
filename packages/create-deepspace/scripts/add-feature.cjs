@@ -256,13 +256,13 @@ function integrateRoute(config, targetDir) {
 
   const navPath = path.join(targetDir, 'src', 'nav.ts');
   if (!fs.existsSync(navPath)) {
-    printRouteInstructions(config.route);
+    printRouteInstructions(config.route, config);
     return false;
   }
 
   let content = fs.readFileSync(navPath, 'utf-8');
-  const { path: routePath, component } = config.route;
-  const label = component.replace(/Page$/, '');
+  const { path: routePath } = config.route;
+  const label = config.name;
 
   // Already wired?
   if (content.includes(`'${routePath}'`)) {
@@ -272,7 +272,7 @@ function integrateRoute(config, targetDir) {
 
   if (!content.includes(NAV_MARKER)) {
     console.log('   Could not auto-wire nav (marker not found in nav.ts)');
-    printRouteInstructions(config.route);
+    printRouteInstructions(config.route, config);
     return false;
   }
 
@@ -288,9 +288,9 @@ function integrateRoute(config, targetDir) {
   return true;
 }
 
-function printRouteInstructions(route) {
-  const { path: routePath, component } = route;
-  const label = component.replace(/Page$/, '');
+function printRouteInstructions(route, config) {
+  const { path: routePath } = route;
+  const label = config?.name ?? routePath;
   console.log('');
   console.log('   Add manually to src/nav.ts:');
   console.log(`     { path: '${routePath}', label: '${label}' },`);

@@ -20,7 +20,7 @@ import {
   ScrollReveal,
   GlassCard,
   BrowserMockup,
-} from './primitives'
+} from '../components/landing/primitives'
 
 // ============================================================================
 // CSS injection

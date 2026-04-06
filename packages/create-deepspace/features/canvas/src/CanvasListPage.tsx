@@ -1,20 +1,19 @@
 /**
- * CanvasPage — Collaborative canvas feature page.
+ * CanvasListPage — List of canvas documents.
  *
- * Shows a list of canvas documents (stored in RecordRoom) or
- * the canvas editor (connected to CanvasRoom DO via useCanvas).
+ * Shows all canvas documents (stored in RecordRoom) with
+ * create and delete functionality.
  *
- * Supports deep links: /canvas/:docId navigates directly to a canvas.
+ * Navigates to /canvas/:docId when a canvas is selected.
  */
 
-import { useState, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useUser } from 'deepspace'
 import { useQuery } from 'deepspace'
 import { useMutations } from 'deepspace'
-import { Button, Modal, EmptyState, Badge } from 'deepspace'
+import { Button, Modal, EmptyState } from 'deepspace'
 import { ROLES, type Role } from 'deepspace'
-import { CanvasView } from './components/CanvasView'
 
 // ============================================================================
 // Types
@@ -23,10 +22,6 @@ import { CanvasView } from './components/CanvasView'
 interface CanvasDocument {
   title: string
   ownerId: string
-}
-
-interface CanvasPageProps {
-  className?: string
 }
 
 // ============================================================================
@@ -82,10 +77,8 @@ function CreateCanvasModal({ isOpen, onClose, onCreate }: CreateCanvasModalProps
 // Main Page
 // ============================================================================
 
-export default function CanvasPage({ className }: CanvasPageProps) {
+export default function CanvasListPage() {
   const { user } = useUser()
-  const { '*': subpath } = useParams()
-  const urlDocId = subpath || null
   const navigate = useNavigate()
   const userRole = (user?.role ?? ROLES.VIEWER) as Role
   const canCreate = userRole === ROLES.MEMBER || userRole === ROLES.ADMIN
@@ -104,44 +97,14 @@ export default function CanvasPage({ className }: CanvasPageProps) {
 
   const handleDelete = async (canvasId: string) => {
     if (confirm('Delete this canvas?')) {
-      if (urlDocId === canvasId) navigate('/canvas')
       await remove(canvasId)
     }
   }
 
-  const selectedCanvas = useMemo(
-    () => urlDocId ? canvases.find((c) => c.recordId === urlDocId) : null,
-    [canvases, urlDocId],
-  )
-
   const isLoading = status === 'loading'
 
-  // Canvas editor view
-  if (urlDocId && selectedCanvas) {
-    return (
-      <div data-testid="canvas-page" className={`h-full flex flex-col bg-background ${className ?? ''}`}>
-        {/* Back header */}
-        <div className="px-4 py-3 border-b border-border flex items-center gap-4 bg-card/60 backdrop-blur-md">
-          <button
-            data-testid="canvas-back"
-            onClick={() => navigate('/canvas')}
-            className="p-2 hover:bg-muted/60 rounded-lg transition-colors"
-          >
-            <svg className="w-5 h-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <h2 className="text-lg font-semibold text-foreground">{selectedCanvas.data.title}</h2>
-        </div>
-
-        <CanvasView key={selectedCanvas.recordId} docId={selectedCanvas.recordId} className="flex-1" />
-      </div>
-    )
-  }
-
-  // Document list view
   return (
-    <div data-testid="canvas-page" className={`h-full bg-background overflow-y-auto ${className ?? ''}`}>
+    <div data-testid="canvas-page" className="h-full bg-background overflow-y-auto">
       {/* Header */}
       <div className="bg-card/60 backdrop-blur-md border-b border-border sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
