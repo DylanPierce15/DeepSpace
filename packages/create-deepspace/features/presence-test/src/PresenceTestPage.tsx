@@ -11,7 +11,7 @@ import { useAuth } from 'deepspace'
 
 const SCOPE_ID = 'test-presence-room'
 
-export function PresenceTestPage() {
+export default function PresenceTestPage() {
   const { isSignedIn } = useAuth()
   const { peers, connected, updateState } = usePresenceRoom(SCOPE_ID)
   const [cursorX, setCursorX] = useState(0)

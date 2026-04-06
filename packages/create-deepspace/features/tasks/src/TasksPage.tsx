@@ -396,7 +396,7 @@ function ChallengeCard({
 // Main Page
 // ============================================================================
 
-export function TasksPage({ className }: TasksPageProps) {
+export default function TasksPage({ className }: TasksPageProps) {
   const { user } = useUser()
   const { users } = useUsers()
   const userRole = (user?.role ?? ROLES.VIEWER) as Role

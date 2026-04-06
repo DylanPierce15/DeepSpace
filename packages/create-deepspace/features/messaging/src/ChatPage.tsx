@@ -19,7 +19,7 @@ interface ChatPageProps {
   className?: string
 }
 
-export function ChatPage({
+export default function ChatPage({
   schemas = messagingSchemas,
   appId = '',
   channelName = 'general',

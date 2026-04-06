@@ -4,16 +4,15 @@
  * Starts local development:
  *   1. Ensures you're logged in
  *   2. Writes .dev.vars with production auth/api worker URLs + JWT public key
- *   3. Starts wrangler dev
+ *   3. Starts vite dev (Cloudflare Vite plugin runs the worker in-process)
  *
- *   deepspace dev             # start dev server
- *   deepspace dev --port 8780 # custom port
+ *   deepspace dev
  */
 
 import { defineCommand } from 'citty'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { execSync, spawn } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { ensureToken } from '../auth'
 
 const AUTH_WORKER_URL =
@@ -32,23 +31,16 @@ export default defineCommand({
       description: 'App directory (default: current directory)',
       required: false,
     },
-    port: {
-      type: 'string',
-      description: 'Dev server port',
-      required: false,
-    },
   },
   async run({ args }) {
     const appDir = resolve(args.dir ?? '.')
 
-    // Verify this is a DeepSpace app
-    const wranglerPath = join(appDir, 'wrangler.toml')
-    if (!existsSync(wranglerPath)) {
+    if (!existsSync(join(appDir, 'wrangler.toml'))) {
       console.error('No wrangler.toml found. Are you in a DeepSpace app directory?')
       process.exit(1)
     }
 
-    // Ensure logged in and get user info
+    // Ensure logged in
     let token: string
     try {
       token = await ensureToken()
@@ -58,10 +50,9 @@ export default defineCommand({
     }
 
     const payload = JSON.parse(atob(token.split('.')[1]))
-    const userId = payload.sub
     console.log(`Logged in as ${payload.name ?? payload.email}`)
 
-    // Fetch JWT public key from auth worker
+    // Fetch JWT public key
     console.log('Fetching auth config...')
     let jwtPublicKey: string
     try {
@@ -74,72 +65,24 @@ export default defineCommand({
       process.exit(1)
     }
 
-    const jwtIssuer = `${AUTH_WORKER_URL}/api/auth`
-
     // Write .dev.vars
     const devVars = [
       `AUTH_JWT_PUBLIC_KEY=${jwtPublicKey}`,
-      `AUTH_JWT_ISSUER=${jwtIssuer}`,
+      `AUTH_JWT_ISSUER=${AUTH_WORKER_URL}/api/auth`,
       `AUTH_WORKER_URL=${AUTH_WORKER_URL}`,
       `API_WORKER_URL=${API_WORKER_URL}`,
-      `OWNER_USER_ID=${userId}`,
+      `OWNER_USER_ID=${payload.sub}`,
       `INTERNAL_STORAGE_HMAC_SECRET=dev-${Date.now()}`,
     ].join('\n')
 
     writeFileSync(join(appDir, '.dev.vars'), devVars + '\n')
-    console.log('Wrote .dev.vars')
+    console.log('Starting dev server...\n')
 
-    // Ensure dist/ exists (wrangler requires it for assets, Vite creates it on build)
-    const distDir = join(appDir, 'dist')
-    if (!existsSync(distDir)) {
-      mkdirSync(distDir, { recursive: true })
-    }
+    // Single process — Cloudflare Vite plugin runs the worker inside Vite
+    const vite = spawn('npx', ['vite'], { cwd: appDir, stdio: 'inherit' })
 
-    // Start wrangler dev (worker backend — API, WebSocket, DOs)
-    const wranglerPort = args.port ?? '8780'
-    console.log('Starting wrangler dev (worker)...')
-
-    const wrangler = spawn('npx', ['wrangler', 'dev', '--port', wranglerPort], {
-      cwd: appDir,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
-
-    // Wait for wrangler to be ready
-    await new Promise<void>((resolve) => {
-      const onData = (data: Buffer) => {
-        const text = data.toString()
-        process.stderr.write(text)
-        if (text.includes('Ready on')) resolve()
-      }
-      wrangler.stderr?.on('data', onData)
-      wrangler.stdout?.on('data', onData)
-      // Timeout fallback
-      setTimeout(resolve, 10000)
-    })
-
-    // Start Vite dev server (frontend — proxies /api and /ws to wrangler)
-    console.log('Starting Vite dev server...\n')
-
-    const vite = spawn('npx', ['vite', '--host'], {
-      cwd: appDir,
-      stdio: 'inherit',
-    })
-
-    const cleanup = () => {
-      wrangler.kill('SIGTERM')
-      vite.kill('SIGTERM')
-    }
-
-    vite.on('close', (code) => {
-      wrangler.kill('SIGTERM')
-      process.exit(code ?? 0)
-    })
-
-    wrangler.on('close', () => {
-      vite.kill('SIGTERM')
-    })
-
-    process.on('SIGINT', cleanup)
-    process.on('SIGTERM', cleanup)
+    process.on('SIGINT', () => vite.kill())
+    process.on('SIGTERM', () => vite.kill())
+    vite.on('close', (code) => process.exit(code ?? 0))
   },
 })

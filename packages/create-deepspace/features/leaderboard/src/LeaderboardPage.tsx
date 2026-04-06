@@ -183,7 +183,7 @@ function RankBadge({ rank }: { rank: number }) {
 // Main Page
 // ============================================================================
 
-export function LeaderboardPage({ className }: LeaderboardPageProps) {
+export default function LeaderboardPage({ className }: LeaderboardPageProps) {
   const { user } = useUser()
   const userRole = (user?.role ?? ROLES.VIEWER) as Role
   const isAdmin = userRole === ROLES.ADMIN

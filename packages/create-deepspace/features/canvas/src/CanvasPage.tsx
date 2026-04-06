@@ -82,7 +82,7 @@ function CreateCanvasModal({ isOpen, onClose, onCreate }: CreateCanvasModalProps
 // Main Page
 // ============================================================================
 
-export function CanvasPage({ className }: CanvasPageProps) {
+export default function CanvasPage({ className }: CanvasPageProps) {
   const { user } = useUser()
   const { '*': subpath } = useParams()
   const urlDocId = subpath || null

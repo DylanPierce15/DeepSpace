@@ -31,7 +31,7 @@ interface ChatMultiPageProps {
   className?: string
 }
 
-export function ChatMultiPage({
+export default function ChatMultiPage({
   schemas = messagingSchemas,
   appId = '',
   className,

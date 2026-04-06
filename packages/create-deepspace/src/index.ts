@@ -48,6 +48,7 @@ function validateAppName(name: string): string | null {
 const BOILERPLATE_FILES = new Set([
   '.git', '.gitignore', '.gitattributes', 'readme.md', 'readme',
   'license', 'license.md', 'licence', 'licence.md', '.github',
+  '.vite', '.wrangler', '.dev.vars', '.ds_store',
 ])
 
 function isNearEmpty(dir: string): boolean {

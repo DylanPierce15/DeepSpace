@@ -221,7 +221,7 @@ function CreateDocModal({ isOpen, onClose, onCreate }: CreateDocModalProps) {
 // Main Page
 // ============================================================================
 
-export function DocsPage({ className }: DocsPageProps) {
+export default function DocsPage({ className }: DocsPageProps) {
   const { user } = useUser()
   const { '*': subpath } = useParams()
   const navigate = useNavigate()

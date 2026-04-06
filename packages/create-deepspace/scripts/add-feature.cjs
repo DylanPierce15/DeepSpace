@@ -254,25 +254,70 @@ function integrateCss(config, targetDir) {
 }
 
 // ---------------------------------------------------------------------------
-// Post-install instructions (route & nav — agent wires manually)
+// Route auto-wiring into pages.ts
+// ---------------------------------------------------------------------------
+
+const PAGES_MARKER = '// ── Features add pages below this line ──';
+
+function integrateRoute(config, targetDir) {
+  if (!config.route) return false;
+
+  const pagesPath = path.join(targetDir, 'src', 'pages.ts');
+  if (!fs.existsSync(pagesPath)) {
+    printRouteInstructions(config.route);
+    return false;
+  }
+
+  let content = fs.readFileSync(pagesPath, 'utf-8');
+  const { path: routePath, component, importPath } = config.route;
+
+  // Already wired?
+  if (content.includes(importPath)) {
+    console.log(`   Route already present: ${routePath}`);
+    return false;
+  }
+
+  if (!content.includes(PAGES_MARKER)) {
+    console.log('   Could not auto-wire route (marker not found in pages.ts)');
+    printRouteInstructions(config.route);
+    return false;
+  }
+
+  const label = component.replace(/Page$/, '');
+  const rolesStr = config.route.protected === false ? '' : ", roles: ['member' as Role]";
+  const entry = `  { path: '${routePath}', label: '${label}', component: lazyPage(() => import('${importPath}'), '${importPath}')${rolesStr} },`;
+
+  // Verify the component file has a default export (required by React.lazy)
+  const componentFile = path.join(targetDir, 'src', importPath.replace('./', '') + '.tsx');
+  if (fs.existsSync(componentFile)) {
+    const src = fs.readFileSync(componentFile, 'utf-8');
+    if (!src.includes('export default')) {
+      console.error(`\n   ERROR: ${importPath}.tsx must use "export default function ${component}" for lazy loading to work.`);
+      console.error(`   Change "export function ${component}" to "export default function ${component}"\n`);
+      return false;
+    }
+  }
+
+  content = content.replace(PAGES_MARKER, `${PAGES_MARKER}\n${entry}`);
+  fs.writeFileSync(pagesPath, content);
+  console.log(`   Route wired: ${routePath} -> ${component}`);
+  return true;
+}
+
+function printRouteInstructions(route) {
+  const { path: routePath, component, importPath } = route;
+  const label = component.replace(/Page$/, '');
+  console.log('');
+  console.log('   Add manually to src/pages.ts:');
+  console.log(`     { path: '${routePath}', label: '${label}', component: lazy(() => import('${importPath}')) },`);
+}
+
+// ---------------------------------------------------------------------------
+// Post-install instructions (for features that need manual wiring)
 // ---------------------------------------------------------------------------
 
 function printPostInstallInstructions(config) {
-  const instructions = [];
-
-  if (config.route) {
-    const { path: routePath, component, importPath } = config.route;
-    instructions.push(
-      `Add route to App.tsx:\n` +
-      `     import ${component} from '${importPath}'\n` +
-      `     <Route path="${routePath}" element={<${component} />} />`
-    );
-
-    const label = component.replace(/Page$/, '');
-    instructions.push(
-      `Add nav item for '${routePath}' with label '${label}'`
-    );
-  }
+  const instructions = config.instructions || [];
 
   if (instructions.length > 0) {
     console.log('\n--- Manual wiring needed ---\n');
@@ -411,11 +456,12 @@ function main() {
 
   console.log(`\nCopied ${copied} file(s)${skipped > 0 ? `, skipped ${skipped} existing` : ''}`);
 
-  // Auto-integrate schema and CSS
+  // Auto-integrate schema, CSS, and route
   integrateSchema(config, targetDir);
   integrateCss(config, targetDir);
+  integrateRoute(config, targetDir);
 
-  // Print manual wiring instructions
+  // Print any remaining manual wiring instructions
   printPostInstallInstructions(config);
 
   if (config.patterns && config.patterns.length > 0) {

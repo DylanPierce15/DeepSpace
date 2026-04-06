@@ -166,7 +166,7 @@ function ItemCard({ item, isOwner, onToggleStatus, onDelete }: ItemCardProps) {
 // Main Page
 // ============================================================================
 
-export function ItemsPage({ className }: ItemsPageProps) {
+export default function ItemsPage({ className }: ItemsPageProps) {
   const { user } = useUser()
   const userRole = (user?.role ?? ROLES.VIEWER) as Role
   const canCreate = userRole === ROLES.MEMBER || userRole === ROLES.ADMIN
