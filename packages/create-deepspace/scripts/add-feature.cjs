@@ -18,17 +18,9 @@ const path = require('path');
 // ---------------------------------------------------------------------------
 
 function findFeaturesDir() {
-  const candidates = [
-    // .deepspace/scripts/add-feature.cjs → .deepspace/features/
-    path.resolve(__dirname, '..', 'features'),
-    // packages/create-deepspace/scripts/add-feature.cjs → ../features/
-    path.resolve(__dirname, '..', 'features'),
-  ];
-  for (const c of candidates) {
-    if (fs.existsSync(c)) return c;
-  }
-  console.error('Error: Could not find features directory. Searched:');
-  candidates.forEach(c => console.error('  ' + c));
+  const candidate = path.resolve(__dirname, '..', 'features');
+  if (fs.existsSync(candidate)) return candidate;
+  console.error('Error: Could not find features directory at ' + candidate);
   process.exit(1);
 }
 
@@ -254,62 +246,54 @@ function integrateCss(config, targetDir) {
 }
 
 // ---------------------------------------------------------------------------
-// Route auto-wiring into pages.ts
+// Nav auto-wiring into nav.ts
 // ---------------------------------------------------------------------------
 
-const PAGES_MARKER = '// ── Features add pages below this line ──';
+const NAV_MARKER = '// ── Features add nav items below this line ──';
 
 function integrateRoute(config, targetDir) {
   if (!config.route) return false;
 
-  const pagesPath = path.join(targetDir, 'src', 'pages.ts');
-  if (!fs.existsSync(pagesPath)) {
+  const navPath = path.join(targetDir, 'src', 'nav.ts');
+  if (!fs.existsSync(navPath)) {
     printRouteInstructions(config.route);
     return false;
   }
 
-  let content = fs.readFileSync(pagesPath, 'utf-8');
-  const { path: routePath, component, importPath } = config.route;
+  let content = fs.readFileSync(navPath, 'utf-8');
+  const { path: routePath, component } = config.route;
+  const label = component.replace(/Page$/, '');
 
   // Already wired?
-  if (content.includes(importPath)) {
-    console.log(`   Route already present: ${routePath}`);
+  if (content.includes(`'${routePath}'`)) {
+    console.log(`   Nav already present: ${routePath}`);
     return false;
   }
 
-  if (!content.includes(PAGES_MARKER)) {
-    console.log('   Could not auto-wire route (marker not found in pages.ts)');
+  if (!content.includes(NAV_MARKER)) {
+    console.log('   Could not auto-wire nav (marker not found in nav.ts)');
     printRouteInstructions(config.route);
     return false;
   }
 
-  const label = component.replace(/Page$/, '');
   const rolesStr = config.route.protected === false ? '' : ", roles: ['member' as Role]";
-  const entry = `  { path: '${routePath}', label: '${label}', component: lazyPage(() => import('${importPath}'), '${importPath}')${rolesStr} },`;
+  const entry = `  { path: '${routePath}', label: '${label}'${rolesStr} },`;
 
-  // Verify the component file has a default export (required by React.lazy)
-  const componentFile = path.join(targetDir, 'src', importPath.replace('./', '') + '.tsx');
-  if (fs.existsSync(componentFile)) {
-    const src = fs.readFileSync(componentFile, 'utf-8');
-    if (!src.includes('export default')) {
-      console.error(`\n   ERROR: ${importPath}.tsx must use "export default function ${component}" for lazy loading to work.`);
-      console.error(`   Change "export function ${component}" to "export default function ${component}"\n`);
-      return false;
-    }
-  }
+  content = content.replace(NAV_MARKER, `${NAV_MARKER}\n${entry}`);
+  fs.writeFileSync(navPath, content);
+  console.log(`   Nav wired: ${routePath} (${label})`);
 
-  content = content.replace(PAGES_MARKER, `${PAGES_MARKER}\n${entry}`);
-  fs.writeFileSync(pagesPath, content);
-  console.log(`   Route wired: ${routePath} -> ${component}`);
+  // Route is automatic via generouted — page file in src/pages/ is enough
+  console.log(`   Route: automatic (file-based routing via src/pages/)`);
   return true;
 }
 
 function printRouteInstructions(route) {
-  const { path: routePath, component, importPath } = route;
+  const { path: routePath, component } = route;
   const label = component.replace(/Page$/, '');
   console.log('');
-  console.log('   Add manually to src/pages.ts:');
-  console.log(`     { path: '${routePath}', label: '${label}', component: lazy(() => import('${importPath}')) },`);
+  console.log('   Add manually to src/nav.ts:');
+  console.log(`     { path: '${routePath}', label: '${label}' },`);
 }
 
 // ---------------------------------------------------------------------------
@@ -431,7 +415,7 @@ function main() {
   const targetDir = resolveTargetDir(rawDir);
 
   if (!targetDir) {
-    console.error('\nError: Please specify a app directory');
+    console.error('\nError: Please specify an app directory');
     console.error('Usage: node add-feature.js <feature-id> <app-dir>');
     process.exit(1);
   }

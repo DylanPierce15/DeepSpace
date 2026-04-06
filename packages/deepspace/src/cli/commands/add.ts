@@ -70,7 +70,7 @@ export default defineCommand({
       passArgs.push('--help')
     }
 
-    execSync(`node ${JSON.stringify(script)} ${passArgs.join(' ')}`, {
+    execSync(`node ${JSON.stringify(script)} ${passArgs.map(a => JSON.stringify(a)).join(' ')}`, {
       stdio: 'inherit',
       cwd: appDir,
     })

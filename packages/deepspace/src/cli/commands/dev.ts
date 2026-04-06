@@ -49,7 +49,13 @@ export default defineCommand({
       process.exit(1)
     }
 
-    const payload = JSON.parse(atob(token.split('.')[1]))
+    let payload: { sub: string; name?: string; email?: string }
+    try {
+      payload = JSON.parse(atob(token.split('.')[1]))
+    } catch {
+      console.error('Malformed session token. Run `npx deepspace login`.')
+      process.exit(1)
+    }
     console.log(`Logged in as ${payload.name ?? payload.email}`)
 
     // Fetch JWT public key

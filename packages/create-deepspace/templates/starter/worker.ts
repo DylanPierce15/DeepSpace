@@ -18,7 +18,6 @@ import {
   verifyJwt,
   verifyInternalSignature,
   buildInternalPayload,
-  signInternalPayload,
 } from 'deepspace/worker'
 import type { JwtVerifierConfig, VerifyResult } from 'deepspace/worker'
 import {
@@ -69,7 +68,6 @@ export class AppPresenceRoom extends PresenceRoom {}
 interface Env extends DOBindings<typeof __DO_MANIFEST__> {
   ASSETS: Fetcher
   FILES: R2Bucket
-  PLATFORM_WORKER: Fetcher
   API_WORKER: Fetcher
   AUTH_JWT_PUBLIC_KEY: string
   AUTH_JWT_ISSUER: string

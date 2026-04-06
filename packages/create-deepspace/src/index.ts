@@ -14,7 +14,7 @@
  */
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, cpSync } from 'node:fs'
-import { join, resolve, dirname, extname } from 'node:path'
+import { join, resolve, dirname, basename, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execSync, spawn } from 'node:child_process'
 import * as p from '@clack/prompts'
@@ -104,14 +104,14 @@ async function main() {
     })
     if (p.isCancel(result)) { p.cancel('Cancelled'); process.exit(0) }
     appName = result as string
-  } else {
+  } else if (appName !== '.') {
     const error = validateAppName(appName)
     if (error) { p.cancel(error); process.exit(1) }
   }
 
   // If appName is "." or matches current directory name, and it's a near-empty git repo, scaffold in-place
   const cwd = process.cwd()
-  const cwdName = cwd.split('/').pop() ?? ''
+  const cwdName = basename(cwd)
   if (appName === '.') appName = cwdName
   const isInPlace = (appName === cwdName) && existsSync(join(cwd, '.git')) && isNearEmpty(cwd)
   const appDir = isInPlace ? cwd : resolve(appName)
