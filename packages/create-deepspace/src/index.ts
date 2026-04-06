@@ -16,7 +16,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, cpSync } from 'node:fs'
 import { join, resolve, dirname, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { execSync } from 'node:child_process'
+import { execSync, spawn } from 'node:child_process'
 import * as p from '@clack/prompts'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -190,11 +190,26 @@ async function main() {
     s.stop('Features ready')
   }
 
-  // Install dependencies
-  s.start('Installing dependencies')
+  // Install dependencies — use bun if available (much faster), fall back to npm
+  const hasBun = (() => { try { execSync('bun --version', { stdio: 'pipe' }); return true } catch { return false } })()
+  const installArgs = hasBun ? ['bun', ['install']] as const : ['npm', ['install', '--no-fund', '--no-audit']] as const
+  s.start('Installing dependencies...')
   try {
-    execSync('npm install --no-fund --no-audit', { cwd: appDir, stdio: 'pipe' })
-    s.stop('Dependencies installed')
+    let pkgCount = 0
+    const child = spawn(installArgs[0], [...installArgs[1]], { cwd: appDir, stdio: 'pipe' })
+    const onData = (data: Buffer) => {
+      const text = data.toString()
+      const added = text.match(/added (\d+) packages/)
+      if (added) pkgCount = parseInt(added[1])
+      const bunMatch = text.match(/\[(\d+)\]/)
+      if (bunMatch) pkgCount = parseInt(bunMatch[1])
+    }
+    child.stdout?.on('data', onData)
+    child.stderr?.on('data', onData)
+    await new Promise<void>((res, rej) => {
+      child.on('close', (code: number) => code === 0 ? res() : rej(new Error(`Install exited with ${code}`)))
+    })
+    s.stop(pkgCount > 0 ? `${pkgCount} packages installed` : 'Dependencies installed')
   } catch {
     s.stop('Install failed — run npm install manually')
   }
