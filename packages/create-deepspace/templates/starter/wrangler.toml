@@ -10,8 +10,7 @@ not_found_handling = "none"
 
 [[migrations]]
 tag = "v1"
-new_sqlite_classes = ["AppRecordRoom", "AppYjsRoom", "AppCanvasRoom", "AppMediaRoom"]
-new_classes = ["AppPresenceRoom"]
+new_sqlite_classes = ["AppRecordRoom", "AppYjsRoom", "AppCanvasRoom", "AppMediaRoom", "AppPresenceRoom"]
 
 [durable_objects]
 bindings = [

@@ -5,7 +5,7 @@
  */
 
 import { motion } from 'framer-motion'
-import { AtSign, ExternalLink, Link2 } from 'lucide-react'
+import { Twitter, Github, Linkedin } from 'lucide-react'
 import { StaggerContainer, staggerChild, GlassCard, SectionHeading, cn } from '../primitives'
 
 interface TeamMember {
@@ -25,7 +25,7 @@ const TEAM_MEMBERS: TeamMember[] = [
   { name: 'Morgan Chen', role: 'Product Manager', socials: { linkedin: '#' } },
 ]
 
-const SOCIAL_ICONS = { twitter: AtSign, github: ExternalLink, linkedin: Link2 } as const
+const SOCIAL_ICONS = { twitter: Twitter, github: Github, linkedin: Linkedin } as const
 
 export default function TeamSection() {
   return (

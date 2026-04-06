@@ -77,6 +77,26 @@ const FEATURES: Array<{
 // Decorative Visuals
 // ============================================================================
 
+function SpeedPulseVisual() {
+  return (
+    <div className="relative h-24 w-full overflow-hidden rounded-lg bg-foreground/[0.02]">
+      <div className="absolute inset-0 flex items-center justify-center gap-[3px]">
+        {[0.3, 0.7, 0.5, 1, 0.6, 0.85, 0.45, 0.9, 0.35, 0.75, 0.55, 0.95, 0.4, 0.8, 0.65].map((h, i) => (
+          <motion.div
+            key={i}
+            className="w-[4px] rounded-full bg-gradient-to-t from-amber-500/60 to-orange-400/30"
+            initial={{ height: '10%' }}
+            whileInView={{ height: `${h * 80}%` }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.04, duration: 0.6, ease: 'easeOut' }}
+          />
+        ))}
+      </div>
+      <div className="absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-background/90 to-transparent" />
+    </div>
+  )
+}
+
 function ShieldVisual() {
   const checkItems = ['Encryption', 'RBAC', 'Audit Log']
   return (
@@ -130,6 +150,77 @@ function BarChartVisual() {
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+function SparkleVisual() {
+  const nodes = [
+    { x: 20, y: 30, delay: 0 },
+    { x: 50, y: 15, delay: 0.1 },
+    { x: 80, y: 35, delay: 0.2 },
+    { x: 35, y: 65, delay: 0.15 },
+    { x: 65, y: 55, delay: 0.25 },
+    { x: 50, y: 80, delay: 0.3 },
+  ]
+  const connections = [
+    [0, 1], [1, 2], [0, 3], [1, 4], [2, 4], [3, 5], [4, 5],
+  ]
+  return (
+    <div className="relative h-24 w-full overflow-hidden rounded-lg bg-foreground/[0.02]">
+      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+        {connections.map(([a, b], i) => (
+          <motion.line
+            key={i}
+            x1={nodes[a].x}
+            y1={nodes[a].y}
+            x2={nodes[b].x}
+            y2={nodes[b].y}
+            stroke="url(#sparkleGrad)"
+            strokeWidth="0.5"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 0.4 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 + i * 0.05, duration: 0.5 }}
+          />
+        ))}
+        <defs>
+          <linearGradient id="sparkleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="rgb(139,92,246)" stopOpacity="0.6" />
+            <stop offset="100%" stopColor="rgb(168,85,247)" stopOpacity="0.3" />
+          </linearGradient>
+        </defs>
+        {nodes.map((node, i) => (
+          <motion.circle
+            key={i}
+            cx={node.x}
+            cy={node.y}
+            r="3"
+            fill="rgba(139,92,246,0.4)"
+            stroke="rgba(139,92,246,0.6)"
+            strokeWidth="0.5"
+            initial={{ scale: 0, opacity: 0 }}
+            whileInView={{ scale: 1, opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: node.delay + 0.1, duration: 0.4, ease: 'easeOut' }}
+          />
+        ))}
+        {nodes.map((node, i) => (
+          <motion.circle
+            key={`glow-${i}`}
+            cx={node.x}
+            cy={node.y}
+            r="5"
+            fill="none"
+            stroke="rgba(139,92,246,0.15)"
+            strokeWidth="1"
+            initial={{ scale: 0 }}
+            whileInView={{ scale: [1, 1.8, 1] }}
+            viewport={{ once: true }}
+            transition={{ delay: node.delay + 0.5, duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        ))}
+      </svg>
     </div>
   )
 }

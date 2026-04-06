@@ -74,6 +74,9 @@ Data is keyed by `scopeId`:
 - Local dev: `scripts/setup-env.sh` syncs to `.dev.vars` per worker.
 - Test app secrets are copied by `scaffold-test-app.sh`.
 
+## Durable Objects
+All app DOs use `new_sqlite_classes` (not legacy `new_classes`). Even ephemeral DOs like PresenceRoom are declared as SQLite — Cloudflare recommends SQLite for all new DOs; KV-backed DOs are legacy.
+
 ## Databases
 - **D1** (Cloudflare SQLite): `deepspace-auth` (auth-worker), `deepspace-billing` (api-worker).
 - Durable Object SQLite: per-scope record storage in SharedRecordRoom.

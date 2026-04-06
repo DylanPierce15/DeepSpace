@@ -44,7 +44,7 @@ export const __DO_MANIFEST__ = [
   { binding: 'YJS_ROOMS', className: 'AppYjsRoom', sqlite: true },
   { binding: 'CANVAS_ROOMS', className: 'AppCanvasRoom', sqlite: true },
   { binding: 'MEDIA_ROOMS', className: 'AppMediaRoom', sqlite: true },
-  { binding: 'PRESENCE_ROOMS', className: 'AppPresenceRoom', sqlite: false },
+  { binding: 'PRESENCE_ROOMS', className: 'AppPresenceRoom', sqlite: true },
 ] as const satisfies DOManifest
 
 // =============================================================================

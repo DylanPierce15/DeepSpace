@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import {
   ArrowRight, Menu, X, ChevronDown, Play,
-  ExternalLink, AtSign, Link2, Mail, Sparkles, ChevronRight, Plus, Minus,
+  Github, Twitter, Linkedin, Mail, Sparkles, ChevronRight, Plus, Minus,
 } from 'lucide-react'
 import { useUser } from 'deepspace'
 import { Button, cn } from 'deepspace'
@@ -536,9 +536,9 @@ function Footer() {
             <p className="mt-3 text-sm text-muted-foreground/60 leading-relaxed max-w-xs">{HERO_SUBHEADLINE}</p>
             <div className="flex items-center gap-3 mt-6">
               {[
-                { icon: AtSign, label: 'Twitter' },
-                { icon: ExternalLink, label: 'GitHub' },
-                { icon: Link2, label: 'LinkedIn' },
+                { icon: Twitter, label: 'Twitter' },
+                { icon: Github, label: 'GitHub' },
+                { icon: Linkedin, label: 'LinkedIn' },
                 { icon: Mail, label: 'Email' },
               ].map(social => (
                 <a key={social.label} href="#" aria-label={social.label} className={cn('w-9 h-9 rounded-lg flex items-center justify-center', 'bg-foreground/[0.04] border border-foreground/[0.08]', 'text-muted-foreground/50 hover:text-muted-foreground hover:bg-foreground/[0.08]', 'transition-all duration-200')}>
