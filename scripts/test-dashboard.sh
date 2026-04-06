@@ -86,7 +86,7 @@ wait_for_url "http://localhost:8796/api/health" "deploy-worker"
 echo "→ Starting dashboard (port 5174)..."
 cd "$ROOT/apps/dashboard" && npx vite --port 5174 > /tmp/ds-dash-vite.log 2>&1 &
 PIDS+=($!); cd "$ROOT"
-wait_for_url "http://localhost:5174" "dashboard"
+wait_for_url "http://localhost:5174" "dashboard" 30
 
 # Run tests
 echo ""

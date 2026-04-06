@@ -11,6 +11,7 @@ not_found_handling = "none"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["AppRecordRoom", "AppYjsRoom", "AppCanvasRoom", "AppMediaRoom"]
+new_classes = ["AppPresenceRoom"]
 
 [durable_objects]
 bindings = [
@@ -18,6 +19,7 @@ bindings = [
   { name = "YJS_ROOMS", class_name = "AppYjsRoom" },
   { name = "CANVAS_ROOMS", class_name = "AppCanvasRoom" },
   { name = "MEDIA_ROOMS", class_name = "AppMediaRoom" },
+  { name = "PRESENCE_ROOMS", class_name = "AppPresenceRoom" },
 ]
 
 [[r2_buckets]]

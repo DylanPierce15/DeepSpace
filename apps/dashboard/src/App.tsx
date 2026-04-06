@@ -1,5 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
-import { useAuth, signIn } from 'deepspace'
+import { useAuth } from 'deepspace'
 import { LogIn } from 'lucide-react'
 import { AppsPage } from './pages/AppsPage'
 import { AppDetailPage } from './pages/AppDetailPage'
@@ -16,20 +16,20 @@ function SignInScreen() {
           Sign in to manage your deployed apps.
         </p>
         <div className="space-y-3">
-          <button
-            onClick={() => signIn.social({ provider: 'github', callbackURL: '/' })}
+          <a
+            href="/api/auth/social-redirect?provider=github"
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background transition-opacity hover:opacity-90"
           >
             <LogIn className="h-4 w-4" />
             Continue with GitHub
-          </button>
-          <button
-            onClick={() => signIn.social({ provider: 'google', callbackURL: '/' })}
+          </a>
+          <a
+            href="/api/auth/social-redirect?provider=google"
             className="flex w-full items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
             <LogIn className="h-4 w-4" />
             Continue with Google
-          </button>
+          </a>
         </div>
       </div>
     </div>

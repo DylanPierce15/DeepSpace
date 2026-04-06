@@ -77,6 +77,12 @@ export const MSG_CRON_PAUSE = 123
 export const MSG_CRON_RESUME = 124
 export const MSG_CRON_STATUS = 125
 
+// PresenceRoom messages (130-139)
+export const MSG_PRESENCE_SYNC = 130
+export const MSG_PRESENCE_JOIN = 131
+export const MSG_PRESENCE_LEAVE = 132
+export const MSG_PRESENCE_UPDATE = 133
+
 // Gateway multiplexing (single-WS architecture)
 export const MSG_GW_SCOPE_CONNECT = 100
 export const MSG_GW_SCOPE_DISCONNECT = 101

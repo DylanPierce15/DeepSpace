@@ -7,6 +7,7 @@ async function authedFetch<T>(url: string, init?: RequestInit): Promise<T> {
 
   const res = await fetch(url, {
     ...init,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,

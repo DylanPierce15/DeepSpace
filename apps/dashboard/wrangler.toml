@@ -1,0 +1,33 @@
+# DeepSpace Dashboard
+# Serves the console SPA and proxies API calls to platform workers.
+
+name = "deepspace-dashboard"
+main = "worker.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[dev]
+port = 5174
+inspector_port = 9238
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = true
+
+# Service bindings for worker-to-worker communication
+[[services]]
+binding = "AUTH_WORKER"
+service = "deepspace-auth"
+
+[[services]]
+binding = "API_WORKER"
+service = "deepspace-api"
+
+[[services]]
+binding = "DEPLOY_WORKER"
+service = "deepspace-deploy"
+
+[vars]
+AUTH_WORKER_URL = "https://deepspace-auth.eudaimonicincorporated.workers.dev"

@@ -30,6 +30,7 @@ export { useGameRoom, type UseGameRoomResult, type GamePlayer } from './hooks/us
 export { useCanvas, type UseCanvasResult, type CanvasShapeClient, type ViewportClient } from './hooks/useCanvas'
 export { useMediaRoom, type UseMediaRoomResult, type MediaPeerClient } from './hooks/useMediaRoom'
 export { useCronMonitor, type UseCronMonitorResult, type CronTaskState, type CronHistoryEntry } from './hooks/useCronMonitor'
+export { usePresenceRoom, type UsePresenceRoomResult, type PresencePeerClient } from './hooks/usePresenceRoom'
 
 // Connection status
 export { type ConnectionStatus, toConnectionStatus } from './connection-status'

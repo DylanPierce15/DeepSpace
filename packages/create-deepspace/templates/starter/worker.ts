@@ -26,6 +26,7 @@ import {
   YjsRoom,
   CanvasRoom,
   MediaRoom,
+  PresenceRoom,
   createScopedR2Handler,
   type ScopedR2Handler,
 } from 'deepspace/worker'
@@ -43,6 +44,7 @@ export const __DO_MANIFEST__ = [
   { binding: 'YJS_ROOMS', className: 'AppYjsRoom', sqlite: true },
   { binding: 'CANVAS_ROOMS', className: 'AppCanvasRoom', sqlite: true },
   { binding: 'MEDIA_ROOMS', className: 'AppMediaRoom', sqlite: true },
+  { binding: 'PRESENCE_ROOMS', className: 'AppPresenceRoom', sqlite: false },
 ] as const satisfies DOManifest
 
 // =============================================================================
@@ -58,6 +60,7 @@ export class AppRecordRoom extends RecordRoom {
 export class AppYjsRoom extends YjsRoom {}
 export class AppCanvasRoom extends CanvasRoom {}
 export class AppMediaRoom extends MediaRoom {}
+export class AppPresenceRoom extends PresenceRoom {}
 
 // =============================================================================
 // Types
@@ -255,6 +258,30 @@ app.get('/ws/media/:roomId', async (c) => {
   doUrl.searchParams.delete('token')
   const doId = c.env.MEDIA_ROOMS.idFromName(roomId)
   const stub = c.env.MEDIA_ROOMS.get(doId)
+  return stub.fetch(new Request(doUrl.toString(), c.req.raw))
+})
+
+// ---------------------------------------------------------------------------
+// WebSocket → PresenceRoom DOs (real-time presence per scope)
+// ---------------------------------------------------------------------------
+
+app.get('/ws/presence/:scopeId', async (c) => {
+  const scopeId = c.req.param('scopeId')
+  const token = new URL(c.req.url).searchParams.get('token')
+  let auth: VerifyResult | null = null
+  if (token) {
+    auth = (await verifyJwt(jwtConfig(c.env), token)).result
+  }
+  const doUrl = new URL(c.req.url)
+  if (auth) {
+    doUrl.searchParams.set('userId', auth.userId)
+    if (auth.claims.name) doUrl.searchParams.set('userName', auth.claims.name)
+    if (auth.claims.email) doUrl.searchParams.set('userEmail', auth.claims.email)
+    if (auth.claims.image) doUrl.searchParams.set('userImageUrl', auth.claims.image)
+  }
+  doUrl.searchParams.delete('token')
+  const doId = c.env.PRESENCE_ROOMS.idFromName(scopeId)
+  const stub = c.env.PRESENCE_ROOMS.get(doId)
   return stub.fetch(new Request(doUrl.toString(), c.req.raw))
 })
 
