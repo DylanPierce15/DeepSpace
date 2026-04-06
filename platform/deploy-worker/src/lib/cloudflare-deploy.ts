@@ -87,8 +87,11 @@ export async function deployToWfP(
     )
     let needsMigration = true
     let newSqliteClasses: string[] = doManifest.filter(e => e.sqlite).map(e => e.className)
+    console.log(`[deploy] DO manifest: ${JSON.stringify(doManifest)}`)
+    console.log(`[deploy] Bindings check: ${bindingsRes.status}`)
     if (bindingsRes.ok) {
       const bindingsData = (await bindingsRes.json()) as { result?: Array<{ type: string; name: string }> }
+      console.log(`[deploy] Existing bindings: ${JSON.stringify(bindingsData.result)}`)
       const existingDOBindings = new Set(
         bindingsData.result
           ?.filter((b) => b.type === 'durable_object_namespace')
@@ -98,7 +101,9 @@ export async function deployToWfP(
         .filter(e => e.sqlite && !existingDOBindings.has(e.binding))
         .map(e => e.className)
       needsMigration = newSqliteClasses.length > 0
+      console.log(`[deploy] Existing DO bindings: ${[...existingDOBindings].join(', ')}`)
     }
+    console.log(`[deploy] needsMigration=${needsMigration}, newSqliteClasses=${newSqliteClasses.join(', ')}`)
 
     // ── Step 1: Create asset upload session ─────────────────────
     const manifest: Record<string, { hash: string; size: number }> = {}
@@ -197,6 +202,7 @@ export async function deployToWfP(
         jwt: completionToken,
         config: {
           not_found_handling: 'single-page-application',
+          run_worker_first: ['/api/*', '/ws/*', '/internal/*'],
         },
       },
       bindings: [
