@@ -5,18 +5,23 @@
   "description": "E2E test page exercising RBAC and CRUD against RecordRoom",
   "details": "Test infrastructure page used by Playwright e2e tests. Displays current role, creates/reads/updates/deletes test items, and verifies RBAC permission enforcement. Includes anonymous visibility via visibilityField.",
   "files": [
-    { "src": "src/TestPage.tsx", "dest": "src/features/testing/TestPage.tsx" },
-    { "src": "src/test-schema.ts", "dest": "src/features/testing/test-schema.ts" }
+    {
+      "src": "src/TestPage.tsx",
+      "dest": "src/pages/test.tsx"
+    },
+    {
+      "src": "src/test-schema.ts",
+      "dest": "src/schemas/test-schema.ts"
+    }
   ],
   "schema": {
     "exportName": "testItemsSchema",
-    "importPath": "./features/testing/test-schema",
+    "importPath": "./schemas/test-schema",
     "spreadOperator": false
   },
   "route": {
     "path": "/test",
     "component": "TestPage",
-    "importPath": "./features/testing/TestPage",
     "protected": false
   },
   "requires": [],

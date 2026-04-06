@@ -5,24 +5,30 @@
   "description": "CRUD items with ownership, status toggling, and role-based access",
   "details": "Reference implementation for basic CRUD with useQuery and useMutations. Items have owner-based permissions (own items editable, others read-only), active/archived status toggle, and role-based create access.",
   "files": [
-    { "src": "src/ItemsPage.tsx", "dest": "src/features/items/ItemsPage.tsx" },
-    { "src": "src/items-schema.ts", "dest": "src/features/items/items-schema.ts" },
-    { "src": "src/items-constants.ts", "dest": "src/features/items/items-constants.ts" }
+    {
+      "src": "src/ItemsPage.tsx",
+      "dest": "src/pages/items.tsx"
+    },
+    {
+      "src": "src/items-schema.ts",
+      "dest": "src/schemas/items-schema.ts"
+    },
+    {
+      "src": "src/items-constants.ts",
+      "dest": "src/components/items/items-constants.ts"
+    }
   ],
   "schema": {
     "exportName": "itemsSchema",
-    "importPath": "./features/items/items-schema",
+    "importPath": "./schemas/items-schema",
     "spreadOperator": false
   },
   "route": {
     "path": "/items",
     "component": "ItemsPage",
-    "importPath": "./features/items/ItemsPage",
     "protected": true
   },
   "requires": [],
-  "instructions": [
-    "All files are co-located under src/features/items/ so relative imports within the feature work as-is"
-  ],
+  "instructions": [],
   "patterns": []
 }

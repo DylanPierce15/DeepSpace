@@ -15,7 +15,7 @@ import { useQuery } from 'deepspace'
 import { useMutations } from 'deepspace'
 import { Button, Modal, Badge, EmptyState, type BadgeProps } from 'deepspace'
 import { ROLES, type Role } from 'deepspace'
-import { DIFFICULTY, DIFFICULTY_CONFIG, GRADE, GRADE_CONFIG, type Difficulty, type Grade, type BadgeVariant } from './tasks-constants'
+import { DIFFICULTY, DIFFICULTY_CONFIG, GRADE, GRADE_CONFIG, type Difficulty, type Grade, type BadgeVariant } from '../components/tasks/tasks-constants'
 
 // Tailwind color classes for buttons (semantic colors)
 const buttonColorClasses: Record<NonNullable<BadgeVariant>, string> = {
@@ -396,7 +396,7 @@ function ChallengeCard({
 // Main Page
 // ============================================================================
 
-export function TasksPage({ className }: TasksPageProps) {
+export default function TasksPage({ className }: TasksPageProps) {
   const { user } = useUser()
   const { users } = useUsers()
   const userRole = (user?.role ?? ROLES.VIEWER) as Role

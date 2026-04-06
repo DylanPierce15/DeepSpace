@@ -14,7 +14,7 @@ import { useQuery } from 'deepspace'
 import { useMutations } from 'deepspace'
 import { Button, Modal, EmptyState, Badge } from 'deepspace'
 import { ROLES, type Role } from 'deepspace'
-import { LEADERBOARD_CATEGORY, CATEGORY_CONFIG, type LeaderboardCategory } from './leaderboard-constants'
+import { LEADERBOARD_CATEGORY, CATEGORY_CONFIG, type LeaderboardCategory } from '../components/leaderboard/leaderboard-constants'
 
 // ============================================================================
 // Types
@@ -183,7 +183,7 @@ function RankBadge({ rank }: { rank: number }) {
 // Main Page
 // ============================================================================
 
-export function LeaderboardPage({ className }: LeaderboardPageProps) {
+export default function LeaderboardPage({ className }: LeaderboardPageProps) {
   const { user } = useUser()
   const userRole = (user?.role ?? ROLES.VIEWER) as Role
   const isAdmin = userRole === ROLES.ADMIN

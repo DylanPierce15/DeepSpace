@@ -5,7 +5,7 @@ export default function HomePage() {
   const { user } = useUser()
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-full bg-background text-foreground">
       <div className="mx-auto max-w-2xl px-6 py-20">
         <div className="mb-12">
           <h1 className="text-4xl font-bold tracking-tight">

@@ -19,7 +19,7 @@ interface ItemData {
   createdBy: string
 }
 
-export function TestPage() {
+export default function TestPage() {
   const { isSignedIn } = useAuth()
   const { user } = useUser()
   const { roomRole } = useRecordContext()

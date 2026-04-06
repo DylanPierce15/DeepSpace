@@ -5,26 +5,42 @@
   "description": "Collaborative spatial canvas with shapes, zoom/pan, and multi-user cursors",
   "details": "SVG-based canvas with shape tools (rect, ellipse, line, text), color picker, zoom/pan, keyboard shortcuts, and real-time multi-user cursor display. Document metadata stored in RecordRoom, shape data via useCanvas hook.",
   "files": [
-    { "src": "src/CanvasPage.tsx", "dest": "src/features/canvas/CanvasPage.tsx" },
-    { "src": "src/canvas-schema.ts", "dest": "src/features/canvas/canvas-schema.ts" },
-    { "src": "src/components/CanvasView.tsx", "dest": "src/features/canvas/components/CanvasView.tsx" },
-    { "src": "src/components/CanvasToolbar.tsx", "dest": "src/features/canvas/components/CanvasToolbar.tsx" },
-    { "src": "src/components/ShapeRenderer.tsx", "dest": "src/features/canvas/components/ShapeRenderer.tsx" }
+    {
+      "src": "src/CanvasListPage.tsx",
+      "dest": "src/pages/canvas/index.tsx"
+    },
+    {
+      "src": "src/CanvasEditorPage.tsx",
+      "dest": "src/pages/canvas/[docId].tsx"
+    },
+    {
+      "src": "src/canvas-schema.ts",
+      "dest": "src/schemas/canvas-schema.ts"
+    },
+    {
+      "src": "src/components/CanvasView.tsx",
+      "dest": "src/components/canvas/CanvasView.tsx"
+    },
+    {
+      "src": "src/components/CanvasToolbar.tsx",
+      "dest": "src/components/canvas/CanvasToolbar.tsx"
+    },
+    {
+      "src": "src/components/ShapeRenderer.tsx",
+      "dest": "src/components/canvas/ShapeRenderer.tsx"
+    }
   ],
   "schema": {
     "exportName": "canvasSchema",
-    "importPath": "./features/canvas/canvas-schema",
+    "importPath": "./schemas/canvas-schema",
     "spreadOperator": false
   },
   "route": {
     "path": "/canvas",
-    "component": "CanvasPage",
-    "importPath": "./features/canvas/CanvasPage",
+    "component": "CanvasListPage",
     "protected": true
   },
   "requires": [],
-  "instructions": [
-    "All components are co-located under src/features/canvas/ so relative imports within the feature work as-is"
-  ],
+  "instructions": [],
   "patterns": []
 }

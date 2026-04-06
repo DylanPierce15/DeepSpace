@@ -18,7 +18,6 @@ import {
   verifyJwt,
   verifyInternalSignature,
   buildInternalPayload,
-  signInternalPayload,
 } from 'deepspace/worker'
 import type { JwtVerifierConfig, VerifyResult } from 'deepspace/worker'
 import {
@@ -69,10 +68,11 @@ export class AppPresenceRoom extends PresenceRoom {}
 interface Env extends DOBindings<typeof __DO_MANIFEST__> {
   ASSETS: Fetcher
   FILES: R2Bucket
-  PLATFORM_WORKER: Fetcher
+  API_WORKER: Fetcher
   AUTH_JWT_PUBLIC_KEY: string
   AUTH_JWT_ISSUER: string
   AUTH_WORKER_URL: string
+  API_WORKER_URL: string
   APP_NAME: string
   OWNER_USER_ID: string
   INTERNAL_STORAGE_HMAC_SECRET: string
@@ -168,6 +168,34 @@ app.all('/api/auth/*', async (c) => {
     headers.set('set-cookie', setCookie.replace(/;\s*Domain=[^;]*/gi, ''))
   }
   return new Response(res.body, { status: res.status, headers })
+})
+
+// ---------------------------------------------------------------------------
+// Integrations proxy → api-worker (OpenAI, search, etc.)
+// ---------------------------------------------------------------------------
+
+app.post('/api/integrations/:name/:endpoint', async (c) => {
+  const auth = await resolveAuth(c.req.raw, c.env)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
+
+  const target = `/api/integrations/${c.req.param('name')}/${c.req.param('endpoint')}`
+
+  // Service binding (deployed) or HTTP fallback (local dev)
+  const fetcher = c.env.API_WORKER ?? null
+  const url = fetcher
+    ? `https://api-worker${target}`
+    : `${c.env.API_WORKER_URL}${target}`
+
+  const res = await (fetcher ?? globalThis).fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${c.req.header('Authorization')?.slice(7) ?? ''}`,
+    },
+    body: c.req.raw.body,
+  })
+
+  return new Response(res.body, { status: res.status, headers: res.headers })
 })
 
 // ---------------------------------------------------------------------------

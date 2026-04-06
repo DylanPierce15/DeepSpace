@@ -1,23 +1,14 @@
 /**
- * App — Navigation + page routing.
- *
- * Routes and nav items are driven by the pages registry (pages.ts).
- * Features add pages by appending one line to pages.ts.
- * Provider wiring lives in AppShell.tsx.
+ * Navigation — top nav bar with auth controls.
  */
 
-import { Suspense, useState, useEffect, type ReactNode } from 'react'
-import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom'
-import { useAuth, AuthOverlay, signOut } from 'deepspace'
-import { useUser } from 'deepspace'
-import { APP_NAME, ROLES, ROLE_CONFIG, type Role } from './constants'
-import { pages } from './pages'
+import { useState, useEffect } from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import { useAuth, AuthOverlay, useUser, signOut } from 'deepspace'
+import { APP_NAME, ROLE_CONFIG, type Role } from '../constants'
+import { nav } from '../nav'
 
-// ============================================================================
-// Navigation
-// ============================================================================
-
-function Navigation() {
+export default function Navigation() {
   const { isSignedIn } = useAuth()
   const { user } = useUser()
   const location = useLocation()
@@ -30,11 +21,10 @@ function Navigation() {
 
   useEffect(() => { setMobileMenuOpen(false) }, [location.pathname])
 
-  const navItems = pages.filter((p) => {
-    if (!p.label) return false
-    if (!p.roles) return true
+  const visibleNav = nav.filter((item) => {
+    if (!item.roles) return true
     if (userRole === 'admin') return true
-    return p.roles.includes(userRole as Role)
+    return item.roles.includes(userRole as Role)
   })
 
   return (
@@ -49,12 +39,12 @@ function Navigation() {
           </Link>
 
           <div className="hidden md:flex items-center gap-1">
-            {navItems.map((item) => (
+            {visibleNav.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
                 className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
-                  location.pathname === item.path
+                  location.pathname.startsWith(item.path)
                     ? 'bg-secondary text-foreground'
                     : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
                 }`}
@@ -142,12 +132,12 @@ function Navigation() {
         {mobileMenuOpen && (
           <div className="border-t border-border bg-card/95 backdrop-blur-xl md:hidden">
             <div className="px-4 py-2">
-              {navItems.map((item) => (
+              {visibleNav.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
                   className={`block w-full rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                    location.pathname === item.path
+                    location.pathname.startsWith(item.path)
                       ? 'bg-secondary text-foreground'
                       : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
                   }`}
@@ -164,52 +154,5 @@ function Navigation() {
         <AuthOverlay onClose={() => setShowAuthModal(false)} />
       )}
     </>
-  )
-}
-
-// ============================================================================
-// Protected Route
-// ============================================================================
-
-function ProtectedRoute({ children, allowedRoles }: { children: ReactNode; allowedRoles: Role[] }) {
-  const { user } = useUser()
-  if (user?.role === 'admin') return <>{children}</>
-  const userRole = (user?.role ?? ROLES.VIEWER) as Role
-  if (!allowedRoles.includes(userRole)) return <Navigate to="/home" replace />
-  return <>{children}</>
-}
-
-// ============================================================================
-// App — routes from pages registry
-// ============================================================================
-
-export default function App() {
-  return (
-    <div className="flex h-screen flex-col bg-background overflow-hidden">
-      <Navigation />
-      <main className="flex-1 overflow-y-auto min-h-0">
-        <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground">Loading...</div>}>
-          <Routes>
-            <Route path="/" element={<Navigate to="/home" replace />} />
-            {pages.map((page) =>
-              page.roles ? (
-                <Route
-                  key={page.path}
-                  path={`${page.path}/*`}
-                  element={
-                    <ProtectedRoute allowedRoles={page.roles}>
-                      <page.component />
-                    </ProtectedRoute>
-                  }
-                />
-              ) : (
-                <Route key={page.path} path={`${page.path}/*`} element={<page.component />} />
-              )
-            )}
-            <Route path="*" element={<Navigate to="/home" replace />} />
-          </Routes>
-        </Suspense>
-      </main>
-    </div>
   )
 }

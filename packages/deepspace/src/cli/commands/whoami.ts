@@ -15,7 +15,12 @@ export default defineCommand({
   async run() {
     try {
       const jwt = await ensureToken()
-      const payload = JSON.parse(atob(jwt.split('.')[1]))
+      let payload: { name?: string; email?: string }
+      try {
+        payload = JSON.parse(atob(jwt.split('.')[1]))
+      } catch {
+        throw new Error('Malformed session token. Run `npx deepspace login`.')
+      }
       console.log(payload.name ?? payload.email)
     } catch (err: any) {
       console.log(err.message)

@@ -5,18 +5,27 @@
   "description": "Real-time collaborative document editing with Yjs",
   "details": "Document list with CRUD and per-document collaborative editing using useYjsRoom. Each document gets its own YjsRoom DO for character-level sync via Y.Text. Computes minimal diffs on input for efficient merge.",
   "files": [
-    { "src": "src/DocsPage.tsx", "dest": "src/features/docs/DocsPage.tsx" },
-    { "src": "src/docs-schema.ts", "dest": "src/features/docs/docs-schema.ts" }
+    {
+      "src": "src/DocsListPage.tsx",
+      "dest": "src/pages/docs/index.tsx"
+    },
+    {
+      "src": "src/DocsEditorPage.tsx",
+      "dest": "src/pages/docs/[docId].tsx"
+    },
+    {
+      "src": "src/docs-schema.ts",
+      "dest": "src/schemas/docs-schema.ts"
+    }
   ],
   "schema": {
     "exportName": "docsSchema",
-    "importPath": "./features/docs/docs-schema",
+    "importPath": "./schemas/docs-schema",
     "spreadOperator": false
   },
   "route": {
     "path": "/docs",
-    "component": "DocsPage",
-    "importPath": "./features/docs/DocsPage",
+    "component": "DocsListPage",
     "protected": true
   },
   "requires": [],

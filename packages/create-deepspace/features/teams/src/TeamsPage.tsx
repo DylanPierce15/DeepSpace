@@ -320,7 +320,7 @@ function TeamDetail({ teamId, onBack }: TeamDetailProps) {
 // Main Page
 // ============================================================================
 
-export function TeamsPage({ className }: TeamsPageProps) {
+export default function TeamsPage({ className }: TeamsPageProps) {
   const { user } = useUser()
   const { teams, create: createTeam } = useTeams()
   const { users } = useUsers()

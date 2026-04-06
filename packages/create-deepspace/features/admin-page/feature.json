@@ -5,18 +5,23 @@
   "description": "User management and app settings admin panel",
   "details": "Admin-only page with user management (list users, change roles) and key-value settings CRUD. Uses useUsers for listing, setRole for role changes, and useQuery/useMutations for a settings collection.",
   "files": [
-    { "src": "src/AdminPage.tsx", "dest": "src/features/admin-page/AdminPage.tsx" },
-    { "src": "src/admin-schema.ts", "dest": "src/features/admin-page/admin-schema.ts" }
+    {
+      "src": "src/AdminPage.tsx",
+      "dest": "src/pages/admin.tsx"
+    },
+    {
+      "src": "src/admin-schema.ts",
+      "dest": "src/schemas/admin-schema.ts"
+    }
   ],
   "schema": {
     "exportName": "settingsSchema",
-    "importPath": "./features/admin-page/admin-schema",
+    "importPath": "./schemas/admin-schema",
     "spreadOperator": false
   },
   "route": {
     "path": "/admin",
     "component": "AdminPage",
-    "importPath": "./features/admin-page/AdminPage",
     "protected": true
   },
   "requires": [],

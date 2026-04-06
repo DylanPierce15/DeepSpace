@@ -10,7 +10,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef, type ReactNode } from 'react'
-import { useMultiChannel } from './hooks/useMultiChannel'
+import { useMultiChannel } from '../components/messaging/hooks/useMultiChannel'
 import { useUser } from 'deepspace'
 import { useChannelMembers } from 'deepspace'
 import { useChannels } from 'deepspace'
@@ -20,10 +20,10 @@ import { RecordScope } from 'deepspace'
 import type { Channel, ChannelMember } from 'deepspace'
 import type { RecordData } from 'deepspace'
 import type { CollectionSchema } from 'deepspace/worker'
-import { messagingSchemas } from './messaging-schema'
-import { ChannelSidebar } from './components/chat-multi/ChannelSidebar'
-import { MessageList } from './components/chat/MessageList'
-import { ChannelSettingsPanel } from './components/chat-multi/ChannelSettingsPanel'
+import { messagingSchemas } from '../schemas/messaging-schema'
+import { ChannelSidebar } from '../components/messaging/chat-multi/ChannelSidebar'
+import { MessageList } from '../components/messaging/chat/MessageList'
+import { ChannelSettingsPanel } from '../components/messaging/chat-multi/ChannelSettingsPanel'
 
 interface ChatMultiPageProps {
   schemas?: CollectionSchema[]
@@ -31,7 +31,7 @@ interface ChatMultiPageProps {
   className?: string
 }
 
-export function ChatMultiPage({
+export default function ChatMultiPage({
   schemas = messagingSchemas,
   appId = '',
   className,

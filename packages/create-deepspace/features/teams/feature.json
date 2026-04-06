@@ -5,18 +5,23 @@
   "description": "Team management with team-scoped documents and Yjs collaboration",
   "details": "Team-based collaboration demonstrating team permissions. Includes team management (create, join, leave), shared documents visible to all, and team-scoped documents only accessible to team members. Uses useTeams, useYjsRoom for collaborative editing.",
   "files": [
-    { "src": "src/TeamsPage.tsx", "dest": "src/features/teams/TeamsPage.tsx" },
-    { "src": "src/teams-schema.ts", "dest": "src/features/teams/teams-schema.ts" }
+    {
+      "src": "src/TeamsPage.tsx",
+      "dest": "src/pages/teams.tsx"
+    },
+    {
+      "src": "src/teams-schema.ts",
+      "dest": "src/schemas/teams-schema.ts"
+    }
   ],
   "schema": {
     "exportName": "teamsSchemas",
-    "importPath": "./features/teams/teams-schema",
+    "importPath": "./schemas/teams-schema",
     "spreadOperator": true
   },
   "route": {
     "path": "/teams",
     "component": "TeamsPage",
-    "importPath": "./features/teams/TeamsPage",
     "protected": true
   },
   "requires": [],

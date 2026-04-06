@@ -18,17 +18,9 @@ const path = require('path');
 // ---------------------------------------------------------------------------
 
 function findFeaturesDir() {
-  const candidates = [
-    // .deepspace/scripts/add-feature.cjs → .deepspace/features/
-    path.resolve(__dirname, '..', 'features'),
-    // packages/create-deepspace/scripts/add-feature.cjs → ../features/
-    path.resolve(__dirname, '..', 'features'),
-  ];
-  for (const c of candidates) {
-    if (fs.existsSync(c)) return c;
-  }
-  console.error('Error: Could not find features directory. Searched:');
-  candidates.forEach(c => console.error('  ' + c));
+  const candidate = path.resolve(__dirname, '..', 'features');
+  if (fs.existsSync(candidate)) return candidate;
+  console.error('Error: Could not find features directory at ' + candidate);
   process.exit(1);
 }
 
@@ -254,25 +246,62 @@ function integrateCss(config, targetDir) {
 }
 
 // ---------------------------------------------------------------------------
-// Post-install instructions (route & nav — agent wires manually)
+// Nav auto-wiring into nav.ts
+// ---------------------------------------------------------------------------
+
+const NAV_MARKER = '// ── Features add nav items below this line ──';
+
+function integrateRoute(config, targetDir) {
+  if (!config.route) return false;
+
+  const navPath = path.join(targetDir, 'src', 'nav.ts');
+  if (!fs.existsSync(navPath)) {
+    printRouteInstructions(config.route, config);
+    return false;
+  }
+
+  let content = fs.readFileSync(navPath, 'utf-8');
+  const { path: routePath } = config.route;
+  const label = config.name;
+
+  // Already wired?
+  if (content.includes(`'${routePath}'`)) {
+    console.log(`   Nav already present: ${routePath}`);
+    return false;
+  }
+
+  if (!content.includes(NAV_MARKER)) {
+    console.log('   Could not auto-wire nav (marker not found in nav.ts)');
+    printRouteInstructions(config.route, config);
+    return false;
+  }
+
+  const rolesStr = config.route.protected === false ? '' : ", roles: ['member' as Role]";
+  const entry = `  { path: '${routePath}', label: '${label}'${rolesStr} },`;
+
+  content = content.replace(NAV_MARKER, `${NAV_MARKER}\n${entry}`);
+  fs.writeFileSync(navPath, content);
+  console.log(`   Nav wired: ${routePath} (${label})`);
+
+  // Route is automatic via generouted — page file in src/pages/ is enough
+  console.log(`   Route: automatic (file-based routing via src/pages/)`);
+  return true;
+}
+
+function printRouteInstructions(route, config) {
+  const { path: routePath } = route;
+  const label = config?.name ?? routePath;
+  console.log('');
+  console.log('   Add manually to src/nav.ts:');
+  console.log(`     { path: '${routePath}', label: '${label}' },`);
+}
+
+// ---------------------------------------------------------------------------
+// Post-install instructions (for features that need manual wiring)
 // ---------------------------------------------------------------------------
 
 function printPostInstallInstructions(config) {
-  const instructions = [];
-
-  if (config.route) {
-    const { path: routePath, component, importPath } = config.route;
-    instructions.push(
-      `Add route to App.tsx:\n` +
-      `     import ${component} from '${importPath}'\n` +
-      `     <Route path="${routePath}" element={<${component} />} />`
-    );
-
-    const label = component.replace(/Page$/, '');
-    instructions.push(
-      `Add nav item for '${routePath}' with label '${label}'`
-    );
-  }
+  const instructions = config.instructions || [];
 
   if (instructions.length > 0) {
     console.log('\n--- Manual wiring needed ---\n');
@@ -386,7 +415,7 @@ function main() {
   const targetDir = resolveTargetDir(rawDir);
 
   if (!targetDir) {
-    console.error('\nError: Please specify a app directory');
+    console.error('\nError: Please specify an app directory');
     console.error('Usage: node add-feature.js <feature-id> <app-dir>');
     process.exit(1);
   }
@@ -411,11 +440,12 @@ function main() {
 
   console.log(`\nCopied ${copied} file(s)${skipped > 0 ? `, skipped ${skipped} existing` : ''}`);
 
-  // Auto-integrate schema and CSS
+  // Auto-integrate schema, CSS, and route
   integrateSchema(config, targetDir);
   integrateCss(config, targetDir);
+  integrateRoute(config, targetDir);
 
-  // Print manual wiring instructions
+  // Print any remaining manual wiring instructions
   printPostInstallInstructions(config);
 
   if (config.patterns && config.patterns.length > 0) {
