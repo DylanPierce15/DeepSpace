@@ -195,7 +195,7 @@ export default function App() {
               page.roles ? (
                 <Route
                   key={page.path}
-                  path={page.path}
+                  path={`${page.path}/*`}
                   element={
                     <ProtectedRoute allowedRoles={page.roles}>
                       <page.component />
@@ -203,7 +203,7 @@ export default function App() {
                   }
                 />
               ) : (
-                <Route key={page.path} path={page.path} element={<page.component />} />
+                <Route key={page.path} path={`${page.path}/*`} element={<page.component />} />
               )
             )}
             <Route path="*" element={<Navigate to="/home" replace />} />

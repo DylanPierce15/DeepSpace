@@ -6,7 +6,7 @@
 : "${ROOT:?ROOT must be set}"
 
 NEED_DOPPLER=false
-for dir in platform/auth-worker platform/api-worker platform/platform-worker; do
+for dir in platform/auth-worker platform/api-worker platform/deploy-worker platform/platform-worker; do
   if [ ! -f "$ROOT/$dir/.dev.vars" ]; then
     NEED_DOPPLER=true
     break

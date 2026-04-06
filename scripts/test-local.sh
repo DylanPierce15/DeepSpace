@@ -72,6 +72,7 @@ if [ "$RESET" = true ]; then
   echo "→ Resetting local databases..."
   rm -rf "$ROOT/platform/auth-worker/.wrangler/state"
   rm -rf "$ROOT/platform/api-worker/.wrangler/state"
+  rm -rf "$ROOT/platform/deploy-worker/.wrangler/state"
   rm -rf "$ROOT/platform/platform-worker/.wrangler/state"
   rm -rf "$APP_DIR/.wrangler/state"
 fi

@@ -2,7 +2,7 @@
 # Shared helpers for DeepSpace scripts.
 # Source this file: source "$(dirname "$0")/lib/helpers.sh"
 
-PORTS=(8794 8795 8792 8780 5173 9235 9236 9233 9237)
+PORTS=(8794 8795 8796 8792 8780 5173 5174 9235 9236 9233 9237)
 
 free_ports() {
   for port in "${PORTS[@]}"; do

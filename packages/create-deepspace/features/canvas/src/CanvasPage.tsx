@@ -3,9 +3,12 @@
  *
  * Shows a list of canvas documents (stored in RecordRoom) or
  * the canvas editor (connected to CanvasRoom DO via useCanvas).
+ *
+ * Supports deep links: /canvas/:docId navigates directly to a canvas.
  */
 
 import { useState, useMemo } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useUser } from 'deepspace'
 import { useQuery } from 'deepspace'
 import { useMutations } from 'deepspace'
@@ -23,7 +26,6 @@ interface CanvasDocument {
 }
 
 interface CanvasPageProps {
-  docId?: string
   className?: string
 }
 
@@ -80,13 +82,15 @@ function CreateCanvasModal({ isOpen, onClose, onCreate }: CreateCanvasModalProps
 // Main Page
 // ============================================================================
 
-export function CanvasPage({ docId: propDocId, className }: CanvasPageProps) {
+export function CanvasPage({ className }: CanvasPageProps) {
   const { user } = useUser()
+  const { '*': subpath } = useParams()
+  const urlDocId = subpath || null
+  const navigate = useNavigate()
   const userRole = (user?.role ?? ROLES.VIEWER) as Role
   const canCreate = userRole === ROLES.MEMBER || userRole === ROLES.ADMIN
 
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [selectedDocId, setSelectedDocId] = useState<string | null>(propDocId ?? null)
 
   const { records: canvases, status } = useQuery<CanvasDocument>('canvases', {
     orderBy: 'createdAt',
@@ -100,27 +104,27 @@ export function CanvasPage({ docId: propDocId, className }: CanvasPageProps) {
 
   const handleDelete = async (canvasId: string) => {
     if (confirm('Delete this canvas?')) {
-      if (selectedDocId === canvasId) setSelectedDocId(null)
+      if (urlDocId === canvasId) navigate('/canvas')
       await remove(canvasId)
     }
   }
 
   const selectedCanvas = useMemo(
-    () => canvases.find((c) => c.recordId === selectedDocId),
-    [canvases, selectedDocId],
+    () => urlDocId ? canvases.find((c) => c.recordId === urlDocId) : null,
+    [canvases, urlDocId],
   )
 
   const isLoading = status === 'loading'
 
   // Canvas editor view
-  if (selectedCanvas) {
+  if (urlDocId && selectedCanvas) {
     return (
       <div data-testid="canvas-page" className={`h-full flex flex-col bg-background ${className ?? ''}`}>
         {/* Back header */}
         <div className="px-4 py-3 border-b border-border flex items-center gap-4 bg-card/60 backdrop-blur-md">
           <button
             data-testid="canvas-back"
-            onClick={() => setSelectedDocId(null)}
+            onClick={() => navigate('/canvas')}
             className="p-2 hover:bg-muted/60 rounded-lg transition-colors"
           >
             <svg className="w-5 h-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -183,7 +187,7 @@ export function CanvasPage({ docId: propDocId, className }: CanvasPageProps) {
                   key={canvas.recordId}
                   data-testid={`canvas-card-${canvas.recordId}`}
                   className="group p-4 bg-card/60 rounded-xl border border-border hover:border-primary/30 hover:bg-muted/40 transition-all cursor-pointer"
-                  onClick={() => setSelectedDocId(canvas.recordId)}
+                  onClick={() => navigate(`/canvas/${canvas.recordId}`)}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">

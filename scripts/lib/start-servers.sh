@@ -25,6 +25,11 @@ cd "$ROOT/platform/api-worker" && npx wrangler dev --port 8795 > /tmp/ds-local-a
 PIDS+=($!); cd "$ROOT"
 wait_for_url "http://localhost:8795/api/health" "api-worker"
 
+echo "→ Starting deploy-worker (port 8796)..."
+cd "$ROOT/platform/deploy-worker" && npx wrangler dev --port 8796 > /tmp/ds-local-deploy.log 2>&1 &
+PIDS+=($!); cd "$ROOT"
+wait_for_url "http://localhost:8796/api/health" "deploy-worker"
+
 echo "→ Starting platform-worker (port 8792)..."
 cd "$ROOT/platform/platform-worker" && npx wrangler dev --port 8792 > /tmp/ds-local-platform.log 2>&1 &
 PIDS+=($!); cd "$ROOT"

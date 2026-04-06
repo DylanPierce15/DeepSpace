@@ -10,6 +10,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useUser } from 'deepspace'
 import { useQuery } from 'deepspace'
 import { useMutations } from 'deepspace'
@@ -222,11 +223,13 @@ function CreateDocModal({ isOpen, onClose, onCreate }: CreateDocModalProps) {
 
 export function DocsPage({ className }: DocsPageProps) {
   const { user } = useUser()
+  const { '*': subpath } = useParams()
+  const navigate = useNavigate()
+  const urlDocId = subpath || null
   const userRole = (user?.role ?? ROLES.VIEWER) as Role
   const canCreate = userRole === ROLES.MEMBER || userRole === ROLES.ADMIN
 
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [selectedDocId, setSelectedDocId] = useState<string | null>(null)
 
   const { records: documents, status } = useQuery<Document>('documents', {
     orderBy: 'createdAt',
@@ -240,27 +243,27 @@ export function DocsPage({ className }: DocsPageProps) {
 
   const handleDelete = async (docId: string) => {
     if (confirm('Delete this document?')) {
-      if (selectedDocId === docId) setSelectedDocId(null)
+      if (urlDocId === docId) navigate('/docs')
       await remove(docId)
     }
   }
 
   const selectedDoc = useMemo(
-    () => documents.find((d) => d.recordId === selectedDocId),
-    [documents, selectedDocId],
+    () => urlDocId ? documents.find((d) => d.recordId === urlDocId) : null,
+    [documents, urlDocId],
   )
 
   const isLoading = status === 'loading'
 
   // If a document is selected, show the editor in a per-document DO
-  if (selectedDoc) {
+  if (urlDocId && selectedDoc) {
     return (
       <div className={`h-full bg-background overflow-y-auto ${className ?? ''}`}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
           {/* Back header */}
           <div className="flex items-center gap-4">
             <button
-              onClick={() => setSelectedDocId(null)}
+              onClick={() => navigate('/docs')}
               className="p-2 hover:bg-muted/60 rounded-lg transition-colors"
             >
               <svg className="w-5 h-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -323,7 +326,7 @@ export function DocsPage({ className }: DocsPageProps) {
                 <div
                   key={doc.recordId}
                   className="group p-4 bg-card/60 rounded-xl border border-border hover:border-primary/30 hover:bg-muted/40 transition-all cursor-pointer"
-                  onClick={() => setSelectedDocId(doc.recordId)}
+                  onClick={() => navigate(`/docs/${doc.recordId}`)}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
