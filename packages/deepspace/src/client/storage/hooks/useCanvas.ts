@@ -89,10 +89,14 @@ export function useCanvas(roomId: string): UseCanvasResult {
       const url = new URL(`/ws/canvas/${encodeURIComponent(roomId)}`, baseUrl)
       if (token) url.searchParams.set('token', token)
 
+      console.log(`[ds:ws] connecting → canvas:${roomId}`)
       ws = new WebSocket(url.toString())
       wsRef.current = ws
 
-      ws.onopen = () => setConnected(true)
+      ws.onopen = () => {
+        console.log(`[ds:ws] connected → canvas:${roomId}`)
+        setConnected(true)
+      }
 
       ws.onmessage = (event) => {
         if (typeof event.data !== 'string') return
@@ -155,6 +159,7 @@ export function useCanvas(roomId: string): UseCanvasResult {
       }
 
       ws.onclose = () => {
+        console.log(`[ds:ws] disconnected → canvas:${roomId}`)
         wsRef.current = null
         setConnected(false)
         if (alive) reconnectTimer = setTimeout(connect, 1000)
@@ -166,9 +171,15 @@ export function useCanvas(roomId: string): UseCanvasResult {
     connect()
 
     return () => {
+      console.log(`[ds:ws] closing → canvas:${roomId}`)
       alive = false
       if (reconnectTimer) clearTimeout(reconnectTimer)
-      ws?.close()
+      if (ws) {
+        ws.onclose = null
+        ws.onmessage = null
+        ws.onerror = null
+        ws.close()
+      }
       wsRef.current = null
     }
   }, [roomId])

@@ -8,15 +8,32 @@ import { Hono } from 'hono'
 import { eq, and, gte, desc, sql } from 'drizzle-orm'
 import type { Env } from '../worker'
 import { authMiddleware } from '../middleware/auth'
-import { integrationUsage } from '../db/schema'
+import { integrationUsage, userProfiles } from '../db/schema'
 import { getDb } from '../worker'
-import { creditsAvailableForUser } from '../billing/service'
+import { creditsAvailableForUser, subscriptionTierToCredits } from '../billing/service'
 
 const usage = new Hono<Env>()
 
 usage.get('/summary', authMiddleware, async (c) => {
   const db = getDb(c.env)
   const userId = c.get('userId')
+
+  // Ensure user profile exists (same pattern as /api/users/me)
+  const [existing] = await db
+    .select({ id: userProfiles.id })
+    .from(userProfiles)
+    .where(eq(userProfiles.id, userId))
+    .limit(1)
+  if (!existing) {
+    const now = new Date()
+    await db.insert(userProfiles).values({
+      id: userId,
+      subscriptionTier: 'free',
+      subscriptionCredits: subscriptionTierToCredits('free'),
+      createdAt: now,
+      updatedAt: now,
+    })
+  }
 
   // Get current credits
   const credits = await creditsAvailableForUser(db, userId)

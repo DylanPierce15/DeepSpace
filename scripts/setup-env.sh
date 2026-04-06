@@ -100,6 +100,20 @@ write_dev_vars "$ROOT/platform/platform-worker" \
   AUTH_JWT_CLOCK_SKEW_MS \
   INTERNAL_STORAGE_HMAC_SECRET
 
+# ── Deploy Worker ────────────────────────────────────────────────────────────
+write_dev_vars "$ROOT/platform/deploy-worker" \
+  AUTH_JWT_PUBLIC_KEY \
+  AUTH_JWT_ISSUER \
+  CLOUDFLARE_API_TOKEN \
+  CLOUDFLARE_ACCOUNT_ID \
+  AUTH_WORKER_URL
+{
+  value=$(echo "$SECRETS" | grep "^AUTH_JWT_PUBLIC_KEY=" | head -1 | cut -d= -f2- || true)
+  [ -n "$value" ] && echo "DEPLOY_JWT_PUBLIC_KEY_PEM=${value}" >> "$ROOT/platform/deploy-worker/.dev.vars"
+  value=$(echo "$SECRETS" | grep "^INTERNAL_STORAGE_HMAC_SECRET=" | head -1 | cut -d= -f2- || true)
+  [ -n "$value" ] && echo "INTERNAL_HMAC_SECRET=${value}" >> "$ROOT/platform/deploy-worker/.dev.vars"
+}
+
 # ── Dispatch Worker ──────────────────────────────────────────────────────────
 write_dev_vars "$ROOT/platform/dispatch-worker" \
   INTERNAL_STORAGE_HMAC_SECRET

@@ -74,6 +74,10 @@ cd "$ROOT/platform/api-worker" && npx wrangler dev --port 8795 > /tmp/ds-dash-ap
 PIDS+=($!); cd "$ROOT"
 wait_for_url "http://localhost:8795/api/health" "api-worker"
 
+echo "→ Migrating api DB..."
+curl -sf -X POST http://localhost:8795/_migrate > /dev/null
+echo "  ✓ api DB ready"
+
 echo "→ Starting deploy-worker (port 8796)..."
 cd "$ROOT/platform/deploy-worker" && npx wrangler dev --port 8796 > /tmp/ds-dash-deploy.log 2>&1 &
 PIDS+=($!); cd "$ROOT"

@@ -74,10 +74,14 @@ export function useMediaRoom(roomId: string): UseMediaRoomResult {
       const url = new URL(`/ws/media/${encodeURIComponent(roomId)}`, baseUrl)
       if (token) url.searchParams.set('token', token)
 
+      console.log(`[ds:ws] connecting → media:${roomId}`)
       ws = new WebSocket(url.toString())
       wsRef.current = ws
 
-      ws.onopen = () => setConnected(true)
+      ws.onopen = () => {
+        console.log(`[ds:ws] connected → media:${roomId}`)
+        setConnected(true)
+      }
 
       ws.onmessage = (event) => {
         if (typeof event.data !== 'string') return
@@ -117,6 +121,7 @@ export function useMediaRoom(roomId: string): UseMediaRoomResult {
       }
 
       ws.onclose = () => {
+        console.log(`[ds:ws] disconnected → media:${roomId}`)
         wsRef.current = null
         setConnected(false)
         if (alive) reconnectTimer = setTimeout(connectWs, 1000)
@@ -128,9 +133,15 @@ export function useMediaRoom(roomId: string): UseMediaRoomResult {
     connectWs()
 
     return () => {
+      console.log(`[ds:ws] closing → media:${roomId}`)
       alive = false
       if (reconnectTimer) clearTimeout(reconnectTimer)
-      ws?.close()
+      if (ws) {
+        ws.onclose = null
+        ws.onmessage = null
+        ws.onerror = null
+        ws.close()
+      }
       wsRef.current = null
     }
   }, [roomId])

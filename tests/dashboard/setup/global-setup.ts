@@ -125,6 +125,15 @@ async function migrateAuthDb() {
   console.log('[dashboard] Auth DB migrated')
 }
 
+async function migrateApiDb() {
+  const res = await fetch(`${API_URL}/_migrate`, { method: 'POST' })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`API DB migration failed: ${res.status} ${text}`)
+  }
+  console.log('[dashboard] API DB (billing) migrated')
+}
+
 export default async function globalSetup() {
   console.log('[dashboard] Checking services...')
   await waitForService(`${AUTH_URL}/health`, 'auth-worker')
@@ -132,8 +141,9 @@ export default async function globalSetup() {
   await waitForService(`${DEPLOY_URL}/api/health`, 'deploy-worker')
   await waitForService(DASHBOARD_URL, 'dashboard')
 
-  console.log('[dashboard] Running auth DB migration...')
+  console.log('[dashboard] Running DB migrations...')
   await migrateAuthDb()
+  await migrateApiDb()
 
   console.log('[dashboard] Ensuring test user...')
   const auth = await ensureUser()

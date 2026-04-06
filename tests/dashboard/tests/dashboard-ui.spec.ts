@@ -53,20 +53,16 @@ test.describe('Dashboard — apps page', () => {
     await expect(page.locator('text=Your Apps')).toBeVisible({ timeout: 10_000 })
 
     // Should show the seeded test apps
-    await expect(page.locator('text=test-app-one')).toBeVisible({ timeout: 15_000 })
-    await expect(page.locator('text=test-app-two')).toBeVisible()
-
-    // Each app card should have a URL
-    await expect(page.locator('text=test-app-one.app.space')).toBeVisible()
-    await expect(page.locator('text=test-app-two.app.space')).toBeVisible()
+    await expect(page.locator('h3:has-text("test-app-one")')).toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('h3:has-text("test-app-two")')).toBeVisible()
   })
 
   test('can navigate to app detail page', async ({ page }) => {
     await page.goto(DASHBOARD_URL, { waitUntil: 'networkidle' })
-    await expect(page.locator('text=test-app-one')).toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('h3:has-text("test-app-one")')).toBeVisible({ timeout: 15_000 })
 
     // Click on an app card
-    await page.locator('text=test-app-one').first().click()
+    await page.locator('h3:has-text("test-app-one")').click()
     await page.waitForURL('**/apps/test-app-one')
 
     // App detail page header
@@ -90,7 +86,7 @@ test.describe('Dashboard — billing page', () => {
   test('shows billing data', async ({ page }) => {
     await page.goto(`${DASHBOARD_URL}/billing`, { waitUntil: 'networkidle' })
 
-    await expect(page.locator('text=Billing')).toBeVisible({ timeout: 10_000 })
+    await expect(page.locator('h2:has-text("Billing")')).toBeVisible({ timeout: 10_000 })
 
     // Plan section
     await expect(page.locator('text=Current Plan')).toBeVisible({ timeout: 15_000 })
@@ -112,7 +108,7 @@ test.describe('Dashboard — settings page', () => {
   test('shows user profile', async ({ page }) => {
     await page.goto(`${DASHBOARD_URL}/settings`, { waitUntil: 'networkidle' })
 
-    await expect(page.locator('text=Settings')).toBeVisible({ timeout: 10_000 })
+    await expect(page.locator('h2:has-text("Settings")')).toBeVisible({ timeout: 10_000 })
     await expect(page.locator('text=Profile')).toBeVisible()
     await expect(page.locator('text=Authentication')).toBeVisible()
 

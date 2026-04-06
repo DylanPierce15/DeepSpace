@@ -91,11 +91,15 @@ export function useYjsRoom(docId: string, fieldName: string): UseYjsRoomResult {
       const url = new URL(`/ws/yjs/${encodeURIComponent(docId)}`, baseUrl)
       if (token) url.searchParams.set('token', token)
 
+      console.log(`[ds:ws] connecting → yjs:${docId}`)
       ws = new WebSocket(url.toString())
       ws.binaryType = 'arraybuffer'
       wsRef.current = ws
 
-      ws.onopen = () => setSynced(false)
+      ws.onopen = () => {
+        console.log(`[ds:ws] connected → yjs:${docId}`)
+        setSynced(false)
+      }
 
       ws.onmessage = (event) => {
         if (typeof event.data === 'string') {
@@ -141,6 +145,7 @@ export function useYjsRoom(docId: string, fieldName: string): UseYjsRoomResult {
       }
 
       ws.onclose = () => {
+        console.log(`[ds:ws] disconnected → yjs:${docId}`)
         wsRef.current = null
         setSynced(false)
         if (alive) reconnectTimer = setTimeout(connect, 1000)
@@ -152,9 +157,15 @@ export function useYjsRoom(docId: string, fieldName: string): UseYjsRoomResult {
     connect()
 
     return () => {
+      console.log(`[ds:ws] closing → yjs:${docId}`)
       alive = false
       if (reconnectTimer) clearTimeout(reconnectTimer)
-      ws?.close()
+      if (ws) {
+        ws.onclose = null
+        ws.onmessage = null
+        ws.onerror = null
+        ws.close()
+      }
       wsRef.current = null
     }
   }, [doc, docId, yText])

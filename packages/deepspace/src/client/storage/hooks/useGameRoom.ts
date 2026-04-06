@@ -71,10 +71,14 @@ export function useGameRoom(roomId: string): UseGameRoomResult {
       const url = new URL(`/ws/game/${encodeURIComponent(roomId)}`, baseUrl)
       if (token) url.searchParams.set('token', token)
 
+      console.log(`[ds:ws] connecting → game:${roomId}`)
       ws = new WebSocket(url.toString())
       wsRef.current = ws
 
-      ws.onopen = () => setConnected(true)
+      ws.onopen = () => {
+        console.log(`[ds:ws] connected → game:${roomId}`)
+        setConnected(true)
+      }
 
       ws.onmessage = (event) => {
         if (typeof event.data !== 'string') return
@@ -125,6 +129,7 @@ export function useGameRoom(roomId: string): UseGameRoomResult {
       }
 
       ws.onclose = () => {
+        console.log(`[ds:ws] disconnected → game:${roomId}`)
         wsRef.current = null
         setConnected(false)
         if (alive) reconnectTimer = setTimeout(connect, 1000)
@@ -136,9 +141,15 @@ export function useGameRoom(roomId: string): UseGameRoomResult {
     connect()
 
     return () => {
+      console.log(`[ds:ws] closing → game:${roomId}`)
       alive = false
       if (reconnectTimer) clearTimeout(reconnectTimer)
-      ws?.close()
+      if (ws) {
+        ws.onclose = null
+        ws.onmessage = null
+        ws.onerror = null
+        ws.close()
+      }
       wsRef.current = null
     }
   }, [roomId])

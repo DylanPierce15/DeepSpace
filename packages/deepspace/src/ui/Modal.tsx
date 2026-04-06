@@ -44,7 +44,7 @@ export function Modal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
-      <DialogContent className={cn(sizes[size], 'flex flex-col max-h-[85vh]', className)}>
+      <DialogContent aria-describedby={undefined} className={cn(sizes[size], 'flex flex-col max-h-[85vh]', className)}>
         {children}
       </DialogContent>
     </Dialog>
