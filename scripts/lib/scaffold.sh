@@ -2,28 +2,16 @@
 # Scaffold an app into .test-apps/ using local packages.
 #
 # Usage:
-#   ./scripts/lib/scaffold.sh <app-name>                   # bare starter + test-page
-#   ./scripts/lib/scaffold.sh <app-name> --with-messaging   # add messaging feature
-#   ./scripts/lib/scaffold.sh <app-name> --with-canvas      # add canvas feature
-#   ./scripts/lib/scaffold.sh <app-name> --full             # all test features
+#   ./scripts/lib/scaffold.sh <app-name>
+#
+# Then install features manually:
+#   ./scripts/lib/install-feature.sh .test-apps/<app-name> canvas
+#   ./scripts/lib/install-feature.sh .test-apps/<app-name> docs
 
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-APP_NAME="${1:?Usage: scaffold.sh <app-name> [--with-messaging] [--with-canvas] [--full]}"
-shift
+APP_NAME="${1:?Usage: scaffold.sh <app-name>}"
 APP_DIR="$ROOT/.test-apps/$APP_NAME"
-
-# Parse feature flags
-WITH_MESSAGING=false
-WITH_CANVAS=false
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --with-messaging) WITH_MESSAGING=true; shift ;;
-    --with-canvas) WITH_CANVAS=true; shift ;;
-    --full) WITH_MESSAGING=true; WITH_CANVAS=true; shift ;;
-    *) shift ;;
-  esac
-done
 
 if [ -d "$APP_DIR" ]; then
   echo "→ Removing existing .test-apps/$APP_NAME..."
@@ -55,15 +43,6 @@ fi
 # Install test-page feature (needed for core e2e tests)
 "$ROOT/scripts/lib/install-feature.sh" "$APP_DIR" "testing"
 
-# Install messaging if requested
-if [ "$WITH_MESSAGING" = true ]; then
-  "$ROOT/scripts/lib/install-feature.sh" "$APP_DIR" "messaging"
-fi
-
-# Install canvas if requested
-if [ "$WITH_CANVAS" = true ]; then
-  "$ROOT/scripts/lib/install-feature.sh" "$APP_DIR" "canvas"
-fi
-
 echo ""
 echo "✓ App ready at .test-apps/$APP_NAME"
+echo "  Install features: ./scripts/lib/install-feature.sh $APP_DIR <feature>"

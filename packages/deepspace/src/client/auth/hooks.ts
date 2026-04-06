@@ -5,7 +5,6 @@
  * These wrap Better Auth's useSession to provide a compatible API.
  */
 
-import { useEffect, useRef } from 'react'
 import { useSession } from './client'
 
 /**
@@ -17,19 +16,6 @@ export function useAuth() {
 
   const isSignedIn = !!session.data?.user
   const userId = session.data?.user?.id ?? null
-  const prevSignedIn = useRef<boolean | null>(null)
-
-  useEffect(() => {
-    if (session.isPending) return
-    if (prevSignedIn.current !== isSignedIn) {
-      if (isSignedIn) {
-        console.log(`[ds:auth] signed in as ${session.data?.user?.name ?? userId}`)
-      } else if (prevSignedIn.current !== null) {
-        console.log('[ds:auth] signed out')
-      }
-      prevSignedIn.current = isSignedIn
-    }
-  }, [isSignedIn, session.isPending, session.data?.user?.name, userId])
 
   return {
     isLoaded: !session.isPending,

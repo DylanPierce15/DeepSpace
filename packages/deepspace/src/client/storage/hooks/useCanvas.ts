@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getAuthToken } from '../../auth'
+import { wsLog } from '../ws-log'
 import {
   MSG_CANVAS_SHAPES,
   MSG_CANVAS_ADD,
@@ -89,12 +90,12 @@ export function useCanvas(roomId: string): UseCanvasResult {
       const url = new URL(`/ws/canvas/${encodeURIComponent(roomId)}`, baseUrl)
       if (token) url.searchParams.set('token', token)
 
-      console.log(`[ds:ws] connecting → canvas:${roomId}`)
+      wsLog('connecting', `canvas:${roomId}`)
       ws = new WebSocket(url.toString())
       wsRef.current = ws
 
       ws.onopen = () => {
-        console.log(`[ds:ws] connected → canvas:${roomId}`)
+        wsLog('connected', `canvas:${roomId}`)
         setConnected(true)
       }
 
@@ -159,7 +160,7 @@ export function useCanvas(roomId: string): UseCanvasResult {
       }
 
       ws.onclose = () => {
-        console.log(`[ds:ws] disconnected → canvas:${roomId}`)
+        wsLog('disconnected', `canvas:${roomId}`)
         wsRef.current = null
         setConnected(false)
         if (alive) reconnectTimer = setTimeout(connect, 1000)
@@ -171,7 +172,7 @@ export function useCanvas(roomId: string): UseCanvasResult {
     connect()
 
     return () => {
-      console.log(`[ds:ws] closing → canvas:${roomId}`)
+      wsLog('closing', `canvas:${roomId}`)
       alive = false
       if (reconnectTimer) clearTimeout(reconnectTimer)
       if (ws) {

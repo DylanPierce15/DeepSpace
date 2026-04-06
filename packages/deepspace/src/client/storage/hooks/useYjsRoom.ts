@@ -14,6 +14,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import * as Y from 'yjs'
 import { getAuthToken } from '../../auth'
+import { wsLog } from '../ws-log'
 import {
   MSG_SYNC,
   MSG_SYNC_STEP1,
@@ -91,13 +92,13 @@ export function useYjsRoom(docId: string, fieldName: string): UseYjsRoomResult {
       const url = new URL(`/ws/yjs/${encodeURIComponent(docId)}`, baseUrl)
       if (token) url.searchParams.set('token', token)
 
-      console.log(`[ds:ws] connecting → yjs:${docId}`)
+      wsLog('connecting', `yjs:${docId}`)
       ws = new WebSocket(url.toString())
       ws.binaryType = 'arraybuffer'
       wsRef.current = ws
 
       ws.onopen = () => {
-        console.log(`[ds:ws] connected → yjs:${docId}`)
+        wsLog('connected', `yjs:${docId}`)
         setSynced(false)
       }
 
@@ -145,7 +146,7 @@ export function useYjsRoom(docId: string, fieldName: string): UseYjsRoomResult {
       }
 
       ws.onclose = () => {
-        console.log(`[ds:ws] disconnected → yjs:${docId}`)
+        wsLog('disconnected', `yjs:${docId}`)
         wsRef.current = null
         setSynced(false)
         if (alive) reconnectTimer = setTimeout(connect, 1000)
@@ -157,7 +158,7 @@ export function useYjsRoom(docId: string, fieldName: string): UseYjsRoomResult {
     connect()
 
     return () => {
-      console.log(`[ds:ws] closing → yjs:${docId}`)
+      wsLog('closing', `yjs:${docId}`)
       alive = false
       if (reconnectTimer) clearTimeout(reconnectTimer)
       if (ws) {

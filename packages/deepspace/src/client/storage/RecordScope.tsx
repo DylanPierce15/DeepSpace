@@ -36,6 +36,7 @@ import { useRecordAuth } from './context'
 import { RecordStore } from './store'
 import { useScopeRegistry, type ScopeEntry } from './ScopeRegistry'
 import { getAuthToken } from '../auth'
+import { wsLog } from './ws-log'
 import { parseServerError } from './serverErrors'
 import type { RoomUser, RoomConnectionState, RecordData } from './types'
 import {
@@ -342,13 +343,13 @@ function ScopeConnection({
     params.set('appId', appId)
 
     const url = `${baseUrl}${wsPathPrefix}/${roomId}?${params.toString()}`
-    console.log(`[ds:ws] connecting → ${roomId}`)
+    wsLog('connecting', roomId)
     const ws = new WebSocket(url)
     ws.binaryType = 'arraybuffer'
     wsRef.current = ws
 
     ws.onopen = () => {
-      console.log(`[ds:ws] connected → ${roomId}`)
+      wsLog('connected', roomId)
       setStatus('connected')
       // Re-subscribe all active queries
       for (const [subscriptionId, queryKey] of subscriptionMapRef.current) {
@@ -362,7 +363,7 @@ function ScopeConnection({
     ws.onmessage = handleMessage
 
     ws.onclose = () => {
-      console.log(`[ds:ws] disconnected → ${roomId}`)
+      wsLog('disconnected', roomId)
       setStatus('disconnected')
       setReady(false)
       wsRef.current = null
@@ -390,7 +391,7 @@ function ScopeConnection({
     }
     const ws = wsRef.current
     if (ws) {
-      console.log(`[ds:ws] closing → ${roomId}`)
+      wsLog('closing', roomId)
       ws.onclose = null
       ws.onmessage = null
       ws.onerror = null

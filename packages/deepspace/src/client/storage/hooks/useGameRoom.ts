@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getAuthToken } from '../../auth'
+import { wsLog } from '../ws-log'
 import {
   MSG_GAME_STATE,
   MSG_GAME_INPUT,
@@ -71,12 +72,12 @@ export function useGameRoom(roomId: string): UseGameRoomResult {
       const url = new URL(`/ws/game/${encodeURIComponent(roomId)}`, baseUrl)
       if (token) url.searchParams.set('token', token)
 
-      console.log(`[ds:ws] connecting → game:${roomId}`)
+      wsLog('connecting', `game:${roomId}`)
       ws = new WebSocket(url.toString())
       wsRef.current = ws
 
       ws.onopen = () => {
-        console.log(`[ds:ws] connected → game:${roomId}`)
+        wsLog('connected', `game:${roomId}`)
         setConnected(true)
       }
 
@@ -129,7 +130,7 @@ export function useGameRoom(roomId: string): UseGameRoomResult {
       }
 
       ws.onclose = () => {
-        console.log(`[ds:ws] disconnected → game:${roomId}`)
+        wsLog('disconnected', `game:${roomId}`)
         wsRef.current = null
         setConnected(false)
         if (alive) reconnectTimer = setTimeout(connect, 1000)
@@ -141,7 +142,7 @@ export function useGameRoom(roomId: string): UseGameRoomResult {
     connect()
 
     return () => {
-      console.log(`[ds:ws] closing → game:${roomId}`)
+      wsLog('closing', `game:${roomId}`)
       alive = false
       if (reconnectTimer) clearTimeout(reconnectTimer)
       if (ws) {

@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getAuthToken } from '../../auth'
+import { wsLog } from '../ws-log'
 import {
   MSG_MEDIA_JOIN,
   MSG_MEDIA_LEAVE,
@@ -74,12 +75,12 @@ export function useMediaRoom(roomId: string): UseMediaRoomResult {
       const url = new URL(`/ws/media/${encodeURIComponent(roomId)}`, baseUrl)
       if (token) url.searchParams.set('token', token)
 
-      console.log(`[ds:ws] connecting → media:${roomId}`)
+      wsLog('connecting', `media:${roomId}`)
       ws = new WebSocket(url.toString())
       wsRef.current = ws
 
       ws.onopen = () => {
-        console.log(`[ds:ws] connected → media:${roomId}`)
+        wsLog('connected', `media:${roomId}`)
         setConnected(true)
       }
 
@@ -121,7 +122,7 @@ export function useMediaRoom(roomId: string): UseMediaRoomResult {
       }
 
       ws.onclose = () => {
-        console.log(`[ds:ws] disconnected → media:${roomId}`)
+        wsLog('disconnected', `media:${roomId}`)
         wsRef.current = null
         setConnected(false)
         if (alive) reconnectTimer = setTimeout(connectWs, 1000)
@@ -133,7 +134,7 @@ export function useMediaRoom(roomId: string): UseMediaRoomResult {
     connectWs()
 
     return () => {
-      console.log(`[ds:ws] closing → media:${roomId}`)
+      wsLog('closing', `media:${roomId}`)
       alive = false
       if (reconnectTimer) clearTimeout(reconnectTimer)
       if (ws) {

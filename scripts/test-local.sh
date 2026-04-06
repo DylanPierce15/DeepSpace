@@ -53,7 +53,7 @@ echo "=== DeepSpace Local Tests (app: $APP_NAME) ==="
 
 # Scaffold with all features enabled
 if [ "$SCAFFOLD" = true ]; then
-  "$ROOT/scripts/lib/scaffold.sh" "$APP_NAME" --full
+  "$ROOT/scripts/lib/scaffold.sh" "$APP_NAME"
 elif [ ! -d "$APP_DIR" ]; then
   echo "✗ No app at $APP_DIR — run without --no-scaffold first"
   exit 1
