@@ -16,7 +16,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "wrangler deploy",
+    "login": "deepspace login",
+    "deploy": "deepspace deploy",
+    "undeploy": "deepspace undeploy",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit"

@@ -45,6 +45,18 @@ function validateAppName(name: string): string | null {
   return null
 }
 
+const BOILERPLATE_FILES = new Set([
+  '.git', '.gitignore', '.gitattributes', 'readme.md', 'readme',
+  'license', 'license.md', 'licence', 'licence.md', '.github',
+])
+
+function isNearEmpty(dir: string): boolean {
+  const entries = readdirSync(dir).filter(
+    (name) => !BOILERPLATE_FILES.has(name.toLowerCase()),
+  )
+  return entries.length === 0
+}
+
 function replaceInDir(dir: string, search: string, replace: string) {
   const textExts = new Set(['.ts', '.tsx', '.js', '.jsx', '.json', '.toml', '.html', '.css', '.md'])
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -96,8 +108,14 @@ async function main() {
     if (error) { p.cancel(error); process.exit(1) }
   }
 
-  const appDir = resolve(appName)
-  if (existsSync(appDir)) {
+  // If appName is "." or matches current directory name, and it's a near-empty git repo, scaffold in-place
+  const cwd = process.cwd()
+  const cwdName = cwd.split('/').pop() ?? ''
+  if (appName === '.') appName = cwdName
+  const isInPlace = (appName === cwdName) && existsSync(join(cwd, '.git')) && isNearEmpty(cwd)
+  const appDir = isInPlace ? cwd : resolve(appName)
+
+  if (!isInPlace && existsSync(appDir)) {
     p.cancel(`Directory ${appName} already exists`)
     process.exit(1)
   }
@@ -110,8 +128,22 @@ async function main() {
     process.exit(1)
   }
 
-  s.start('Copying template')
+  s.start(isInPlace ? 'Scaffolding into existing repo' : 'Copying template')
   cpSync(templateDir, appDir, { recursive: true })
+
+  // .gitignore is not included in templates (npm strips it), so generate it
+  const gitignorePath = join(appDir, '.gitignore')
+  if (!existsSync(gitignorePath)) {
+    writeFileSync(gitignorePath, [
+      'node_modules',
+      'dist',
+      '.wrangler',
+      '.dev.vars',
+      '.worker-bundle.js',
+      '*.tgz',
+      '',
+    ].join('\n'))
+  }
   s.stop('Template ready')
 
   // Replace placeholders
@@ -167,9 +199,18 @@ async function main() {
     s.stop('Install failed — run npm install manually')
   }
 
+  // Initialize git if not already a repo
+  if (!existsSync(join(appDir, '.git'))) {
+    try {
+      execSync('git init', { cwd: appDir, stdio: 'pipe' })
+    } catch {
+      // git not available, skip
+    }
+  }
+
   p.note(
     [
-      `cd ${appName}`,
+      ...(isInPlace ? [] : [`cd ${appName}`]),
       'npx deepspace login',
       'npx deepspace deploy',
       '',

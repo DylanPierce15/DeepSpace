@@ -46,7 +46,7 @@ const main = defineCommand({
     undeploy,
   },
   run() {
-    console.log('deepspace CLI — run `deepspace --help` for usage')
+    console.log('deepspace CLI — run `npx deepspace --help` for usage')
   },
 })
 
