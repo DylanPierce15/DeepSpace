@@ -210,6 +210,7 @@ export async function deployToWfP(
         ...doBindingsList,
         { type: 'r2_bucket', name: 'FILES', bucket_name: 'deepspace-user-files' },
         { type: 'service', name: 'PLATFORM_WORKER', service: 'deepspace-platform-worker' },
+        { type: 'service', name: 'API_WORKER', service: 'deepspace-api' },
         { type: 'plain_text', name: 'APP_NAME', text: bindings.appName },
         { type: 'plain_text', name: 'OWNER_USER_ID', text: bindings.ownerUserId },
         { type: 'secret_text', name: 'AUTH_JWT_PUBLIC_KEY', text: bindings.jwtPublicKey },

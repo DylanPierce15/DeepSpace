@@ -19,6 +19,7 @@ interface Env {
   AUTH_DB: D1Database
   BETTER_AUTH_SECRET: string
   JWT_PRIVATE_KEY: string
+  AUTH_JWT_PUBLIC_KEY: string
   AUTH_BASE_URL: string
   GOOGLE_CLIENT_ID?: string
   GOOGLE_CLIENT_SECRET?: string
@@ -62,6 +63,18 @@ app.use(
 // ============================================================================
 
 let cachedPrivateKey: Awaited<ReturnType<typeof importPKCS8>> | null = null
+
+/**
+ * GET /api/auth/jwks
+ *
+ * Returns the public key in JWK format for JWT verification.
+ * Used by `deepspace dev` to configure local development.
+ */
+app.get('/api/auth/jwks', (c) => {
+  return c.json({ publicKey: c.env.AUTH_JWT_PUBLIC_KEY }, 200, {
+    'Cache-Control': 'public, max-age=86400',
+  })
+})
 
 /**
  * POST /api/auth/token
