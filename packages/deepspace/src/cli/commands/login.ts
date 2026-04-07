@@ -16,8 +16,9 @@ import { exec } from 'node:child_process'
 import { platform } from 'node:os'
 import * as p from '@clack/prompts'
 
-const AUTH_URL =
-  process.env.DEEPSPACE_AUTH_URL ?? 'https://deepspace-auth.eudaimonicincorporated.workers.dev'
+import { ENVS } from '../env'
+
+const AUTH_URL = process.env.DEEPSPACE_AUTH_URL ?? ENVS.prod.auth
 const SESSION_COOKIE = '__Secure-better-auth.session_token'
 
 export default defineCommand({

@@ -9,7 +9,6 @@ import { useSession } from './client'
 
 /**
  * Returns auth state compatible with what storage/context.tsx expects.
- * Replaces `useAuth()` from @clerk/clerk-react.
  */
 export function useAuth() {
   const session = useSession()
@@ -27,7 +26,6 @@ export function useAuth() {
 
 /**
  * Returns user data compatible with what storage/context.tsx expects.
- * Replaces `useUser()` / `useClerkUser()` from @clerk/clerk-react.
  */
 export function useAuthUser() {
   const session = useSession()

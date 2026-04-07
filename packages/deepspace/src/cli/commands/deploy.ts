@@ -16,8 +16,9 @@ import { parse as parseToml } from 'smol-toml'
 import { join, resolve, dirname } from 'node:path'
 import * as p from '@clack/prompts'
 import { ensureToken } from '../auth'
+import { ENVS } from '../env'
 
-const DEPLOY_URL = process.env.DEEPSPACE_DEPLOY_URL ?? 'https://deepspace-deploy.eudaimonicincorporated.workers.dev'
+const DEPLOY_URL = process.env.DEEPSPACE_DEPLOY_URL ?? ENVS.prod.deploy
 
 export default defineCommand({
   meta: {
