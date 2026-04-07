@@ -43,7 +43,7 @@ sync_worker() {
   local count=0
   local skipped=0
 
-  echo "  $worker_name${env_args[*]:+ (${env_args[1]})}"
+  echo "  $worker_name${env_args[*]+ (${env_args[1]})}"
 
   for entry in "${keys[@]}"; do
     # Support KEY_FROM=KEY_TO remapping
@@ -57,7 +57,7 @@ sync_worker() {
     if [ -n "$value" ]; then
       echo "$value" | npx wrangler secret put "$wrangler_key" \
         --config "$worker_dir/wrangler.toml" \
-        "${env_args[@]}" \
+        ${env_args[@]+"${env_args[@]}"} \
         2>&1 | grep -q "Success" && count=$((count + 1)) || true
     else
       skipped=$((skipped + 1))
@@ -86,6 +86,7 @@ sync_worker "$ROOT/platform/auth-worker" "deepspace-auth" \
 sync_worker "$ROOT/platform/api-worker" "deepspace-api" \
   AUTH_JWT_PUBLIC_KEY \
   AUTH_JWT_ISSUER \
+  INTERNAL_STORAGE_HMAC_SECRET \
   STRIPE_SECRET_KEY \
   STRIPE_WEBHOOK_SECRET \
   STRIPE_PUBLISHABLE_KEY \
@@ -97,9 +98,33 @@ sync_worker "$ROOT/platform/api-worker" "deepspace-api" \
   STRIPE_PAY_PER_CREDIT_PRICE_ID \
   STRIPE_CONNECT_WEBHOOK_SECRET \
   OPENAI_API_KEY \
+  ANTHROPIC_API_KEY \
   FREEPIK_API_KEY \
-  SERP_API_KEY \
-  INTERNAL_STORAGE_HMAC_SECRET
+  GEMINI_API_KEY \
+  ELEVENLABS_API_KEY \
+  EXA_API_KEY \
+  FIRECRAWL_API_KEY \
+  SERPAPI_API_KEY \
+  CLOUDCONVERT_API_KEY \
+  NASA_API_KEY \
+  NEWS_API_KEY \
+  OPENWEATHER_API_KEY \
+  YOUTUBE_API_KEY \
+  ALPHA_VANTAGE_API_KEY \
+  FINNHUB_API_KEY \
+  API_SPORTS_KEY \
+  GITHUB_TOKEN \
+  GOOGLE_CLIENT_ID \
+  GOOGLE_CLIENT_SECRET \
+  SLACK_CLIENT_ID \
+  SLACK_CLIENT_SECRET \
+  LIVEKIT_API_KEY \
+  LIVEKIT_API_SECRET \
+  LIVEKIT_URL \
+  LATEX_COMPILER_URL \
+  RESEND_API_KEY \
+  SUBMAGIC_API_KEY \
+  TIKTOK_API_KEY
 
 # ── Deploy Worker ────────────────────────────────────────────────────────────
 sync_worker "$ROOT/platform/deploy-worker" "deepspace-deploy" \
