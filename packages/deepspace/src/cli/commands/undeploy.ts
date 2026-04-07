@@ -7,6 +7,7 @@
 import { defineCommand } from 'citty'
 import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { parse as parseToml } from 'smol-toml'
 import * as p from '@clack/prompts'
 import { ensureToken } from '../auth'
 
@@ -31,9 +32,8 @@ export default defineCommand({
     if (!appName) {
       const wranglerPath = join(process.cwd(), 'wrangler.toml')
       if (existsSync(wranglerPath)) {
-        const content = readFileSync(wranglerPath, 'utf-8')
-        const match = content.match(/^name\s*=\s*"(.+)"/m)
-        if (match) appName = match[1]
+        const config = parseToml(readFileSync(wranglerPath, 'utf-8')) as { name?: string }
+        if (config.name) appName = config.name
       }
     }
 

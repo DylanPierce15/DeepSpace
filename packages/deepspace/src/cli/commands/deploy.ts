@@ -12,6 +12,7 @@
 import { defineCommand } from 'citty'
 import { execSync } from 'node:child_process'
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { parse as parseToml } from 'smol-toml'
 import { join, resolve, dirname } from 'node:path'
 import * as p from '@clack/prompts'
 import { ensureToken } from '../auth'
@@ -41,13 +42,12 @@ export default defineCommand({
       process.exit(1)
     }
 
-    const wranglerContent = readFileSync(wranglerPath, 'utf-8')
-    const nameMatch = wranglerContent.match(/^name\s*=\s*"(.+)"/m)
-    if (!nameMatch) {
+    const wranglerConfig = parseToml(readFileSync(wranglerPath, 'utf-8')) as { name?: string }
+    const appName = wranglerConfig.name
+    if (!appName) {
       p.cancel('Could not find app name in wrangler.toml')
       process.exit(1)
     }
-    const appName = nameMatch[1]
     p.log.info(`App: ${appName}`)
 
     // ── Ensure valid JWT ───────────────────────────────────────
@@ -90,6 +90,8 @@ export default defineCommand({
     const outputConfig = JSON.parse(readFileSync(outputWranglerPath, 'utf-8')) as {
       main: string
       assets?: { directory: string }
+      durable_objects?: { bindings: Array<{ name: string; class_name: string }> }
+      migrations?: Array<{ new_sqlite_classes?: string[] }>
     }
 
     const workerDir = dirname(outputWranglerPath)
@@ -114,10 +116,18 @@ export default defineCommand({
 
     const workerJs = readFileSync(workerBundlePath, 'utf-8')
 
-    // ── Extract DO manifest from worker source ────────────────
-    const workerSource = readFileSync(join(appDir, 'worker.ts'), 'utf-8')
-    const doManifest = extractDOManifest(workerSource)
-    if (doManifest) {
+    // ── Extract DO manifest from build output config ───────────
+    const doBindings = outputConfig.durable_objects?.bindings as Array<{ name: string; class_name: string }> | undefined
+    const sqliteClasses = new Set(
+      (outputConfig.migrations as Array<{ new_sqlite_classes?: string[] }> | undefined)
+        ?.flatMap(m => m.new_sqlite_classes ?? []) ?? []
+    )
+    const doManifest = doBindings?.map(b => ({
+      binding: b.name,
+      className: b.class_name,
+      sqlite: sqliteClasses.has(b.class_name),
+    }))
+    if (doManifest?.length) {
       p.log.info(`DO manifest: ${doManifest.length} binding(s)`)
     }
 
@@ -150,29 +160,6 @@ export default defineCommand({
     p.outro('Done')
   },
 })
-
-/**
- * Extract __DO_MANIFEST__ from worker.ts source via regex.
- */
-function extractDOManifest(source: string): Array<{ binding: string; className: string; sqlite: boolean }> | null {
-  const match = source.match(
-    /export\s+const\s+__DO_MANIFEST__\s*=\s*\[([\s\S]*?)\]/
-  )
-  if (!match) return null
-
-  const entries: Array<{ binding: string; className: string; sqlite: boolean }> = []
-  const entryRegex = /\{\s*binding:\s*['"]([^'"]+)['"]\s*,\s*className:\s*['"]([^'"]+)['"]\s*,\s*sqlite:\s*(true|false)\s*\}/g
-  let m: RegExpExecArray | null
-  while ((m = entryRegex.exec(match[1])) !== null) {
-    entries.push({
-      binding: m[1],
-      className: m[2],
-      sqlite: m[3] === 'true',
-    })
-  }
-
-  return entries.length > 0 ? entries : null
-}
 
 function collectAssets(dir: string): Array<{ path: string; contentBase64: string }> {
   const assets: Array<{ path: string; contentBase64: string }> = []
