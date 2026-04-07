@@ -86,6 +86,12 @@ app.use(
   }),
 )
 
+// Error handler — show actual error instead of "Internal server error"
+app.onError((err, c) => {
+  console.error('[api-worker] Unhandled error:', err.message, err.stack)
+  return c.json({ error: err.message }, 500)
+})
+
 // Health check
 app.get('/api/health', (c) =>
   c.json({ status: 'ok', service: 'deepspace-api', timestamp: new Date().toISOString() }),

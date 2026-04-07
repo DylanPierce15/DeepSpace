@@ -22,6 +22,7 @@ const integrations = new Hono<Env>()
 
 // POST /:name/:endpoint — authenticated, billed integration call
 integrations.post('/:name/:endpoint', authMiddleware, async (c) => {
+  console.log(`[integrations] ${c.req.param('name')}/${c.req.param('endpoint')} userId=${c.get('userId')}`)
   const db = getDb(c.env)
   const userId = c.get('userId')
   const integrationName = c.req.param('name')
