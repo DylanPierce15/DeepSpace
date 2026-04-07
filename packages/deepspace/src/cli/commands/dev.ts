@@ -79,6 +79,7 @@ export default defineCommand({
       `API_WORKER_URL=${API_WORKER_URL}`,
       `OWNER_USER_ID=${payload.sub}`,
       `INTERNAL_STORAGE_HMAC_SECRET=dev-${Date.now()}`,
+      `DEV_MODE=true`,
     ].join('\n')
 
     writeFileSync(join(appDir, '.dev.vars'), devVars + '\n')

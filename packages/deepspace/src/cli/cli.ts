@@ -12,6 +12,7 @@ import { defineCommand, runMain } from 'citty'
 import { execSync } from 'node:child_process'
 import login from './commands/login'
 import dev from './commands/dev'
+import test from './commands/test'
 import deploy from './commands/deploy'
 import undeploy from './commands/undeploy'
 import whoami from './commands/whoami'
@@ -47,6 +48,7 @@ const main = defineCommand({
     login,
     whoami,
     dev,
+    test,
     add,
     deploy,
     undeploy,

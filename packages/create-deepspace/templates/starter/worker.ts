@@ -75,6 +75,7 @@ interface Env extends DOBindings<typeof __DO_MANIFEST__> {
   API_WORKER_URL: string
   APP_NAME: string
   OWNER_USER_ID: string
+  DEV_MODE?: string
   INTERNAL_STORAGE_HMAC_SECRET: string
 }
 
@@ -96,10 +97,25 @@ function jwtConfig(env: Env): JwtVerifierConfig {
 }
 
 async function resolveAuth(req: Request, env: Env): Promise<VerifyResult | null> {
+  // Real JWT auth (always tried first)
   const header = req.headers.get('Authorization')
   const token = header?.startsWith('Bearer ') ? header.slice(7) : null
-  if (!token) return null
-  return (await verifyJwt(jwtConfig(env), token)).result
+  if (token) {
+    return (await verifyJwt(jwtConfig(env), token)).result
+  }
+
+  // Dev mode: accept X-Dev-User-Id header for testing
+  if (env.DEV_MODE) {
+    const devUserId = req.headers.get('X-Dev-User-Id')
+    if (devUserId) {
+      return {
+        userId: devUserId,
+        claims: JSON.parse(req.headers.get('X-Dev-User-Claims') || '{}'),
+      } as VerifyResult
+    }
+  }
+
+  return null
 }
 
 // ---------------------------------------------------------------------------
@@ -199,119 +215,72 @@ app.post('/api/integrations/:name/:endpoint', async (c) => {
 })
 
 // ---------------------------------------------------------------------------
-// WebSocket → app's RecordRoom DOs (each roomId = separate DO instance)
+// WebSocket auth helper
 // ---------------------------------------------------------------------------
 
-app.get('/ws/:roomId', async (c) => {
-  const roomId = c.req.param('roomId')
-
-  // Authenticate (optional — anonymous connections get limited RBAC)
-  const token = new URL(c.req.url).searchParams.get('token')
-  let auth: VerifyResult | null = null
+async function resolveWsAuth(req: Request, env: Env): Promise<VerifyResult | null> {
+  const url = new URL(req.url)
+  const token = url.searchParams.get('token')
   if (token) {
-    auth = (await verifyJwt(jwtConfig(c.env), token)).result
+    return (await verifyJwt(jwtConfig(env), token)).result
   }
+  // Dev mode: accept userId query param for testing
+  if (env.DEV_MODE) {
+    const devUserId = url.searchParams.get('devUserId')
+    if (devUserId) {
+      return { userId: devUserId, claims: {} } as VerifyResult
+    }
+  }
+  return null
+}
 
-  console.log(`[ws] ${roomId} (user: ${auth?.userId ?? 'anon'})`)
+function wsRoute(
+  doNamespace: (env: Env) => DurableObjectNamespace,
+  extraParams?: (auth: VerifyResult) => Record<string, string>,
+) {
+  return async (c: any) => {
+    const id = c.req.param('roomId') ?? c.req.param('docId') ?? c.req.param('scopeId')
+    const auth = await resolveWsAuth(c.req.raw, c.env)
+    console.log(`[ws] ${id} (user: ${auth?.userId ?? 'anon'})`)
 
-  const doUrl = new URL(c.req.url)
-  if (auth) doUrl.searchParams.set('userId', auth.userId)
-  doUrl.searchParams.delete('token')
+    const doUrl = new URL(c.req.url)
+    if (auth) {
+      doUrl.searchParams.set('userId', auth.userId)
+      if (extraParams) {
+        for (const [k, v] of Object.entries(extraParams(auth))) {
+          doUrl.searchParams.set(k, v)
+        }
+      }
+    }
+    doUrl.searchParams.delete('token')
+    doUrl.searchParams.delete('devUserId')
 
-  const doId = c.env.RECORD_ROOMS.idFromName(roomId)
-  const stub = c.env.RECORD_ROOMS.get(doId)
-  return stub.fetch(new Request(doUrl.toString(), c.req.raw))
-})
+    const ns = doNamespace(c.env)
+    const stub = ns.get(ns.idFromName(id))
+    return stub.fetch(new Request(doUrl.toString(), c.req.raw))
+  }
+}
 
 // ---------------------------------------------------------------------------
-// WebSocket → YjsRoom DOs (collaborative documents)
+// WebSocket routes
 // ---------------------------------------------------------------------------
 
-app.get('/ws/yjs/:docId', async (c) => {
-  const docId = c.req.param('docId')
-  const token = new URL(c.req.url).searchParams.get('token')
-  let auth: VerifyResult | null = null
-  if (token) {
-    auth = (await verifyJwt(jwtConfig(c.env), token)).result
-  }
-  const doUrl = new URL(c.req.url)
-  if (auth) {
-    doUrl.searchParams.set('userId', auth.userId)
-    doUrl.searchParams.set('role', 'member')
-  }
-  doUrl.searchParams.delete('token')
-  const doId = c.env.YJS_ROOMS.idFromName(docId)
-  const stub = c.env.YJS_ROOMS.get(doId)
-  return stub.fetch(new Request(doUrl.toString(), c.req.raw))
-})
+app.get('/ws/:roomId', wsRoute((env) => env.RECORD_ROOMS))
 
-// ---------------------------------------------------------------------------
-// WebSocket → CanvasRoom DOs (spatial canvas collaboration)
-// ---------------------------------------------------------------------------
+app.get('/ws/yjs/:docId', wsRoute((env) => env.YJS_ROOMS, () => ({ role: 'member' })))
 
-app.get('/ws/canvas/:docId', async (c) => {
-  const docId = c.req.param('docId')
-  const token = new URL(c.req.url).searchParams.get('token')
-  let auth: VerifyResult | null = null
-  if (token) {
-    auth = (await verifyJwt(jwtConfig(c.env), token)).result
-  }
-  const doUrl = new URL(c.req.url)
-  if (auth) {
-    doUrl.searchParams.set('userId', auth.userId)
-    doUrl.searchParams.set('role', 'member')
-  }
-  doUrl.searchParams.delete('token')
-  const doId = c.env.CANVAS_ROOMS.idFromName(docId)
-  const stub = c.env.CANVAS_ROOMS.get(doId)
-  return stub.fetch(new Request(doUrl.toString(), c.req.raw))
-})
+app.get('/ws/canvas/:docId', wsRoute((env) => env.CANVAS_ROOMS, () => ({ role: 'member' })))
 
-// ---------------------------------------------------------------------------
-// WebSocket → MediaRoom DOs (WebRTC signaling)
-// ---------------------------------------------------------------------------
+app.get('/ws/media/:roomId', wsRoute((env) => env.MEDIA_ROOMS, () => ({ role: 'member' })))
 
-app.get('/ws/media/:roomId', async (c) => {
-  const roomId = c.req.param('roomId')
-  const token = new URL(c.req.url).searchParams.get('token')
-  let auth: VerifyResult | null = null
-  if (token) {
-    auth = (await verifyJwt(jwtConfig(c.env), token)).result
-  }
-  const doUrl = new URL(c.req.url)
-  if (auth) {
-    doUrl.searchParams.set('userId', auth.userId)
-    doUrl.searchParams.set('role', 'member')
-  }
-  doUrl.searchParams.delete('token')
-  const doId = c.env.MEDIA_ROOMS.idFromName(roomId)
-  const stub = c.env.MEDIA_ROOMS.get(doId)
-  return stub.fetch(new Request(doUrl.toString(), c.req.raw))
-})
-
-// ---------------------------------------------------------------------------
-// WebSocket → PresenceRoom DOs (real-time presence per scope)
-// ---------------------------------------------------------------------------
-
-app.get('/ws/presence/:scopeId', async (c) => {
-  const scopeId = c.req.param('scopeId')
-  const token = new URL(c.req.url).searchParams.get('token')
-  let auth: VerifyResult | null = null
-  if (token) {
-    auth = (await verifyJwt(jwtConfig(c.env), token)).result
-  }
-  const doUrl = new URL(c.req.url)
-  if (auth) {
-    doUrl.searchParams.set('userId', auth.userId)
-    if (auth.claims.name) doUrl.searchParams.set('userName', auth.claims.name)
-    if (auth.claims.email) doUrl.searchParams.set('userEmail', auth.claims.email)
-    if (auth.claims.image) doUrl.searchParams.set('userImageUrl', auth.claims.image)
-  }
-  doUrl.searchParams.delete('token')
-  const doId = c.env.PRESENCE_ROOMS.idFromName(scopeId)
-  const stub = c.env.PRESENCE_ROOMS.get(doId)
-  return stub.fetch(new Request(doUrl.toString(), c.req.raw))
-})
+app.get('/ws/presence/:scopeId', wsRoute(
+  (env) => env.PRESENCE_ROOMS,
+  (auth) => ({
+    ...(auth.claims.name ? { userName: auth.claims.name } : {}),
+    ...(auth.claims.email ? { userEmail: auth.claims.email } : {}),
+    ...(auth.claims.image ? { userImageUrl: auth.claims.image } : {}),
+  }),
+))
 
 // ---------------------------------------------------------------------------
 // Server actions
