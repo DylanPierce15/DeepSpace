@@ -55,49 +55,54 @@ export default defineCommand({
       process.exit(1)
     }
 
-    // ── Build frontend ────────────────────────────────────────
+    // ── Build with Vite (Cloudflare plugin bundles both client + worker) ──
     const s = p.spinner()
-    s.start('Building frontend with Vite...')
+    s.start('Building with Vite...')
     try {
       execSync('npx vite build', { cwd: appDir, stdio: 'pipe' })
     } catch (err: any) {
-      s.stop('Vite build failed')
+      s.stop('Build failed')
       console.error(err.stderr?.toString() ?? err.message)
       process.exit(1)
     }
-    s.stop('Frontend built')
+    s.stop('Built')
 
-    const distDir = join(appDir, 'dist')
-    if (!existsSync(distDir)) {
-      p.cancel('No dist/ directory after build')
-      process.exit(1)
-    }
+    // Cloudflare Vite plugin outputs: dist/client/ (assets) + dist/<name>/ (worker)
+    const clientDir = join(appDir, 'dist', 'client')
+    const workerDir = join(appDir, 'dist', appName)
 
-    // ── Bundle worker ─────────────────────────────────────────
-    s.start('Bundling worker...')
-    const workerTs = join(appDir, 'worker.ts')
-    const workerOut = join(appDir, '.worker-bundle.js')
-    try {
-      execSync(
-        `npx esbuild ${workerTs} --bundle --format=esm --outfile=${workerOut} --target=esnext --platform=browser "--external:cloudflare:*"`,
-        { cwd: appDir, stdio: 'pipe' },
-      )
-    } catch (err: any) {
-      s.stop('Worker bundle failed')
-      console.error(err.stderr?.toString() ?? err.message)
-      process.exit(1)
-    }
-    s.stop('Worker bundled')
+    // Fallback: if no client/ dir, the build used the old structure (flat dist/)
+    const assetsDir = existsSync(clientDir) ? clientDir : join(appDir, 'dist')
 
     // ── Collect assets ────────────────────────────────────────
     s.start('Collecting assets...')
-    const assets = collectAssets(distDir)
+    const assets = collectAssets(assetsDir)
     s.stop(`Collected ${assets.length} assets`)
 
-    const workerJs = readFileSync(workerOut, 'utf-8')
+    // Worker bundle: prefer Vite plugin output, fall back to esbuild
+    let workerJs: string
+    const viteWorkerBundle = join(workerDir, 'index.js')
+    if (existsSync(viteWorkerBundle)) {
+      workerJs = readFileSync(viteWorkerBundle, 'utf-8')
+    } else {
+      s.start('Bundling worker...')
+      const workerOut = join(appDir, '.worker-bundle.js')
+      try {
+        execSync(
+          `npx esbuild ${join(appDir, 'worker.ts')} --bundle --format=esm --outfile=${workerOut} --target=esnext --platform=browser "--external:cloudflare:*"`,
+          { cwd: appDir, stdio: 'pipe' },
+        )
+      } catch (err: any) {
+        s.stop('Worker bundle failed')
+        console.error(err.stderr?.toString() ?? err.message)
+        process.exit(1)
+      }
+      s.stop('Worker bundled')
+      workerJs = readFileSync(workerOut, 'utf-8')
+    }
 
     // ── Extract DO manifest from worker source ────────────────
-    const workerSource = readFileSync(workerTs, 'utf-8')
+    const workerSource = readFileSync(join(appDir, 'worker.ts'), 'utf-8')
     const doManifest = extractDOManifest(workerSource)
     if (doManifest) {
       p.log.info(`DO manifest: ${doManifest.length} binding(s)`)
