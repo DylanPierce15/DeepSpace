@@ -1,18 +1,18 @@
 /**
  * deepspace deploy
  *
- * Builds the app locally (Vite for client + esbuild for worker), then uploads
- * to the deploy worker which handles the Cloudflare WfP deployment.
+ * Builds the app with Vite (Cloudflare plugin bundles both client + worker),
+ * then uploads to the deploy worker which handles Cloudflare WfP deployment.
  *
- * The starter vite.config.ts only includes @cloudflare/vite-plugin on `serve`
- * (dev), so `vite build` produces standard flat dist/ output. The worker entry
- * point is bundled separately with esbuild, captured via stdout — no temp files.
+ * Uses the same build pipeline as dev for full fidelity. Reads the output
+ * wrangler.json (via .wrangler/deploy/config.json) to find the built assets
+ * and worker bundle — the same contract that `wrangler deploy` uses.
  */
 
 import { defineCommand } from 'citty'
 import { execSync } from 'node:child_process'
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { join, resolve, dirname } from 'node:path'
 import * as p from '@clack/prompts'
 import { ensureToken } from '../auth'
 
@@ -59,46 +59,60 @@ export default defineCommand({
       process.exit(1)
     }
 
-    // ── Build ─────────────────────────────────────────────────
+    // ── Build with Vite (Cloudflare plugin bundles client + worker) ──
     const s = p.spinner()
-    const distDir = join(appDir, 'dist')
-
-    // 1. Vite builds client assets to dist/
-    //    (cloudflare plugin only runs on `serve`, so `build` produces flat output)
-    s.start('Building client assets...')
+    s.start('Building...')
     try {
       execSync('npx vite build', { cwd: appDir, stdio: 'pipe' })
     } catch (err: any) {
-      s.stop('Client build failed')
+      s.stop('Build failed')
       console.error(err.stderr?.toString() ?? err.message)
       process.exit(1)
     }
-    s.stop('Client built')
+    s.stop('Built')
 
-    // 2. Bundle worker.ts with esbuild, captured via stdout — no temp files
-    s.start('Bundling worker...')
-    let workerJs: string
-    try {
-      workerJs = execSync(
-        'npx esbuild worker.ts --bundle --format=esm --external:cloudflare:* --external:node:*',
-        { cwd: appDir, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] },
-      )
-    } catch (err: any) {
-      s.stop('Worker bundle failed')
-      console.error(err.stderr?.toString() ?? err.message)
+    // ── Locate build output via .wrangler/deploy/config.json ──
+    // This is the same contract that `wrangler deploy` uses after `vite build`.
+    const deployConfigPath = join(appDir, '.wrangler', 'deploy', 'config.json')
+    if (!existsSync(deployConfigPath)) {
+      p.cancel('Build output config not found at .wrangler/deploy/config.json')
       process.exit(1)
     }
-    s.stop('Worker bundled')
 
-    if (!existsSync(distDir)) {
-      p.cancel('Build output not found — expected dist/')
+    const deployConfig = JSON.parse(readFileSync(deployConfigPath, 'utf-8')) as { configPath: string }
+    const outputWranglerPath = resolve(dirname(deployConfigPath), deployConfig.configPath)
+
+    if (!existsSync(outputWranglerPath)) {
+      p.cancel(`Output wrangler.json not found at ${outputWranglerPath}`)
+      process.exit(1)
+    }
+
+    const outputConfig = JSON.parse(readFileSync(outputWranglerPath, 'utf-8')) as {
+      main: string
+      assets?: { directory: string }
+    }
+
+    const workerDir = dirname(outputWranglerPath)
+    const workerBundlePath = join(workerDir, outputConfig.main)
+    const clientDir = outputConfig.assets?.directory
+      ? resolve(workerDir, outputConfig.assets.directory)
+      : null
+
+    if (!existsSync(workerBundlePath)) {
+      p.cancel(`Worker bundle not found at ${workerBundlePath}`)
+      process.exit(1)
+    }
+    if (!clientDir || !existsSync(clientDir)) {
+      p.cancel(`Client assets not found at ${clientDir}`)
       process.exit(1)
     }
 
     // ── Collect assets ────────────────────────────────────────
     s.start('Collecting assets...')
-    const assets = collectAssets(distDir)
+    const assets = collectAssets(clientDir)
     s.stop(`Collected ${assets.length} assets`)
+
+    const workerJs = readFileSync(workerBundlePath, 'utf-8')
 
     // ── Extract DO manifest from worker source ────────────────
     const workerSource = readFileSync(join(appDir, 'worker.ts'), 'utf-8')
@@ -139,18 +153,14 @@ export default defineCommand({
 
 /**
  * Extract __DO_MANIFEST__ from worker.ts source via regex.
- * Returns null if no manifest is found (backward compat → deploy worker uses default).
  */
 function extractDOManifest(source: string): Array<{ binding: string; className: string; sqlite: boolean }> | null {
-  // Match: export const __DO_MANIFEST__ = [ ... ] as const satisfies DOManifest
-  // or:    export const __DO_MANIFEST__ = [ ... ]
   const match = source.match(
     /export\s+const\s+__DO_MANIFEST__\s*=\s*\[([\s\S]*?)\]/
   )
   if (!match) return null
 
   const entries: Array<{ binding: string; className: string; sqlite: boolean }> = []
-  // Match individual entries: { binding: '...', className: '...', sqlite: true/false }
   const entryRegex = /\{\s*binding:\s*['"]([^'"]+)['"]\s*,\s*className:\s*['"]([^'"]+)['"]\s*,\s*sqlite:\s*(true|false)\s*\}/g
   let m: RegExpExecArray | null
   while ((m = entryRegex.exec(match[1])) !== null) {
@@ -164,11 +174,12 @@ function extractDOManifest(source: string): Array<{ binding: string; className: 
   return entries.length > 0 ? entries : null
 }
 
-function collectAssets(distDir: string): Array<{ path: string; contentBase64: string }> {
+function collectAssets(dir: string): Array<{ path: string; contentBase64: string }> {
   const assets: Array<{ path: string; contentBase64: string }> = []
-  function walk(dir: string, prefix: string) {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const full = join(dir, entry.name)
+  function walk(d: string, prefix: string) {
+    for (const entry of readdirSync(d, { withFileTypes: true })) {
+      if (entry.name === '.assetsignore') continue
+      const full = join(d, entry.name)
       const rel = prefix ? `${prefix}/${entry.name}` : entry.name
       if (entry.isDirectory()) {
         walk(full, rel)
@@ -180,6 +191,6 @@ function collectAssets(distDir: string): Array<{ path: string; contentBase64: st
       }
     }
   }
-  walk(distDir, '')
+  walk(dir, '')
   return assets
 }
