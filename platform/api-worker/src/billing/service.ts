@@ -137,6 +137,7 @@ export async function recordUsage(
   integrationName: string,
   endpoint: string,
   calculation: BillingCalculation,
+  callerUserId?: string,
   markAsComplete = false,
 ): Promise<string> {
   const currency = String(calculation.breakdown.currency || 'USD').toUpperCase()
@@ -153,6 +154,7 @@ export async function recordUsage(
   await db.insert(integrationUsage).values({
     id,
     userId,
+    callerUserId: callerUserId && callerUserId !== userId ? callerUserId : null,
     integrationName,
     endpoint,
     billingUnits: calculation.billingUnits.toString(),

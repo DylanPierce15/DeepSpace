@@ -33,6 +33,7 @@ import type { ActionTools, ActionResult, DOManifest, DOBindings } from 'deepspac
 import { actions } from './src/actions/index.js'
 import { handleCron } from './src/cron.js'
 import { schemas } from './src/schemas.js'
+import { integrations } from './src/integrations.js'
 
 // =============================================================================
 // DO Manifest — declares all Durable Objects for dynamic deploy bindings
@@ -174,28 +175,44 @@ app.all('/api/auth/*', async (c) => {
 // Integrations proxy → api-worker (OpenAI, search, etc.)
 // ---------------------------------------------------------------------------
 
-app.post('/api/integrations/:name/:endpoint', async (c) => {
+app.all('/api/integrations/:name/:endpoint', async (c) => {
+  const integrationName = c.req.param('name')
+  const billingMode = integrations[integrationName]?.billing ?? 'developer'
+
   const auth = await resolveAuth(c.req.raw, c.env)
-  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
+  if (!auth && billingMode === 'user') {
+    return c.json({ success: false, status: 401, error: 'Sign in required for this integration' })
+  }
 
-  const target = `/api/integrations/${c.req.param('name')}/${c.req.param('endpoint')}`
-
-  // Service binding (deployed) or HTTP fallback (local dev)
-  const fetcher = c.env.API_WORKER ?? null
-  const url = fetcher
+  const target = `/api/integrations/${integrationName}/${c.req.param('endpoint')}`
+  const url = c.env.API_WORKER
     ? `https://api-worker${target}`
     : `${c.env.API_WORKER_URL}${target}`
 
-  const res = await (fetcher ?? globalThis).fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${c.req.header('Authorization')?.slice(7) ?? ''}`,
-    },
-    body: c.req.raw.body,
-  })
+  const headers: Record<string, string> = {
+    'Content-Type': c.req.header('Content-Type') ?? 'application/json',
+  }
+  const token = c.req.header('Authorization')?.slice(7)
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  if (billingMode === 'developer') {
+    headers['X-Billing-User-Id'] = c.env.OWNER_USER_ID
+  }
 
-  return new Response(res.body, { status: res.status, headers: res.headers })
+  const hasBody = c.req.method !== 'GET' && c.req.method !== 'HEAD'
+  const body = hasBody ? await c.req.text() : undefined
+  const doFetch = c.env.API_WORKER ? c.env.API_WORKER.fetch.bind(c.env.API_WORKER) : fetch
+
+  try {
+    const res = await doFetch(url, { method: c.req.method, headers, body })
+    const data = await res.text()
+    // Always return 200 — Cloudflare Vite plugin crashes on non-2xx in dev.
+    // Real status is in the response body for the client to read.
+    let parsed: any
+    try { parsed = JSON.parse(data) } catch { parsed = { raw: data } }
+    return c.json({ ...parsed, status: res.status })
+  } catch {
+    return c.json({ success: false, status: 502, error: 'Integration proxy failed' })
+  }
 })
 
 // ---------------------------------------------------------------------------
@@ -349,12 +366,36 @@ function createActionTools(env: Env, userId: string): ActionTools {
     return res.json() as Promise<ActionResult>
   }
 
+  async function callIntegration(endpoint: string, data?: unknown): Promise<ActionResult> {
+    const integrationName = endpoint.split('/')[0]
+    const billingMode = integrations[integrationName]?.billing ?? 'developer'
+
+    const target = `/api/integrations/${endpoint}`
+    const fetcher = env.API_WORKER ?? null
+    const url = fetcher ? `https://api-worker${target}` : `${env.API_WORKER_URL}${target}`
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (billingMode === 'developer') {
+      headers['X-Billing-User-Id'] = env.OWNER_USER_ID
+    } else {
+      headers['X-Billing-User-Id'] = userId
+    }
+
+    const res = await (fetcher ?? globalThis).fetch(url, {
+      method: 'POST',
+      headers,
+      body: data != null ? JSON.stringify(data) : undefined,
+    })
+    return res.json() as Promise<ActionResult>
+  }
+
   return {
     create: (sid, collection, data) => execTool('records.create', { scopeId: sid, collection, data }),
     update: (sid, collection, recordId, data) => execTool('records.update', { scopeId: sid, collection, recordId, data }),
     remove: (sid, collection, recordId) => execTool('records.delete', { scopeId: sid, collection, recordId }),
     get: (sid, collection, recordId) => execTool('records.get', { scopeId: sid, collection, recordId }),
     query: (sid, collection, options) => execTool('records.query', { scopeId: sid, collection, ...options }),
+    integration: callIntegration,
   }
 }
 

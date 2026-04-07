@@ -27,6 +27,9 @@ integrations.post('/:name/:endpoint', authMiddleware, async (c) => {
   const integrationName = c.req.param('name')
   const endpoint = c.req.param('endpoint')
 
+  // Billing: charge X-Billing-User-Id if set (developer-pays), otherwise charge the caller
+  const billingUserId = c.req.header('X-Billing-User-Id') ?? userId
+
   // Look up handler in registry
   const handlerKey = `${integrationName}/${endpoint}`
   const handler = HANDLER_REGISTRY.get(handlerKey)
@@ -42,13 +45,13 @@ integrations.post('/:name/:endpoint', authMiddleware, async (c) => {
 
   const body = await c.req.json()
 
-  // Pre-flight cost estimate and credit check
+  // Pre-flight cost estimate and credit check (against billing user, not caller)
   const calculation = calculateCost(integrationName, endpoint, body)
   const estimatedCredits = dollarsToCredits(calculation.totalCost * COST_MARKUP_MULTIPLIER)
-  await checkSufficientCredits(db, userId, estimatedCredits)
+  await checkSufficientCredits(db, billingUserId, estimatedCredits)
 
-  // Record pending usage
-  const usageId = await recordUsage(db, userId, integrationName, endpoint, calculation)
+  // Record usage — track both caller and billing user
+  const usageId = await recordUsage(db, billingUserId, integrationName, endpoint, calculation, userId)
 
   // Call the handler
   try {

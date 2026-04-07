@@ -29,7 +29,8 @@ export const userProfiles = sqliteTable('user_profiles', {
 
 export const integrationUsage = sqliteTable('integration_usage', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text('user_id').notNull(),
+  userId: text('user_id').notNull(),           // who is being billed
+  callerUserId: text('caller_user_id'),        // who made the call (null = same as userId)
   integrationName: text('integration_name').notNull(),
   endpoint: text('endpoint').notNull(),
   billingUnits: text('billing_units').notNull(),
