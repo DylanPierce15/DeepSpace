@@ -1,8 +1,12 @@
 /**
  * deepspace deploy
  *
- * Builds the app locally (Vite + esbuild), then uploads to the deploy worker
- * which handles the Cloudflare WfP deployment on the user's behalf.
+ * Builds the app locally (Vite for client + esbuild for worker), then uploads
+ * to the deploy worker which handles the Cloudflare WfP deployment.
+ *
+ * The starter vite.config.ts only includes @cloudflare/vite-plugin on `serve`
+ * (dev), so `vite build` produces standard flat dist/ output. The worker entry
+ * point is bundled separately with esbuild, captured via stdout — no temp files.
  */
 
 import { defineCommand } from 'citty'
@@ -55,51 +59,46 @@ export default defineCommand({
       process.exit(1)
     }
 
-    // ── Build with Vite (Cloudflare plugin bundles both client + worker) ──
+    // ── Build ─────────────────────────────────────────────────
     const s = p.spinner()
-    s.start('Building with Vite...')
+    const distDir = join(appDir, 'dist')
+
+    // 1. Vite builds client assets to dist/
+    //    (cloudflare plugin only runs on `serve`, so `build` produces flat output)
+    s.start('Building client assets...')
     try {
       execSync('npx vite build', { cwd: appDir, stdio: 'pipe' })
     } catch (err: any) {
-      s.stop('Build failed')
+      s.stop('Client build failed')
       console.error(err.stderr?.toString() ?? err.message)
       process.exit(1)
     }
-    s.stop('Built')
+    s.stop('Client built')
 
-    // Cloudflare Vite plugin outputs: dist/client/ (assets) + dist/<name>/ (worker)
-    const clientDir = join(appDir, 'dist', 'client')
-    const workerDir = join(appDir, 'dist', appName)
+    // 2. Bundle worker.ts with esbuild, captured via stdout — no temp files
+    s.start('Bundling worker...')
+    let workerJs: string
+    try {
+      workerJs = execSync(
+        'npx esbuild worker.ts --bundle --format=esm --external:cloudflare:* --external:node:*',
+        { cwd: appDir, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] },
+      )
+    } catch (err: any) {
+      s.stop('Worker bundle failed')
+      console.error(err.stderr?.toString() ?? err.message)
+      process.exit(1)
+    }
+    s.stop('Worker bundled')
 
-    // Fallback: if no client/ dir, the build used the old structure (flat dist/)
-    const assetsDir = existsSync(clientDir) ? clientDir : join(appDir, 'dist')
+    if (!existsSync(distDir)) {
+      p.cancel('Build output not found — expected dist/')
+      process.exit(1)
+    }
 
     // ── Collect assets ────────────────────────────────────────
     s.start('Collecting assets...')
-    const assets = collectAssets(assetsDir)
+    const assets = collectAssets(distDir)
     s.stop(`Collected ${assets.length} assets`)
-
-    // Worker bundle: prefer Vite plugin output, fall back to esbuild
-    let workerJs: string
-    const viteWorkerBundle = join(workerDir, 'index.js')
-    if (existsSync(viteWorkerBundle)) {
-      workerJs = readFileSync(viteWorkerBundle, 'utf-8')
-    } else {
-      s.start('Bundling worker...')
-      const workerOut = join(appDir, '.worker-bundle.js')
-      try {
-        execSync(
-          `npx esbuild ${join(appDir, 'worker.ts')} --bundle --format=esm --outfile=${workerOut} --target=esnext --platform=browser "--external:cloudflare:*"`,
-          { cwd: appDir, stdio: 'pipe' },
-        )
-      } catch (err: any) {
-        s.stop('Worker bundle failed')
-        console.error(err.stderr?.toString() ?? err.message)
-        process.exit(1)
-      }
-      s.stop('Worker bundled')
-      workerJs = readFileSync(workerOut, 'utf-8')
-    }
 
     // ── Extract DO manifest from worker source ────────────────
     const workerSource = readFileSync(join(appDir, 'worker.ts'), 'utf-8')
