@@ -159,10 +159,5 @@ sync_worker "$ROOT/platform/auth-worker" "deepspace-auth" --env dev \
   GOOGLE_CLIENT_ID \
   GOOGLE_CLIENT_SECRET
 
-# ── API Worker (dev) ─────────────────────────────────────────────────────────
-sync_worker "$ROOT/platform/api-worker" "deepspace-api" --env dev \
-  AUTH_JWT_PUBLIC_KEY_DEV=AUTH_JWT_PUBLIC_KEY \
-  AUTH_JWT_ISSUER_DEV=AUTH_JWT_ISSUER
-
 echo ""
 echo "✓ All Cloudflare Worker secrets synced from Doppler ($CONFIG)"
