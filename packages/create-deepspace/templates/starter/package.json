@@ -13,7 +13,7 @@
     "cron.json"
   ],
   "scripts": {
-    "dev": "vite",
+    "dev": "deepspace dev",
     "build": "vite build",
     "preview": "vite preview",
     "login": "deepspace login",

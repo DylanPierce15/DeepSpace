@@ -228,7 +228,10 @@ async function main() {
     [
       ...(isInPlace ? [] : [`cd ${appName}`]),
       'npx deepspace login',
-      'npx deepspace deploy',
+      'npx deepspace dev',
+      '',
+      'Deploy:',
+      '  npx deepspace deploy',
       '',
       'Add features:',
       '  npx deepspace add --list',
