@@ -75,7 +75,6 @@ interface Env extends DOBindings<typeof __DO_MANIFEST__> {
   API_WORKER_URL: string
   APP_NAME: string
   OWNER_USER_ID: string
-  DEV_MODE?: string
   INTERNAL_STORAGE_HMAC_SECRET: string
 }
 
@@ -97,25 +96,10 @@ function jwtConfig(env: Env): JwtVerifierConfig {
 }
 
 async function resolveAuth(req: Request, env: Env): Promise<VerifyResult | null> {
-  // Real JWT auth (always tried first)
   const header = req.headers.get('Authorization')
   const token = header?.startsWith('Bearer ') ? header.slice(7) : null
-  if (token) {
-    return (await verifyJwt(jwtConfig(env), token)).result
-  }
-
-  // Dev mode: accept X-Dev-User-Id header for testing
-  if (env.DEV_MODE) {
-    const devUserId = req.headers.get('X-Dev-User-Id')
-    if (devUserId) {
-      return {
-        userId: devUserId,
-        claims: JSON.parse(req.headers.get('X-Dev-User-Claims') || '{}'),
-      } as VerifyResult
-    }
-  }
-
-  return null
+  if (!token) return null
+  return (await verifyJwt(jwtConfig(env), token)).result
 }
 
 // ---------------------------------------------------------------------------
@@ -221,17 +205,8 @@ app.post('/api/integrations/:name/:endpoint', async (c) => {
 async function resolveWsAuth(req: Request, env: Env): Promise<VerifyResult | null> {
   const url = new URL(req.url)
   const token = url.searchParams.get('token')
-  if (token) {
-    return (await verifyJwt(jwtConfig(env), token)).result
-  }
-  // Dev mode: accept userId query param for testing
-  if (env.DEV_MODE) {
-    const devUserId = url.searchParams.get('devUserId')
-    if (devUserId) {
-      return { userId: devUserId, claims: {} } as VerifyResult
-    }
-  }
-  return null
+  if (!token) return null
+  return (await verifyJwt(jwtConfig(env), token)).result
 }
 
 function wsRoute(
@@ -253,7 +228,6 @@ function wsRoute(
       }
     }
     doUrl.searchParams.delete('token')
-    doUrl.searchParams.delete('devUserId')
 
     const ns = doNamespace(c.env)
     const stub = ns.get(ns.idFromName(id))

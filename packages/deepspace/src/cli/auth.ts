@@ -9,8 +9,9 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
 
-const AUTH_URL =
-  process.env.DEEPSPACE_AUTH_URL ?? 'https://deepspace-auth.eudaimonicincorporated.workers.dev'
+import { ENVS } from './env'
+
+const AUTH_URL = process.env.DEEPSPACE_AUTH_URL ?? ENVS.prod.auth
 const SESSION_COOKIE = '__Secure-better-auth.session_token'
 
 const DIR = join(homedir(), '.deepspace')

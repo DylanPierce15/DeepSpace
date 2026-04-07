@@ -14,3 +14,12 @@ database_id = "41ed5cfb-8b56-4c83-a818-7facae038d71"
 [dev]
 port = 8795
 inspector_port = 9236
+
+# ── Dev environment (separate DB, mock billing) ──
+[env.dev]
+name = "deepspace-api-dev"
+
+[[env.dev.d1_databases]]
+binding = "BILLING_DB"
+database_name = "deepspace-billing-dev"
+database_id = "337ec201-4cdb-4759-8bde-273b4f3f0945"

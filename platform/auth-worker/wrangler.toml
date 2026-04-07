@@ -14,3 +14,12 @@ database_id = "6224afa9-ad09-409c-bfd6-dde64ddc3f03"
 [dev]
 port = 8794
 inspector_port = 9235
+
+# ── Dev environment (separate DB, separate JWT keys) ──
+[env.dev]
+name = "deepspace-auth-dev"
+
+[[env.dev.d1_databases]]
+binding = "AUTH_DB"
+database_name = "deepspace-auth-dev"
+database_id = "97fb2f22-7cb3-4fc4-8df1-69643cd31e77"

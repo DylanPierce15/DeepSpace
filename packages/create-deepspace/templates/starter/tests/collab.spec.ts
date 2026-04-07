@@ -1,37 +1,23 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
+import { createTestUsers } from './helpers/auth'
 
-/**
- * Multi-user collaboration tests.
- *
- * Uses two browser pages to simulate two users interacting
- * with the same data in real-time.
- */
-
-async function waitForApp(page: Page) {
+async function waitForApp(page: import('@playwright/test').Page) {
   await page.waitForSelector('[data-testid="app-navigation"]', { timeout: 15000 })
 }
 
 test.describe('Multi-user collaboration', () => {
-  test('two users see each other\'s record changes', async ({ browser }) => {
-    // Create two browser contexts (two separate users)
-    const contextA = await browser.newContext()
-    const contextB = await browser.newContext()
-    const pageA = await contextA.newPage()
-    const pageB = await contextB.newPage()
+  test('two users are recognized as different users', async ({ browser }) => {
+    const users = await createTestUsers(browser, 2)
 
     try {
-      // Both navigate to home
-      await pageA.goto('/')
-      await pageB.goto('/')
-      await waitForApp(pageA)
-      await waitForApp(pageB)
+      await waitForApp(users[0].page)
+      await waitForApp(users[1].page)
 
-      // Both pages should load and show the app
-      await expect(pageA.getByTestId('app-navigation')).toBeVisible()
-      await expect(pageB.getByTestId('app-navigation')).toBeVisible()
+      // Both should show signed-in state with their names
+      await expect(users[0].page.getByTestId('nav-user-name')).toContainText('User 1')
+      await expect(users[1].page.getByTestId('nav-user-name')).toContainText('User 2')
     } finally {
-      await contextA.close()
-      await contextB.close()
+      for (const u of users) await u.context.close()
     }
   })
 })

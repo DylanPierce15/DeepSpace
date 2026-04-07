@@ -358,19 +358,13 @@ function RecordProviderCore({
       if (profile.imageUrl) params.set('userImageUrl', profile.imageUrl)
     }
 
-    // Dev mode: use dev user ID instead of JWT
-    const devUserId = typeof window !== 'undefined' ? localStorage.getItem('__dev_user_id') : null
-    if (devUserId) {
-      params.set('devUserId', devUserId)
-    } else {
-      // Always try to send auth token — platform worker extracts userId from JWT
-      // even if profile fetch failed (e.g. API down)
-      try {
-        const tokenFn = getAuthTokenProp ?? getAuthToken
-        const token = await tokenFn()
-        if (token) params.set('token', token)
-      } catch { /* Token fetch failed */ }
-    }
+    // Always try to send auth token — platform worker extracts userId from JWT
+    // even if profile fetch failed (e.g. API down)
+    try {
+      const tokenFn = getAuthTokenProp ?? getAuthToken
+      const token = await tokenFn()
+      if (token) params.set('token', token)
+    } catch { /* Token fetch failed */ }
 
     connectedWithProfileRef.current = !!profile
 
@@ -648,16 +642,6 @@ export function RecordProvider({
   // Derive user profile from the JWT — no API call needed.
   // Returns null when not signed in (no error, no console spam).
   const fetchUser = useCallback(async (): Promise<UserProfile | null> => {
-    // Dev mode: return profile from localStorage
-    const devUserId = typeof window !== 'undefined' ? localStorage.getItem('__dev_user_id') : null
-    if (devUserId) {
-      return {
-        id: devUserId,
-        name: localStorage.getItem('__dev_user_name') ?? devUserId,
-        email: localStorage.getItem('__dev_user_email') ?? `${devUserId}@test.local`,
-      }
-    }
-
     if (!isSignedIn) return null
     const token = await getAuthToken()
     if (!token) return null
