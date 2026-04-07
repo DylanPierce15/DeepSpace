@@ -3,6 +3,7 @@
  * No API key needed — public REST API.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 const HEADERS = {
@@ -75,9 +76,21 @@ const getRandomPage: IntegrationHandler = async () => {
   }
 }
 
+const searchPagesSchema = z.object({
+  query: z.string().optional(),
+  q: z.string().optional(),
+  limit: z.number().min(1).max(50).default(10),
+})
+
+const pageTitleSchema = z.object({
+  title: z.string(),
+})
+
+const randomPageSchema = z.object({})
+
 export const endpoints: Record<string, EndpointDefinition> = {
-  'wikipedia/search-pages': { handler: searchPages, billing: BILLING },
-  'wikipedia/get-page-summary': { handler: getPageSummary, billing: BILLING },
-  'wikipedia/get-page-content': { handler: getPageContent, billing: BILLING },
-  'wikipedia/get-random-page': { handler: getRandomPage, billing: BILLING },
+  'wikipedia/search-pages': { handler: searchPages, billing: BILLING, schema: searchPagesSchema },
+  'wikipedia/get-page-summary': { handler: getPageSummary, billing: BILLING, schema: pageTitleSchema },
+  'wikipedia/get-page-content': { handler: getPageContent, billing: BILLING, schema: pageTitleSchema },
+  'wikipedia/get-random-page': { handler: getRandomPage, billing: BILLING, schema: randomPageSchema },
 }

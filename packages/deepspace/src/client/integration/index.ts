@@ -19,6 +19,7 @@ interface IntegrationResponse<T = unknown> {
   success: boolean
   data?: T
   error?: string
+  issues?: Array<{ path?: string[]; message: string; code?: string }>
 }
 
 interface RequestOptions {
@@ -80,7 +81,8 @@ async function request<T>(
       return {
         success: false,
         error: (json.error as string) ?? (json.message as string) ?? `Request failed (${status})`,
-      }
+        ...(json.issues ? { issues: json.issues } : {}),
+      } as IntegrationResponse<T>
     }
 
     // Normalize response — handle both { success, data } and { success, ...rest }

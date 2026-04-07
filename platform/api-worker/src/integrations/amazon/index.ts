@@ -3,6 +3,7 @@
  * Transforms results into a normalized product format with Associate URLs.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 const ASSOCIATE_TAG = 'deepspace02a8-20'
@@ -68,9 +69,15 @@ const searchProducts: IntegrationHandler = async (env, body) => {
   return { products }
 }
 
+const searchProductsSchema = z.object({
+  query: z.string(),
+  limit: z.number().min(1).max(20).default(10),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
   'amazon/search-products': {
     handler: searchProducts,
     billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+    schema: searchProductsSchema,
   },
 }

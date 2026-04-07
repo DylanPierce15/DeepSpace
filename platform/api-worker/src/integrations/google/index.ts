@@ -8,6 +8,7 @@
  * later when the OAuth infrastructure is built.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 // ============================================================================
@@ -382,18 +383,103 @@ const contactsList: IntegrationHandler = async (env, body) => {
 const GOOGLE_BILLING = { model: 'per_request' as const, baseCost: 0.01, currency: 'USD' }
 
 // ============================================================================
+// Schemas
+// ============================================================================
+
+const gmailSendSchema = z.object({
+  accessToken: z.string().optional(),
+  to: z.string(),
+  subject: z.string(),
+  content: z.string(),
+  html: z.string().optional(),
+  threadId: z.string().optional(),
+})
+
+const gmailListSchema = z.object({
+  accessToken: z.string().optional(),
+  maxResults: z.number().min(1).optional(),
+  pageToken: z.string().optional(),
+  labelIds: z.union([z.string(), z.array(z.string())]).optional(),
+  q: z.string().optional(),
+})
+
+const gmailGetSchema = z.object({
+  accessToken: z.string().optional(),
+  messageId: z.string().optional(),
+  id: z.string().optional(),
+  format: z.string().default('full'),
+})
+
+const gmailSearchSchema = z.object({
+  accessToken: z.string().optional(),
+  query: z.string().optional(),
+  q: z.string().optional(),
+  maxResults: z.number().min(1).default(20),
+  pageToken: z.string().optional(),
+})
+
+const calendarListEventsSchema = z.object({
+  accessToken: z.string().optional(),
+  calendarId: z.string().default('primary'),
+  timeMin: z.string().optional(),
+  timeMax: z.string().optional(),
+  maxResults: z.number().min(1).max(2500).optional(),
+  q: z.string().optional(),
+})
+
+const calendarCreateEventSchema = z.object({
+  accessToken: z.string().optional(),
+  calendarId: z.string().default('primary'),
+  title: z.string().optional(),
+  summary: z.string().optional(),
+  start: z.string(),
+  end: z.string().optional(),
+  allDay: z.boolean().default(false),
+  description: z.string().optional(),
+  location: z.string().optional(),
+  attendees: z.array(z.string()).optional(),
+  addVideoConferencing: z.boolean().optional(),
+})
+
+const calendarDeleteEventSchema = z.object({
+  accessToken: z.string().optional(),
+  calendarId: z.string().default('primary'),
+  eventId: z.string(),
+})
+
+const driveListSchema = z.object({
+  accessToken: z.string().optional(),
+  pageSize: z.number().min(1).max(1000).default(50),
+  q: z.string().optional(),
+  pageToken: z.string().optional(),
+})
+
+const driveGetSchema = z.object({
+  accessToken: z.string().optional(),
+  fileId: z.string(),
+  fields: z.string().optional(),
+})
+
+const contactsListSchema = z.object({
+  accessToken: z.string().optional(),
+  pageSize: z.number().min(1).max(2000).default(1000),
+  personFields: z.string().optional(),
+  pageToken: z.string().optional(),
+})
+
+// ============================================================================
 // Exports
 // ============================================================================
 
 export const endpoints: Record<string, EndpointDefinition> = {
-  'google/gmail-send':             { handler: gmailSend,           billing: GOOGLE_BILLING },
-  'google/gmail-list':             { handler: gmailList,           billing: GOOGLE_BILLING },
-  'google/gmail-get':              { handler: gmailGet,            billing: GOOGLE_BILLING },
-  'google/gmail-search':           { handler: gmailSearch,         billing: GOOGLE_BILLING },
-  'google/calendar-list-events':   { handler: calendarListEvents,  billing: GOOGLE_BILLING },
-  'google/calendar-create-event':  { handler: calendarCreateEvent, billing: GOOGLE_BILLING },
-  'google/calendar-delete-event':  { handler: calendarDeleteEvent, billing: GOOGLE_BILLING },
-  'google/drive-list':             { handler: driveList,           billing: GOOGLE_BILLING },
-  'google/drive-get':              { handler: driveGet,            billing: GOOGLE_BILLING },
-  'google/contacts-list':          { handler: contactsList,        billing: GOOGLE_BILLING },
+  'google/gmail-send':             { handler: gmailSend,           billing: GOOGLE_BILLING, schema: gmailSendSchema },
+  'google/gmail-list':             { handler: gmailList,           billing: GOOGLE_BILLING, schema: gmailListSchema },
+  'google/gmail-get':              { handler: gmailGet,            billing: GOOGLE_BILLING, schema: gmailGetSchema },
+  'google/gmail-search':           { handler: gmailSearch,         billing: GOOGLE_BILLING, schema: gmailSearchSchema },
+  'google/calendar-list-events':   { handler: calendarListEvents,  billing: GOOGLE_BILLING, schema: calendarListEventsSchema },
+  'google/calendar-create-event':  { handler: calendarCreateEvent, billing: GOOGLE_BILLING, schema: calendarCreateEventSchema },
+  'google/calendar-delete-event':  { handler: calendarDeleteEvent, billing: GOOGLE_BILLING, schema: calendarDeleteEventSchema },
+  'google/drive-list':             { handler: driveList,           billing: GOOGLE_BILLING, schema: driveListSchema },
+  'google/drive-get':              { handler: driveGet,            billing: GOOGLE_BILLING, schema: driveGetSchema },
+  'google/contacts-list':          { handler: contactsList,        billing: GOOGLE_BILLING, schema: contactsListSchema },
 }

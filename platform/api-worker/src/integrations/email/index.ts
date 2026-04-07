@@ -2,6 +2,7 @@
  * Email integration — send transactional emails via Resend.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 const send: IntegrationHandler = async (env, body) => {
@@ -47,9 +48,21 @@ const send: IntegrationHandler = async (env, body) => {
   return response.json()
 }
 
+const sendSchema = z.object({
+  from: z.string(),
+  to: z.union([z.string(), z.array(z.string())]),
+  subject: z.string(),
+  html: z.string().optional(),
+  text: z.string().optional(),
+  reply_to: z.string().optional(),
+  cc: z.union([z.string(), z.array(z.string())]).optional(),
+  bcc: z.union([z.string(), z.array(z.string())]).optional(),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
   'email/send': {
     handler: send,
     billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+    schema: sendSchema,
   },
 }

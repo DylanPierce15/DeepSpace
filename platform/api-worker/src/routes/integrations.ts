@@ -4,6 +4,7 @@
  */
 
 import { Hono } from 'hono'
+import { z } from 'zod'
 import type { Env } from '../worker'
 import { authMiddleware } from '../middleware/auth'
 import { getDb } from '../worker'
@@ -16,18 +17,48 @@ import {
   COST_MARKUP_MULTIPLIER,
 } from '../billing/service'
 import { getIntegrationConfig } from '../billing/configs'
-import { HANDLER_REGISTRY, BILLING_CONFIGS } from '../integrations/_registry'
+import { HANDLER_REGISTRY, BILLING_CONFIGS, SCHEMA_REGISTRY } from '../integrations/_registry'
 
 const integrations = new Hono<Env>()
 
+/**
+ * Extract example values from a JSON Schema's property defaults.
+ */
+function extractExampleFromJsonSchema(jsonSchema: Record<string, unknown>): Record<string, unknown> {
+  const properties = jsonSchema.properties as Record<string, Record<string, unknown>> | undefined
+  if (!properties) return {}
+  const example: Record<string, unknown> = {}
+  for (const [key, prop] of Object.entries(properties)) {
+    if (prop.default !== undefined) {
+      example[key] = prop.default
+    }
+  }
+  return example
+}
+
 // GET / — list all available integrations (no auth required)
 integrations.get('/', (c) => {
-  const catalog: Record<string, Array<{ endpoint: string; billing: { model: string; baseCost: number; currency: string } }>> = {}
+  const catalog: Record<string, Array<{
+    endpoint: string
+    billing: { model: string; baseCost: number; currency: string }
+    inputSchema: Record<string, unknown> | null
+    example: Record<string, unknown> | null
+  }>> = {}
 
   for (const [key, config] of Object.entries(BILLING_CONFIGS)) {
     const { integrationName, endpoint, ...billing } = config
     if (!catalog[integrationName]) catalog[integrationName] = []
-    catalog[integrationName].push({ endpoint, billing: { model: billing.model, baseCost: billing.baseCost, currency: billing.currency } })
+
+    const schema = SCHEMA_REGISTRY.get(key)
+    const inputSchema = schema ? z.toJSONSchema(schema) as Record<string, unknown> : null
+    const example = inputSchema ? extractExampleFromJsonSchema(inputSchema) : null
+
+    catalog[integrationName].push({
+      endpoint,
+      billing: { model: billing.model, baseCost: billing.baseCost, currency: billing.currency },
+      inputSchema,
+      example,
+    })
   }
 
   return c.json({ integrations: catalog })
@@ -57,7 +88,27 @@ integrations.post('/:name/:endpoint', authMiddleware, async (c) => {
     return c.json({ error: `Integration not active: ${handlerKey}` }, 404)
   }
 
-  const body = await c.req.json()
+  const rawBody = await c.req.json()
+
+  // Validate and apply defaults via Zod schema (if one exists for this endpoint)
+  let body: Record<string, unknown>
+  const schema = SCHEMA_REGISTRY.get(handlerKey)
+  if (schema) {
+    try {
+      body = schema.parse(rawBody) as Record<string, unknown>
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return c.json({
+          success: false,
+          error: 'Validation failed',
+          issues: error.issues,
+        }, 400)
+      }
+      throw error
+    }
+  } else {
+    body = rawBody
+  }
 
   // Pre-flight cost estimate and credit check (against billing user, not caller)
   const calculation = calculateCost(integrationName, endpoint, body)

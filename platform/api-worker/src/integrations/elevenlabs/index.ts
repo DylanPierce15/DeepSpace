@@ -3,6 +3,7 @@
  * Ported from Miyagi3 ElevenLabsTextToSpeechService.ts and ElevenLabsConversationService.ts.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 // ============================================================================
@@ -260,21 +261,74 @@ const getSignedUrl: IntegrationHandler = async (env, body) => {
 // Exports
 // ============================================================================
 
+const listVoicesSchema = z.object({})
+
+const generateSpeechSchema = z.object({
+  text: z.string().min(1).max(5000),
+  voice_id: z.string().default('JBFqnCBsd6RMkjVDRZzb'),
+  model_id: z.enum([
+    'eleven_v3',
+    'eleven_multilingual_v2',
+    'eleven_flash_v2_5',
+    'eleven_flash_v2',
+    'eleven_turbo_v2_5',
+    'eleven_turbo_v2',
+  ]).default('eleven_flash_v2_5'),
+  output_format: z.enum([
+    'mp3_22050_32', 'mp3_44100_64', 'mp3_44100_96', 'mp3_44100_128', 'mp3_44100_192',
+    'pcm_16000', 'pcm_22050', 'pcm_24000', 'pcm_44100',
+  ]).default('mp3_44100_128'),
+  voice_settings: z.object({
+    stability: z.number().min(0).max(1).default(0.5),
+    similarity_boost: z.number().min(0).max(1).default(0.75),
+    style: z.number().min(0).max(1).default(0),
+    use_speaker_boost: z.boolean().default(true),
+  }).optional(),
+})
+
+const createAgentSchema = z.object({
+  name: z.string(),
+  prompt: z.string(),
+  firstMessage: z.string(),
+  voiceId: z.string().default('JBFqnCBsd6RMkjVDRZzb'),
+  language: z.string().default('en'),
+  llm: z.string().default('gemini-2.0-flash-001'),
+  model: z.string().default('eleven_turbo_v2'),
+  clientTools: z.array(z.object({
+    name: z.string(),
+    description: z.string(),
+    parameters: z.record(z.string(), z.object({
+      type: z.string(),
+      description: z.string(),
+      required: z.boolean().optional(),
+    })),
+    wait_for_response: z.boolean().optional(),
+  })).optional(),
+})
+
+const getSignedUrlSchema = z.object({
+  agent_id: z.string(),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
   'elevenlabs/list-voices': {
     handler: listVoices,
     billing: { model: 'per_request', baseCost: 0.001, currency: 'USD' },
+    schema: listVoicesSchema,
   },
   'elevenlabs/generate-speech': {
     handler: generateSpeech,
     billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+    schema: generateSpeechSchema,
   },
   'elevenlabs/create-agent': {
     handler: createAgent,
     billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+    schema: createAgentSchema,
   },
   'elevenlabs/get-signed-url': {
     handler: getSignedUrl,
     billing: { model: 'per_request', baseCost: 0.001, currency: 'USD' },
+    schema: getSignedUrlSchema,
   },
 }

@@ -10,6 +10,7 @@
  * SubMagic API docs: https://docs.submagic.co/api-reference/create-project
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 import { pollForResult } from '../_polling'
 
@@ -132,17 +133,42 @@ const waitForCompletion: IntegrationHandler = async (env, body) => {
 // Exports
 // ============================================================================
 
+const createVideoSchema = z.object({
+  title: z.string(),
+  language: z.string(),
+  videoUrl: z.string(),
+  templateName: z.string().optional(),
+  userThemeId: z.string().optional(),
+  dictionary: z.record(z.string(), z.string()).optional(),
+  magicZooms: z.boolean().optional(),
+  magicBrolls: z.boolean().optional(),
+  magicBrollsPercentage: z.number().min(0).max(100).optional(),
+})
+
+const getProjectSchema = z.object({
+  projectId: z.string(),
+})
+
+const waitForCompletionSchema = z.object({
+  projectId: z.string(),
+  maxAttempts: z.number().min(1).default(30),
+  pollInterval: z.number().min(1000).default(10000),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
   'submagic/create-video': {
     handler: createVideo,
     billing: { model: 'per_request', baseCost: 0.15, currency: 'USD' },
+    schema: createVideoSchema,
   },
   'submagic/get-project': {
     handler: getProject,
     billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+    schema: getProjectSchema,
   },
   'submagic/wait-for-completion': {
     handler: waitForCompletion,
     billing: { model: 'per_request', baseCost: 0.15, currency: 'USD' },
+    schema: waitForCompletionSchema,
   },
 }

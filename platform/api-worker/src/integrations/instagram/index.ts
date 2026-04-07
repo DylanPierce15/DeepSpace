@@ -9,6 +9,7 @@
  * 4. window._sharedData (legacy)
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 // ============================================================================
@@ -289,9 +290,14 @@ const extractContent: IntegrationHandler = async (_env, body) => {
 // Exports
 // ============================================================================
 
+const extractContentSchema = z.object({
+  url: z.string(),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
   'instagram/extract-content': {
     handler: extractContent,
     billing: { model: 'per_request', baseCost: 0.02, currency: 'USD' },
+    schema: extractContentSchema,
   },
 }

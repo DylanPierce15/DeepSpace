@@ -9,6 +9,7 @@
  * - POST /v2/post/scheduled/:id/cancel/ -- cancel a scheduled post
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 // ============================================================================
@@ -143,21 +144,41 @@ const cancelScheduledPost: IntegrationHandler = async (env, body) => {
 // Exports
 // ============================================================================
 
+const postVideoSchema = z.object({
+  videoUrl: z.string(),
+  caption: z.string(),
+  privacyLevel: z.string().default('PUBLIC_TO_EVERYONE'),
+  hashtags: z.array(z.string()).optional(),
+  scheduleTime: z.string().optional(),
+})
+
+const userInfoSchema = z.object({})
+
+const getScheduledPostsSchema = z.object({})
+
+const cancelScheduledPostSchema = z.object({
+  postId: z.string(),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
   'tiktok/post-video': {
     handler: postVideo,
     billing: { model: 'per_request', baseCost: 0.05, currency: 'USD' },
+    schema: postVideoSchema,
   },
   'tiktok/user-info': {
     handler: getUserInfo,
     billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+    schema: userInfoSchema,
   },
   'tiktok/get-scheduled-posts': {
     handler: getScheduledPosts,
     billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+    schema: getScheduledPostsSchema,
   },
   'tiktok/cancel-scheduled-post': {
     handler: cancelScheduledPost,
     billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+    schema: cancelScheduledPostSchema,
   },
 }

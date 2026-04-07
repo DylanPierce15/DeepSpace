@@ -3,6 +3,7 @@
  * Ported from Miyagi3 YouTubeService.ts.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 const HEADERS = { 'User-Agent': 'DeepSpace-YouTube/1.0' }
@@ -86,8 +87,26 @@ const getTrendingVideos: IntegrationHandler = async (env, body) => {
   return { videos, totalResults: videos.length }
 }
 
+const searchVideosSchema = z.object({
+  q: z.string(),
+  order: z.string().optional(),
+  maxResults: z.number().min(1).max(50).optional(),
+  regionCode: z.string().optional(),
+  publishedAfter: z.string().optional(),
+  publishedBefore: z.string().optional(),
+})
+
+const getVideoDetailsSchema = z.object({
+  id: z.string(),
+})
+
+const getTrendingVideosSchema = z.object({
+  regionCode: z.string().optional(),
+  maxResults: z.number().min(1).max(50).optional(),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
-  'youtube/search-videos':      { handler: searchVideos,      billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' } },
-  'youtube/get-video-details':  { handler: getVideoDetails,   billing: { model: 'per_request', baseCost: 0.005, currency: 'USD' } },
-  'youtube/get-trending-videos': { handler: getTrendingVideos, billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' } },
+  'youtube/search-videos':      { handler: searchVideos,      billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' }, schema: searchVideosSchema },
+  'youtube/get-video-details':  { handler: getVideoDetails,   billing: { model: 'per_request', baseCost: 0.005, currency: 'USD' }, schema: getVideoDetailsSchema },
+  'youtube/get-trending-videos': { handler: getTrendingVideos, billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' }, schema: getTrendingVideosSchema },
 }

@@ -4,6 +4,7 @@
  * Ported from Miyagi3 ApiBasketballService.ts.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 const API_BASE = 'https://v1.basketball.api-sports.io'
@@ -51,21 +52,25 @@ function basketballEndpoint(path: string): IntegrationHandler {
   }
 }
 
+// ── Schema ────────────────────────────────────────────────────────────────────
+
+const apiSportsSchema = z.object({}).passthrough()
+
 // ── Export ──────────────────────────────────────────────────────────────────────
 
 export const endpoints: Record<string, EndpointDefinition> = {
-  'api-basketball/countries':                 { handler: basketballEndpoint('countries'),                billing: BILLING },
-  'api-basketball/leagues':                   { handler: basketballEndpoint('leagues'),                  billing: BILLING },
-  'api-basketball/teams':                     { handler: basketballEndpoint('teams'),                    billing: BILLING },
-  'api-basketball/statistics':                { handler: basketballEndpoint('statistics'),               billing: BILLING },
-  'api-basketball/players':                   { handler: basketballEndpoint('players'),                  billing: BILLING },
-  'api-basketball/games':                     { handler: basketballEndpoint('games'),                    billing: BILLING },
-  'api-basketball/games-statistics-teams':    { handler: basketballEndpoint('games/statistics/teams'),   billing: BILLING },
-  'api-basketball/games-statistics-players':  { handler: basketballEndpoint('games/statistics/players'), billing: BILLING },
-  'api-basketball/games-h2h':                 { handler: basketballEndpoint('games/h2h'),               billing: BILLING },
-  'api-basketball/standings':                 { handler: basketballEndpoint('standings'),                billing: BILLING },
-  'api-basketball/standings-stages':          { handler: basketballEndpoint('standings/stages'),         billing: BILLING },
-  'api-basketball/standings-groups':          { handler: basketballEndpoint('standings/groups'),         billing: BILLING },
-  'api-basketball/odds':                      { handler: basketballEndpoint('odds'),                     billing: BILLING },
-  'api-basketball/bookmakers':                { handler: basketballEndpoint('bookmakers'),               billing: BILLING },
+  'api-basketball/countries':                 { handler: basketballEndpoint('countries'),                billing: BILLING, schema: apiSportsSchema },
+  'api-basketball/leagues':                   { handler: basketballEndpoint('leagues'),                  billing: BILLING, schema: apiSportsSchema },
+  'api-basketball/teams':                     { handler: basketballEndpoint('teams'),                    billing: BILLING, schema: apiSportsSchema },
+  'api-basketball/statistics':                { handler: basketballEndpoint('statistics'),               billing: BILLING, schema: apiSportsSchema },
+  'api-basketball/players':                   { handler: basketballEndpoint('players'),                  billing: BILLING, schema: apiSportsSchema },
+  'api-basketball/games':                     { handler: basketballEndpoint('games'),                    billing: BILLING, schema: apiSportsSchema },
+  'api-basketball/games-statistics-teams':    { handler: basketballEndpoint('games/statistics/teams'),   billing: BILLING, schema: apiSportsSchema },
+  'api-basketball/games-statistics-players':  { handler: basketballEndpoint('games/statistics/players'), billing: BILLING, schema: apiSportsSchema },
+  'api-basketball/games-h2h':                 { handler: basketballEndpoint('games/h2h'),               billing: BILLING, schema: apiSportsSchema },
+  'api-basketball/standings':                 { handler: basketballEndpoint('standings'),                billing: BILLING, schema: apiSportsSchema },
+  'api-basketball/standings-stages':          { handler: basketballEndpoint('standings/stages'),         billing: BILLING, schema: apiSportsSchema },
+  'api-basketball/standings-groups':          { handler: basketballEndpoint('standings/groups'),         billing: BILLING, schema: apiSportsSchema },
+  'api-basketball/odds':                      { handler: basketballEndpoint('odds'),                     billing: BILLING, schema: apiSportsSchema },
+  'api-basketball/bookmakers':                { handler: basketballEndpoint('bookmakers'),               billing: BILLING, schema: apiSportsSchema },
 }

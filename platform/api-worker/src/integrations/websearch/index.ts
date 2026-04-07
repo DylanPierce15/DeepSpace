@@ -10,6 +10,7 @@
  * (requires Node.js pdf-parse). PDF results are returned as links only.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 // ============================================================================
@@ -454,6 +455,14 @@ const advancedSearch: IntegrationHandler = async (env, body) => {
 // Exports
 // ============================================================================
 
+const advancedSearchSchema = z.object({
+  searchPrompt: z.string().min(1),
+  queryHints: z.array(z.string()).default([]),
+  searchType: z.enum(['web', 'images', 'videos', 'academic', 'all']).default('all'),
+  count: z.number().min(1).max(10).default(5),
+  parseResultsPrompt: z.string().optional(),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
   'websearch/advanced-search': {
     handler: advancedSearch,
@@ -462,5 +471,6 @@ export const endpoints: Record<string, EndpointDefinition> = {
       baseCost: 0.02,
       currency: 'USD',
     },
+    schema: advancedSearchSchema,
   },
 }

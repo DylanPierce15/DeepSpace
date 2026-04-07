@@ -4,6 +4,7 @@
  * Uses Polymarket's public APIs (Gamma for events/markets, CLOB for trading data).
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 const GAMMA_API = 'https://gamma-api.polymarket.com'
@@ -121,17 +122,85 @@ const trades: IntegrationHandler = async (_env, body) => {
   return clobGet('/trades', params)
 }
 
+const eventsSchema = z.object({
+  limit: z.number().optional(),
+  offset: z.number().optional(),
+  order: z.string().optional(),
+  ascending: z.boolean().optional(),
+  closed: z.boolean().optional(),
+  tag: z.string().optional(),
+})
+
+const eventDetailSchema = z.object({
+  id: z.string(),
+})
+
+const marketsSchema = z.object({
+  limit: z.number().optional(),
+  offset: z.number().optional(),
+  order: z.string().optional(),
+  ascending: z.boolean().optional(),
+  closed: z.boolean().optional(),
+  tag: z.string().optional(),
+  event_slug: z.string().optional(),
+})
+
+const marketDetailSchema = z.object({
+  id: z.string(),
+})
+
+const tagsSchema = z.object({})
+
+const searchSchema = z.object({
+  q: z.string(),
+  limit: z.number().optional(),
+})
+
+const commentsSchema = z.object({
+  market_id: z.string(),
+  limit: z.number().optional(),
+  offset: z.number().optional(),
+})
+
+const priceSchema = z.object({
+  token_id: z.string(),
+  side: z.string().optional(),
+})
+
+const pricesSchema = z.object({
+  token_ids: z.union([z.array(z.string()), z.string()]),
+})
+
+const orderbookSchema = z.object({
+  token_id: z.string(),
+})
+
+const priceHistorySchema = z.object({
+  token_id: z.string(),
+  interval: z.string().optional(),
+  fidelity: z.number().optional(),
+  startTs: z.number().optional(),
+  endTs: z.number().optional(),
+})
+
+const tradesSchema = z.object({
+  token_id: z.string(),
+  limit: z.number().optional(),
+  before: z.string().optional(),
+  after: z.string().optional(),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
-  'polymarket/events':        { handler: events,        billing: B },
-  'polymarket/event-detail':  { handler: eventDetail,   billing: B },
-  'polymarket/markets':       { handler: markets,       billing: B },
-  'polymarket/market-detail': { handler: marketDetail,   billing: B },
-  'polymarket/tags':          { handler: tags,           billing: B },
-  'polymarket/search':        { handler: search,         billing: B },
-  'polymarket/comments':      { handler: comments,       billing: B },
-  'polymarket/price':         { handler: price,          billing: B },
-  'polymarket/prices':        { handler: prices,         billing: B },
-  'polymarket/orderbook':     { handler: orderbook,      billing: B },
-  'polymarket/price-history': { handler: priceHistory,   billing: B },
-  'polymarket/trades':        { handler: trades,         billing: B },
+  'polymarket/events':        { handler: events,        billing: B, schema: eventsSchema },
+  'polymarket/event-detail':  { handler: eventDetail,   billing: B, schema: eventDetailSchema },
+  'polymarket/markets':       { handler: markets,       billing: B, schema: marketsSchema },
+  'polymarket/market-detail': { handler: marketDetail,   billing: B, schema: marketDetailSchema },
+  'polymarket/tags':          { handler: tags,           billing: B, schema: tagsSchema },
+  'polymarket/search':        { handler: search,         billing: B, schema: searchSchema },
+  'polymarket/comments':      { handler: comments,       billing: B, schema: commentsSchema },
+  'polymarket/price':         { handler: price,          billing: B, schema: priceSchema },
+  'polymarket/prices':        { handler: prices,         billing: B, schema: pricesSchema },
+  'polymarket/orderbook':     { handler: orderbook,      billing: B, schema: orderbookSchema },
+  'polymarket/price-history': { handler: priceHistory,   billing: B, schema: priceHistorySchema },
+  'polymarket/trades':        { handler: trades,         billing: B, schema: tradesSchema },
 }

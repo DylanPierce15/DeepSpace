@@ -2,6 +2,7 @@
  * Gemini integration — image generation via REST API (no SDK).
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 const generateImage: IntegrationHandler = async (env, body) => {
@@ -82,9 +83,19 @@ const generateImage: IntegrationHandler = async (env, body) => {
   }
 }
 
+const generateImageSchema = z.object({
+  prompt: z.string(),
+  model: z.string().default('gemini-2.5-flash-image'),
+  aspectRatio: z.string().optional(),
+  imageSize: z.string().optional(),
+  temperature: z.number().min(0).max(2).optional(),
+  maxOutputTokens: z.number().min(1).optional(),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
   'gemini/generate-image': {
     handler: generateImage,
     billing: { model: 'per_token', baseCost: 0, currency: 'USD' },
+    schema: generateImageSchema,
   },
 }

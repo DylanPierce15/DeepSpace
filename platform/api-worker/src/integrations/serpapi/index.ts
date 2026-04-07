@@ -2,6 +2,7 @@
  * SerpAPI integration — Google Search, Flights, Hotels, Places, Events, and Scholar endpoints.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 // =============================================================================
@@ -220,6 +221,101 @@ const scholarGetAuthorDetails = createSerpApiHandler('google_scholar_author', (b
 })
 
 // =============================================================================
+// Schemas
+// =============================================================================
+
+const searchSerpSchema = z.object({
+  engine: z.string().default('google'),
+  q: z.string(),
+  num: z.number().optional(),
+  location: z.string().optional(),
+})
+
+const flightsSchema = z.object({
+  departure_id: z.string().optional(),
+  arrival_id: z.string().optional(),
+  outbound_date: z.string().optional(),
+  return_date: z.string().optional(),
+  type: z.string().optional(),
+  adults: z.number().optional(),
+  currency: z.string().optional(),
+  hl: z.string().optional(),
+})
+
+const placesSearchSchema = z.object({
+  q: z.string().optional(),
+  type: z.string().optional(),
+  ll: z.string().optional(),
+  hl: z.string().optional(),
+})
+
+const placesReviewsSchema = z.object({
+  data_id: z.string().optional(),
+  place_id: z.string().optional(),
+  hl: z.string().optional(),
+})
+
+const hotelsSchema = z.object({
+  q: z.string().optional(),
+  check_in_date: z.string().optional(),
+  check_out_date: z.string().optional(),
+  adults: z.number().optional(),
+  location: z.string().optional(),
+  gl: z.string().optional(),
+  hl: z.string().optional(),
+})
+
+const eventsSchema = z.object({
+  q: z.string().optional(),
+  location: z.string().optional(),
+  hl: z.string().optional(),
+})
+
+const webSearchSchema = z.object({
+  q: z.string().optional(),
+  num: z.number().optional(),
+  start: z.number().optional(),
+  location: z.string().optional(),
+  gl: z.string().optional(),
+  hl: z.string().optional(),
+})
+
+const scholarSearchAuthorsSchema = z.object({
+  mauthors: z.string().optional(),
+  hl: z.string().optional(),
+  after_author: z.string().optional(),
+})
+
+const scholarSearchPapersSchema = z.object({
+  q: z.string().optional(),
+  num: z.number().optional(),
+  start: z.number().optional(),
+  hl: z.string().optional(),
+  as_ylo: z.number().optional(),
+  as_yhi: z.number().optional(),
+})
+
+const scholarGetAuthorPapersSchema = z.object({
+  author_id: z.string().optional(),
+  num: z.number().optional(),
+  start: z.number().optional(),
+  sort: z.string().optional(),
+  hl: z.string().optional(),
+})
+
+const scholarGetCitationDetailsSchema = z.object({
+  q: z.string().optional(),
+  hl: z.string().optional(),
+})
+
+const scholarGetAuthorDetailsSchema = z.object({
+  author_id: z.string().optional(),
+  hl: z.string().optional(),
+})
+
+const SERP_BILLING = { model: 'per_request' as const, baseCost: 0.01, currency: 'USD' }
+
+// =============================================================================
 // Endpoint registry
 // =============================================================================
 
@@ -227,62 +323,74 @@ export const endpoints: Record<string, EndpointDefinition> = {
   // Existing
   'serpapi/search': {
     handler: search,
-    billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+    billing: SERP_BILLING,
+    schema: searchSerpSchema,
   },
 
   // Google Flights
   'serpapi/flights': {
     handler: flights,
-    billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+    billing: SERP_BILLING,
+    schema: flightsSchema,
   },
 
   // Google Maps — Places
   'serpapi/places-search': {
     handler: placesSearch,
-    billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+    billing: SERP_BILLING,
+    schema: placesSearchSchema,
   },
   'serpapi/places-reviews': {
     handler: placesReviews,
-    billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+    billing: SERP_BILLING,
+    schema: placesReviewsSchema,
   },
 
   // Google Hotels
   'serpapi/hotels': {
     handler: hotels,
-    billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+    billing: SERP_BILLING,
+    schema: hotelsSchema,
   },
 
   // Google Events
   'serpapi/events': {
     handler: events,
-    billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+    billing: SERP_BILLING,
+    schema: eventsSchema,
   },
 
   // Google Web Search
   'serpapi/web-search': {
     handler: webSearch,
-    billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+    billing: SERP_BILLING,
+    schema: webSearchSchema,
   },
 
   // Google Scholar
   'scholar/search-authors': {
     handler: scholarSearchAuthors,
-    billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+    billing: SERP_BILLING,
+    schema: scholarSearchAuthorsSchema,
   },
   'scholar/search-papers': {
     handler: scholarSearchPapers,
-    billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+    billing: SERP_BILLING,
+    schema: scholarSearchPapersSchema,
   },
   'scholar/get-author-papers': {
     handler: scholarGetAuthorPapers,
-    billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+    billing: SERP_BILLING,
+    schema: scholarGetAuthorPapersSchema,
   },
   'scholar/get-citation-details': {
     handler: scholarGetCitationDetails,
-    billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+    billing: SERP_BILLING,
+    schema: scholarGetCitationDetailsSchema,
   },
   'scholar/get-author-details': {
     handler: scholarGetAuthorDetails,
-    billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
+    billing: SERP_BILLING,
+    schema: scholarGetAuthorDetailsSchema,
   },
 }

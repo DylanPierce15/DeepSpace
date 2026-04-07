@@ -14,6 +14,7 @@
  * - delete-room:      Free. Deletes a room by name.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 // ============================================================================
@@ -284,21 +285,44 @@ const deleteRoom: IntegrationHandler = async (env, body) => {
 // Exports
 // ============================================================================
 
+const generateTokenSchema = z.object({
+  roomName: z.string(),
+  displayName: z.string().optional(),
+  ttlSeconds: z.number().min(60).max(86400).default(3600),
+})
+
+const createRoomSchema = z.object({
+  roomName: z.string(),
+  maxParticipants: z.number().min(1).max(100).default(10),
+  durationMinutes: z.number().min(1).max(1440).default(60),
+  metadata: z.string().optional(),
+})
+
+const listRoomsSchema = z.object({})
+
+const deleteRoomSchema = z.object({
+  roomName: z.string(),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
   'livekit/generate-token': {
     handler: generateToken,
     billing: { model: 'per_request', baseCost: 0, currency: 'USD' },
+    schema: generateTokenSchema,
   },
   'livekit/create-room': {
     handler: createRoom,
     billing: { model: 'per_participant_minute', baseCost: 0.01, currency: 'USD' },
+    schema: createRoomSchema,
   },
   'livekit/list-rooms': {
     handler: listRooms,
     billing: { model: 'per_request', baseCost: 0, currency: 'USD' },
+    schema: listRoomsSchema,
   },
   'livekit/delete-room': {
     handler: deleteRoom,
     billing: { model: 'per_request', baseCost: 0, currency: 'USD' },
+    schema: deleteRoomSchema,
   },
 }

@@ -4,6 +4,7 @@
  * Ported from Miyagi3 ApiAmericanFootballService.ts.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 const API_BASE = 'https://v1.american-football.api-sports.io'
@@ -51,21 +52,25 @@ function nflEndpoint(path: string): IntegrationHandler {
   }
 }
 
+// ── Schema ────────────────────────────────────────────────────────────────────
+
+const apiSportsSchema = z.object({}).passthrough()
+
 // ── Export ──────────────────────────────────────────────────────────────────────
 
 export const endpoints: Record<string, EndpointDefinition> = {
-  'api-american-football/leagues':                   { handler: nflEndpoint('leagues'),                   billing: BILLING },
-  'api-american-football/teams':                     { handler: nflEndpoint('teams'),                     billing: BILLING },
-  'api-american-football/players':                   { handler: nflEndpoint('players'),                   billing: BILLING },
-  'api-american-football/players-statistics':         { handler: nflEndpoint('players/statistics'),        billing: BILLING },
-  'api-american-football/injuries':                  { handler: nflEndpoint('injuries'),                  billing: BILLING },
-  'api-american-football/games':                     { handler: nflEndpoint('games'),                     billing: BILLING },
-  'api-american-football/games-events':              { handler: nflEndpoint('games/events'),              billing: BILLING },
-  'api-american-football/games-statistics-teams':    { handler: nflEndpoint('games/statistics/teams'),    billing: BILLING },
-  'api-american-football/games-statistics-players':  { handler: nflEndpoint('games/statistics/players'),  billing: BILLING },
-  'api-american-football/standings':                 { handler: nflEndpoint('standings'),                 billing: BILLING },
-  'api-american-football/standings-conferences':     { handler: nflEndpoint('standings/conferences'),     billing: BILLING },
-  'api-american-football/standings-divisions':       { handler: nflEndpoint('standings/divisions'),       billing: BILLING },
-  'api-american-football/odds':                      { handler: nflEndpoint('odds'),                      billing: BILLING },
-  'api-american-football/odds-bookmakers':           { handler: nflEndpoint('odds/bookmakers'),           billing: BILLING },
+  'api-american-football/leagues':                   { handler: nflEndpoint('leagues'),                   billing: BILLING, schema: apiSportsSchema },
+  'api-american-football/teams':                     { handler: nflEndpoint('teams'),                     billing: BILLING, schema: apiSportsSchema },
+  'api-american-football/players':                   { handler: nflEndpoint('players'),                   billing: BILLING, schema: apiSportsSchema },
+  'api-american-football/players-statistics':         { handler: nflEndpoint('players/statistics'),        billing: BILLING, schema: apiSportsSchema },
+  'api-american-football/injuries':                  { handler: nflEndpoint('injuries'),                  billing: BILLING, schema: apiSportsSchema },
+  'api-american-football/games':                     { handler: nflEndpoint('games'),                     billing: BILLING, schema: apiSportsSchema },
+  'api-american-football/games-events':              { handler: nflEndpoint('games/events'),              billing: BILLING, schema: apiSportsSchema },
+  'api-american-football/games-statistics-teams':    { handler: nflEndpoint('games/statistics/teams'),    billing: BILLING, schema: apiSportsSchema },
+  'api-american-football/games-statistics-players':  { handler: nflEndpoint('games/statistics/players'),  billing: BILLING, schema: apiSportsSchema },
+  'api-american-football/standings':                 { handler: nflEndpoint('standings'),                 billing: BILLING, schema: apiSportsSchema },
+  'api-american-football/standings-conferences':     { handler: nflEndpoint('standings/conferences'),     billing: BILLING, schema: apiSportsSchema },
+  'api-american-football/standings-divisions':       { handler: nflEndpoint('standings/divisions'),       billing: BILLING, schema: apiSportsSchema },
+  'api-american-football/odds':                      { handler: nflEndpoint('odds'),                      billing: BILLING, schema: apiSportsSchema },
+  'api-american-football/odds-bookmakers':           { handler: nflEndpoint('odds/bookmakers'),           billing: BILLING, schema: apiSportsSchema },
 }

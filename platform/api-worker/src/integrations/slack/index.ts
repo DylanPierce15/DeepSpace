@@ -8,6 +8,7 @@
  * later when the OAuth infrastructure is built.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 // ============================================================================
@@ -202,9 +203,39 @@ const SLACK_WRITE_BILLING = { model: 'per_request' as const, baseCost: 0.01, cur
 // Exports
 // ============================================================================
 
+const listChannelsSchema = z.object({
+  accessToken: z.string().optional(),
+  limit: z.number().min(1).max(200).default(100),
+  types: z.string().default('public_channel,private_channel'),
+  cursor: z.string().optional(),
+})
+
+const sendMessageSchema = z.object({
+  accessToken: z.string().optional(),
+  channel: z.string(),
+  text: z.string(),
+  thread_ts: z.string().optional(),
+  unfurl_links: z.boolean().optional(),
+  unfurl_media: z.boolean().optional(),
+  blocks: z.array(z.record(z.string(), z.unknown())).optional(),
+})
+
+const channelHistorySchema = z.object({
+  accessToken: z.string().optional(),
+  channel: z.string(),
+  limit: z.number().min(1).max(200).default(100),
+  cursor: z.string().optional(),
+  oldest: z.string().optional(),
+  latest: z.string().optional(),
+})
+
+const teamInfoSchema = z.object({
+  accessToken: z.string().optional(),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
-  'slack/list-channels':   { handler: listChannels,  billing: SLACK_READ_BILLING },
-  'slack/send-message':    { handler: sendMessage,    billing: SLACK_WRITE_BILLING },
-  'slack/channel-history': { handler: channelHistory, billing: SLACK_READ_BILLING },
-  'slack/team-info':       { handler: teamInfo,       billing: SLACK_READ_BILLING },
+  'slack/list-channels':   { handler: listChannels,  billing: SLACK_READ_BILLING, schema: listChannelsSchema },
+  'slack/send-message':    { handler: sendMessage,    billing: SLACK_WRITE_BILLING, schema: sendMessageSchema },
+  'slack/channel-history': { handler: channelHistory, billing: SLACK_READ_BILLING, schema: channelHistorySchema },
+  'slack/team-info':       { handler: teamInfo,       billing: SLACK_READ_BILLING, schema: teamInfoSchema },
 }

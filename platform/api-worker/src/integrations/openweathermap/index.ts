@@ -3,6 +3,7 @@
  * Ported from Miyagi3 WeatherService.ts.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 const BILLING = { model: 'per_request' as const, baseCost: 0.0015, currency: 'USD' }
@@ -114,8 +115,26 @@ const forecast: IntegrationHandler = async (env, body) => {
   }))
 }
 
+const geocodingSchema = z.object({
+  query: z.string().optional(),
+  q: z.string().optional(),
+  limit: z.number().min(1).max(10).default(5),
+})
+
+const currentSchema = z.object({
+  location: z.string().optional(),
+  q: z.string().optional(),
+  units: z.enum(['metric', 'imperial', 'standard']).default('metric'),
+})
+
+const forecastSchema = z.object({
+  location: z.string().optional(),
+  q: z.string().optional(),
+  units: z.enum(['metric', 'imperial', 'standard']).default('metric'),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
-  'openweathermap/geocoding': { handler: geocoding, billing: BILLING },
-  'openweathermap/current': { handler: current, billing: BILLING },
-  'openweathermap/forecast': { handler: forecast, billing: BILLING },
+  'openweathermap/geocoding': { handler: geocoding, billing: BILLING, schema: geocodingSchema },
+  'openweathermap/current': { handler: current, billing: BILLING, schema: currentSchema },
+  'openweathermap/forecast': { handler: forecast, billing: BILLING, schema: forecastSchema },
 }

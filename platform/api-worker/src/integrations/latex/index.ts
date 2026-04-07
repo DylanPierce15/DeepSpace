@@ -3,6 +3,7 @@
  * Proxies to a self-hosted latex-on-http service.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 const REQUEST_TIMEOUT_MS = 60_000
@@ -117,9 +118,22 @@ const compile: IntegrationHandler = async (env, body) => {
   }
 }
 
+const compileSchema = z.object({
+  compiler: z.string().default('pdflatex'),
+  document: z.string().optional(),
+  resources: z.array(z.object({
+    main: z.boolean().optional(),
+    path: z.string().optional(),
+    content: z.string().optional(),
+    file: z.string().optional(),
+    url: z.string().optional(),
+  })).optional(),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
   'latex-compiler/compile': {
     handler: compile,
     billing: { model: 'per_request', baseCost: 0.005, currency: 'USD' },
+    schema: compileSchema,
   },
 }
