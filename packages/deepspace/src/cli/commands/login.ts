@@ -17,9 +17,10 @@ import { platform } from 'node:os'
 import * as p from '@clack/prompts'
 
 import { ENVS } from '../env'
+import { SESSION_COOKIE } from '../../shared/constants'
+import { exchangeSessionForJwt } from '../../shared/auth-utils'
 
 const AUTH_URL = process.env.DEEPSPACE_AUTH_URL ?? ENVS.prod.auth
-const SESSION_COOKIE = '__Secure-better-auth.session_token'
 
 export default defineCommand({
   meta: {
@@ -180,19 +181,10 @@ async function doEmailLogin(email: string, password: string): Promise<void> {
   }
   const sessionToken = decodeURIComponent(cookieMatch[1])
 
-  const tokenRes = await fetch(`${AUTH_URL}/api/auth/token`, {
-    method: 'POST',
-    headers: {
-      Cookie: `${SESSION_COOKIE}=${encodeURIComponent(sessionToken)}`,
-      Origin: AUTH_URL,
-    },
-  })
-
-  if (!tokenRes.ok) {
+  const jwt = await exchangeSessionForJwt(AUTH_URL, sessionToken)
+  if (!jwt) {
     throw new Error('JWT issuance failed')
   }
-
-  const { token: jwt } = (await tokenRes.json()) as { token: string }
 
   storeCredentials(sessionToken, jwt)
 }

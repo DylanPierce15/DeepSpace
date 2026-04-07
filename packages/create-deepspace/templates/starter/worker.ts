@@ -18,6 +18,7 @@ import {
   verifyJwt,
   verifyInternalSignature,
   buildInternalPayload,
+  getOwnerJwt,
 } from 'deepspace/worker'
 import type { JwtVerifierConfig, VerifyResult } from 'deepspace/worker'
 import {
@@ -76,6 +77,8 @@ interface Env extends DOBindings<typeof __DO_MANIFEST__> {
   API_WORKER_URL: string
   APP_NAME: string
   OWNER_USER_ID: string
+  OWNER_SESSION_TOKEN?: string
+  OWNER_AUTH_URL?: string
   INTERNAL_STORAGE_HMAC_SECRET: string
 }
 
@@ -192,10 +195,17 @@ app.all('/api/integrations/:name/:endpoint', async (c) => {
   const headers: Record<string, string> = {
     'Content-Type': c.req.header('Content-Type') ?? 'application/json',
   }
-  const token = c.req.header('Authorization')?.slice(7)
-  if (token) headers['Authorization'] = `Bearer ${token}`
+
   if (billingMode === 'developer') {
+    // Developer pays — use owner's JWT so the prod API worker accepts it.
+    // In dev mode, the owner's session token is exchanged for a fresh JWT.
+    const ownerJwt = await getOwnerJwt(c.env)
+    if (ownerJwt) headers['Authorization'] = `Bearer ${ownerJwt}`
     headers['X-Billing-User-Id'] = c.env.OWNER_USER_ID
+  } else {
+    // User pays — forward the user's JWT
+    const token = c.req.header('Authorization')?.slice(7)
+    if (token) headers['Authorization'] = `Bearer ${token}`
   }
 
   const hasBody = c.req.method !== 'GET' && c.req.method !== 'HEAD'
