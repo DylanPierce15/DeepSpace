@@ -3,6 +3,7 @@
  * Ported from Miyagi3 TextToSpeechService.ts + SpeechToTextService.ts.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 // ============================================================================
@@ -144,9 +145,28 @@ const speechToText: IntegrationHandler = async (env, body) => {
 // Exports
 // ============================================================================
 
+const textToSpeechSchema = z.object({
+  input: z.string().optional(),
+  text: z.string().optional(),
+  model: z.enum(['tts-1', 'tts-1-hd', 'gpt-4o-mini-tts']).default('tts-1'),
+  voice: z.enum(['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer', 'verse']).default('alloy'),
+  response_format: z.enum(['mp3', 'opus', 'aac', 'flac', 'wav', 'pcm']).default('mp3'),
+  speed: z.number().min(0.25).max(4.0).default(1.0),
+})
+
+const speechToTextSchema = z.object({
+  audio: z.string(),
+  model: z.enum(['whisper-1', 'gpt-4o-transcribe', 'gpt-4o-mini-transcribe']).default('whisper-1'),
+  language: z.string().regex(/^[a-z]{2}$/).optional(),
+  prompt: z.string().optional(),
+  response_format: z.enum(['json', 'text', 'srt', 'verbose_json', 'vtt']).default('json'),
+  temperature: z.number().min(0).max(1).default(0),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
   'speech/text-to-speech': {
     handler: textToSpeech,
+    schema: textToSpeechSchema,
     billing: {
       model: 'per_token',
       baseCost: 0.015,
@@ -169,6 +189,7 @@ export const endpoints: Record<string, EndpointDefinition> = {
   },
   'speech/speech-to-text': {
     handler: speechToText,
+    schema: speechToTextSchema,
     billing: {
       model: 'per_request',
       baseCost: 0.006,

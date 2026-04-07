@@ -13,10 +13,10 @@
  */
 
 import { defineCommand } from 'citty'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { execSync, spawnSync } from 'node:child_process'
-import { ensureToken } from '../auth'
+import { ensureToken, SESSION_PATH } from '../auth'
 import { writeDevVars } from '../env'
 
 export default defineCommand({
@@ -48,7 +48,8 @@ export default defineCommand({
       ownerId = payload.sub
     } catch { /* Not logged in — use default */ }
 
-    await writeDevVars(appDir, 'dev', ownerId)
+    const ownerSession = existsSync(SESSION_PATH) ? readFileSync(SESSION_PATH, 'utf-8').trim() : undefined
+    await writeDevVars(appDir, 'dev', ownerId, ownerSession)
 
     if (suite !== 'unit') {
       ensurePlaywright(appDir)

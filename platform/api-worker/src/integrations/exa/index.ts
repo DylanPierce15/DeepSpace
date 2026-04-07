@@ -4,6 +4,7 @@
  * Preserves all request body building and response transformation logic.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 import { pollForResult } from '../_polling'
 
@@ -415,11 +416,107 @@ const newsSearch: IntegrationHandler = async (env, body) => {
 
 const EXA_BILLING = { model: 'per_request' as const, baseCost: 0.005, currency: 'USD' }
 
+const contentsConfigSchema = z.object({
+  text: z.union([z.boolean(), z.object({
+    maxCharacters: z.number().optional(),
+    includeHtmlTags: z.boolean().optional(),
+  })]).optional(),
+  highlights: z.object({
+    maxCharacters: z.number().min(1).optional(),
+    query: z.string().optional(),
+    numSentences: z.number().min(1).optional(),
+    highlightsPerUrl: z.number().min(1).optional(),
+  }).optional(),
+  summary: z.object({
+    query: z.string().optional(),
+  }).optional(),
+  extras: z.record(z.string(), z.unknown()).optional(),
+}).optional()
+
+const searchSchema = z.object({
+  query: z.string().optional(),
+  q: z.string().optional(),
+  numResults: z.number().min(1).max(100).default(10),
+  type: z.string().default('auto'),
+  category: z.string().optional(),
+  userLocation: z.string().optional(),
+  includeDomains: z.array(z.string()).optional(),
+  excludeDomains: z.array(z.string()).optional(),
+  startPublishedDate: z.string().optional(),
+  endPublishedDate: z.string().optional(),
+  includeText: z.array(z.string()).optional(),
+  excludeText: z.array(z.string()).optional(),
+  context: z.unknown().optional(),
+  moderation: z.boolean().optional(),
+  contents: contentsConfigSchema,
+})
+
+const answerSchema = z.object({
+  query: z.string().optional(),
+  q: z.string().optional(),
+  text: z.boolean().default(false),
+})
+
+const findSimilarSchema = z.object({
+  url: z.string(),
+  numResults: z.number().min(1).max(100).default(10),
+  includeDomains: z.array(z.string()).optional(),
+  excludeDomains: z.array(z.string()).optional(),
+  startPublishedDate: z.string().optional(),
+  endPublishedDate: z.string().optional(),
+  includeText: z.array(z.string()).optional(),
+  excludeText: z.array(z.string()).optional(),
+  context: z.unknown().optional(),
+  moderation: z.boolean().optional(),
+  contents: contentsConfigSchema,
+})
+
+const contentsSchema = z.object({
+  urls: z.array(z.string()).min(1),
+  text: z.union([z.boolean(), z.object({
+    maxCharacters: z.number().optional(),
+    includeHtmlTags: z.boolean().optional(),
+  })]).optional(),
+  highlights: z.object({
+    maxCharacters: z.number().min(1).optional(),
+    query: z.string().optional(),
+    numSentences: z.number().min(1).optional(),
+    highlightsPerUrl: z.number().min(1).optional(),
+  }).optional(),
+  summary: z.object({
+    query: z.string().optional(),
+  }).optional(),
+  subpages: z.unknown().optional(),
+  subpageTarget: z.unknown().optional(),
+  extras: z.record(z.string(), z.unknown()).optional(),
+  context: z.unknown().optional(),
+})
+
+const researchSchema = z.object({
+  instructions: z.string().min(1).max(4096),
+  model: z.string().default('exa-research'),
+  outputSchema: z.record(z.string(), z.unknown()).optional(),
+})
+
+const newsSearchSchema = z.object({
+  q: z.string().optional(),
+  query: z.string().optional(),
+  numResults: z.number().min(1).max(100).default(10),
+  type: z.string().default('auto'),
+  country: z.string().optional(),
+  includeDomains: z.array(z.string()).optional(),
+  excludeDomains: z.array(z.string()).optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  includeText: z.array(z.string()).optional(),
+  excludeText: z.array(z.string()).optional(),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
-  'exa/search':      { handler: search,      billing: EXA_BILLING },
-  'exa/answer':      { handler: answer,      billing: EXA_BILLING },
-  'exa/findSimilar': { handler: findSimilar, billing: EXA_BILLING },
-  'exa/contents':    { handler: contents,    billing: EXA_BILLING },
-  'exa/research':    { handler: research,    billing: { model: 'per_request', baseCost: 0.02, currency: 'USD' } },
-  'exa/news-search': { handler: newsSearch,  billing: EXA_BILLING },
+  'exa/search':      { handler: search,      billing: EXA_BILLING, schema: searchSchema },
+  'exa/answer':      { handler: answer,      billing: EXA_BILLING, schema: answerSchema },
+  'exa/findSimilar': { handler: findSimilar, billing: EXA_BILLING, schema: findSimilarSchema },
+  'exa/contents':    { handler: contents,    billing: EXA_BILLING, schema: contentsSchema },
+  'exa/research':    { handler: research,    billing: { model: 'per_request', baseCost: 0.02, currency: 'USD' }, schema: researchSchema },
+  'exa/news-search': { handler: newsSearch,  billing: EXA_BILLING, schema: newsSearchSchema },
 }

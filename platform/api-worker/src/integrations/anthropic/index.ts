@@ -3,6 +3,7 @@
  * Ported from Miyagi3 TextGenerationService (Anthropic portion).
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 const chatCompletion: IntegrationHandler = async (env, body) => {
@@ -35,6 +36,17 @@ const chatCompletion: IntegrationHandler = async (env, body) => {
   return response.json()
 }
 
+const chatCompletionSchema = z.object({
+  model: z.string().default('claude-sonnet-4-20250514'),
+  max_tokens: z.number().min(1).default(4096),
+  messages: z.array(z.object({
+    role: z.enum(['user', 'assistant']),
+    content: z.union([z.string(), z.array(z.record(z.string(), z.unknown()))]),
+  })),
+  system: z.string().optional(),
+  temperature: z.number().min(0).max(1).optional(),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
   'anthropic/chat-completion': {
     handler: chatCompletion,
@@ -52,5 +64,6 @@ export const endpoints: Record<string, EndpointDefinition> = {
         },
       },
     },
+    schema: chatCompletionSchema,
   },
 }

@@ -6,6 +6,7 @@
  * Ported from Miyagi3 F1Service.ts.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 const API_BASE = 'https://api.jolpi.ca/ergast/f1'
@@ -238,20 +239,50 @@ const circuitInfo: IntegrationHandler = async (_env, body) => {
   return json?.MRData?.CircuitTable?.Circuits?.[0] ?? null
 }
 
+// ── Schemas ───────────────────────────────────────────────────────────────────
+
+const seasonSchema = z.object({
+  season: z.number(),
+})
+
+const seasonRoundSchema = z.object({
+  season: z.number(),
+  round: z.number(),
+})
+
+const latestRaceSchema = z.object({
+  season: z.number().optional(),
+})
+
+const lapTimesSchema = z.object({
+  season: z.number(),
+  round: z.number(),
+  driverId: z.string().optional(),
+})
+
+const standingsSchema = z.object({
+  season: z.number(),
+  round: z.number().optional(),
+})
+
+const circuitInfoSchema = z.object({
+  circuitId: z.string(),
+})
+
 // ── Export ──────────────────────────────────────────────────────────────────────
 
 export const endpoints: Record<string, EndpointDefinition> = {
-  'f1/season-schedule':        { handler: seasonSchedule,        billing: BILLING },
-  'f1/race-weekend':           { handler: raceWeekend,           billing: BILLING },
-  'f1/latest-race':            { handler: latestRace,            billing: BILLING },
-  'f1/lap-times':              { handler: lapTimes,              billing: BILLING },
-  'f1/pit-stops':              { handler: pitStops,              billing: BILLING },
-  'f1/driver-standings':       { handler: driverStandings,       billing: BILLING },
-  'f1/constructor-standings':  { handler: constructorStandings,  billing: BILLING },
-  'f1/qualifying':             { handler: qualifying,            billing: BILLING },
-  'f1/sprint':                 { handler: sprint,                billing: BILLING },
-  'f1/race-results':           { handler: raceResults,           billing: BILLING },
-  'f1/all-drivers':            { handler: allDrivers,            billing: BILLING },
-  'f1/all-constructors':       { handler: allConstructors,       billing: BILLING },
-  'f1/circuit-info':           { handler: circuitInfo,           billing: BILLING },
+  'f1/season-schedule':        { handler: seasonSchedule,        billing: BILLING, schema: seasonSchema },
+  'f1/race-weekend':           { handler: raceWeekend,           billing: BILLING, schema: seasonRoundSchema },
+  'f1/latest-race':            { handler: latestRace,            billing: BILLING, schema: latestRaceSchema },
+  'f1/lap-times':              { handler: lapTimes,              billing: BILLING, schema: lapTimesSchema },
+  'f1/pit-stops':              { handler: pitStops,              billing: BILLING, schema: seasonRoundSchema },
+  'f1/driver-standings':       { handler: driverStandings,       billing: BILLING, schema: standingsSchema },
+  'f1/constructor-standings':  { handler: constructorStandings,  billing: BILLING, schema: standingsSchema },
+  'f1/qualifying':             { handler: qualifying,            billing: BILLING, schema: seasonRoundSchema },
+  'f1/sprint':                 { handler: sprint,                billing: BILLING, schema: seasonRoundSchema },
+  'f1/race-results':           { handler: raceResults,           billing: BILLING, schema: seasonRoundSchema },
+  'f1/all-drivers':            { handler: allDrivers,            billing: BILLING, schema: seasonSchema },
+  'f1/all-constructors':       { handler: allConstructors,       billing: BILLING, schema: seasonSchema },
+  'f1/circuit-info':           { handler: circuitInfo,           billing: BILLING, schema: circuitInfoSchema },
 }

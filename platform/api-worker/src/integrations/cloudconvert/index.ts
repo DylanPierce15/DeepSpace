@@ -2,6 +2,7 @@
  * CloudConvert integration — file format conversion with async polling.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 import { pollForResult } from '../_polling'
 
@@ -107,9 +108,19 @@ const convertFile: IntegrationHandler = async (env, body) => {
   return result.data
 }
 
+const convertFileSchema = z.object({
+  input_format: z.string(),
+  output_format: z.string(),
+  file: z.string().optional(),
+  url: z.string().optional(),
+  optimize_print: z.boolean().optional(),
+  pages: z.string().optional(),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
   'cloudconvert/convert-file': {
     handler: convertFile,
     billing: { model: 'per_request', baseCost: 0.018, currency: 'USD' },
+    schema: convertFileSchema,
   },
 }

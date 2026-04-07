@@ -9,6 +9,7 @@
  * No API key is required for subway feeds.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 // ============================================================================
@@ -439,9 +440,24 @@ const listFeeds: IntegrationHandler = async () => {
 
 const MTA_BILLING = { model: 'per_request' as const, baseCost: 0.001, currency: 'USD' }
 
+const feedSchema = z.object({
+  feedId: z.enum(['ace', 'bdfm', 'g', 'jz', 'l', 'nqrw', '1234567', 'sir']),
+})
+
+const arrivalsSchema = z.object({
+  line: z.string(),
+  stopId: z.string().optional(),
+})
+
+const alertsSchema = z.object({
+  line: z.string().optional(),
+})
+
+const listFeedsSchema = z.object({})
+
 export const endpoints: Record<string, EndpointDefinition> = {
-  'mta/feed':       { handler: feed,      billing: MTA_BILLING },
-  'mta/arrivals':   { handler: arrivals,  billing: MTA_BILLING },
-  'mta/alerts':     { handler: alerts,    billing: MTA_BILLING },
-  'mta/list-feeds': { handler: listFeeds, billing: MTA_BILLING },
+  'mta/feed':       { handler: feed,      billing: MTA_BILLING, schema: feedSchema },
+  'mta/arrivals':   { handler: arrivals,  billing: MTA_BILLING, schema: arrivalsSchema },
+  'mta/alerts':     { handler: alerts,    billing: MTA_BILLING, schema: alertsSchema },
+  'mta/list-feeds': { handler: listFeeds, billing: MTA_BILLING, schema: listFeedsSchema },
 }

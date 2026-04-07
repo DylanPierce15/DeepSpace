@@ -33,6 +33,7 @@ const content = `/**
  * Source: scripts/generate-registry.ts
  */
 
+import type { z } from 'zod'
 import type { IntegrationHandler, BillingConfig } from './_types'
 ${imports}
 
@@ -42,11 +43,13 @@ ${spread}
 
 export const HANDLER_REGISTRY = new Map<string, IntegrationHandler>()
 export const BILLING_CONFIGS: Record<string, BillingConfig & { integrationName: string; endpoint: string }> = {}
+export const SCHEMA_REGISTRY = new Map<string, z.ZodType>()
 
 for (const [key, def] of Object.entries(ALL_ENDPOINTS)) {
   const [integrationName, endpoint] = key.split('/')
   HANDLER_REGISTRY.set(key, def.handler)
   BILLING_CONFIGS[key] = { ...def.billing, integrationName, endpoint }
+  if (def.schema) SCHEMA_REGISTRY.set(key, def.schema)
 }
 `
 

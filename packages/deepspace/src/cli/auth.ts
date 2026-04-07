@@ -10,12 +10,12 @@ import { join } from 'node:path'
 import { homedir } from 'node:os'
 
 import { ENVS } from './env'
+import { exchangeSessionForJwt } from '../shared/auth-utils'
 
 const AUTH_URL = process.env.DEEPSPACE_AUTH_URL ?? ENVS.prod.auth
-const SESSION_COOKIE = '__Secure-better-auth.session_token'
 
 const DIR = join(homedir(), '.deepspace')
-const SESSION_PATH = join(DIR, 'session')
+export const SESSION_PATH = join(DIR, 'session')
 const TOKEN_PATH = join(DIR, 'token')
 
 /**
@@ -38,19 +38,10 @@ export async function ensureToken(): Promise<string> {
   }
 
   // Refresh from session
-  const res = await fetch(`${AUTH_URL}/api/auth/token`, {
-    method: 'POST',
-    headers: {
-      Cookie: `${SESSION_COOKIE}=${encodeURIComponent(sessionToken)}`,
-      Origin: AUTH_URL,
-    },
-  })
-
-  if (!res.ok) {
+  const token = await exchangeSessionForJwt(AUTH_URL, sessionToken)
+  if (!token) {
     throw new Error('Session expired. Run `deepspace login` to re-authenticate.')
   }
-
-  const { token } = (await res.json()) as { token: string }
 
   mkdirSync(DIR, { recursive: true })
   writeFileSync(TOKEN_PATH, token, { mode: 0o600 })

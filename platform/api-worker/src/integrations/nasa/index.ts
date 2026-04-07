@@ -3,6 +3,7 @@
  * Ported from Miyagi3 NASAService.ts.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 const HEADERS = { 'User-Agent': 'DeepSpace-NASA/1.0' }
@@ -104,12 +105,39 @@ const neoBrowse: IntegrationHandler = async (env, body) => {
   return response.json()
 }
 
+const apodSchema = z.object({
+  date: z.string().optional(),
+  start_date: z.string().optional(),
+  end_date: z.string().optional(),
+  count: z.number().min(1).max(100).optional(),
+  thumbs: z.boolean().optional(),
+})
+
+const donkiSchema = z.object({
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+})
+
+const neoFeedSchema = z.object({
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+})
+
+const neoLookupSchema = z.object({
+  asteroidId: z.string(),
+})
+
+const neoBrowseSchema = z.object({
+  page: z.number().min(0).optional(),
+  size: z.number().min(1).max(100).optional(),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
-  'nasa/apod': { handler: apod, billing: BILLING },
-  'nasa/cme': { handler: createDONKI('CME'), billing: BILLING },
-  'nasa/gst': { handler: createDONKI('GST'), billing: BILLING },
-  'nasa/flr': { handler: createDONKI('FLR'), billing: BILLING },
-  'nasa/neo-feed': { handler: neoFeed, billing: BILLING },
-  'nasa/neo-lookup': { handler: neoLookup, billing: BILLING },
-  'nasa/neo-browse': { handler: neoBrowse, billing: BILLING },
+  'nasa/apod': { handler: apod, billing: BILLING, schema: apodSchema },
+  'nasa/cme': { handler: createDONKI('CME'), billing: BILLING, schema: donkiSchema },
+  'nasa/gst': { handler: createDONKI('GST'), billing: BILLING, schema: donkiSchema },
+  'nasa/flr': { handler: createDONKI('FLR'), billing: BILLING, schema: donkiSchema },
+  'nasa/neo-feed': { handler: neoFeed, billing: BILLING, schema: neoFeedSchema },
+  'nasa/neo-lookup': { handler: neoLookup, billing: BILLING, schema: neoLookupSchema },
+  'nasa/neo-browse': { handler: neoBrowse, billing: BILLING, schema: neoBrowseSchema },
 }

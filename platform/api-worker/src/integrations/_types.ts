@@ -4,6 +4,7 @@
  * The registry builds handler + billing maps from these.
  */
 
+import type { z } from 'zod'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import type { Env } from '../worker'
 
@@ -46,4 +47,6 @@ export interface BillingConfig {
 export interface EndpointDefinition {
   handler: IntegrationHandler
   billing: BillingConfig
+  /** Optional Zod schema for request body validation and default application. */
+  schema?: z.ZodType
 }

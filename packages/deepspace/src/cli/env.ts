@@ -10,7 +10,7 @@ import { join } from 'node:path'
 export const ENVS = {
   dev: {
     auth: 'https://deepspace-auth-dev.eudaimonicincorporated.workers.dev',
-    api: 'https://deepspace-api-dev.eudaimonicincorporated.workers.dev',
+    api: 'https://deepspace-api.eudaimonicincorporated.workers.dev',  // always prod — real API calls, billed to developer
     deploy: 'https://deepspace-deploy.eudaimonicincorporated.workers.dev',
   },
   prod: {
@@ -39,6 +39,7 @@ export async function writeDevVars(
   appDir: string,
   env: EnvName,
   ownerId: string,
+  ownerSession?: string,
 ): Promise<void> {
   const urls = ENVS[env]
   const publicKey = await fetchPublicKey(urls.auth)
@@ -50,6 +51,11 @@ export async function writeDevVars(
     `API_WORKER_URL=${urls.api}`,
     `OWNER_USER_ID=${ownerId}`,
     `INTERNAL_STORAGE_HMAC_SECRET=dev-${Date.now()}`,
+    // Owner's prod session token — used by the integration proxy to get
+    // a fresh JWT for developer-billed API calls.
+    ...(ownerSession ? [`OWNER_SESSION_TOKEN=${ownerSession}`] : []),
+    // Prod auth URL for token refresh (always prod, even in dev mode)
+    `OWNER_AUTH_URL=${ENVS.prod.auth}`,
   ].join('\n')
 
   writeFileSync(join(appDir, '.dev.vars'), devVars + '\n')

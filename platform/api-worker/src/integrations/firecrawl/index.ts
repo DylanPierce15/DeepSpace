@@ -7,6 +7,7 @@
  * Map and search are synchronous.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 import { pollForResult } from '../_polling'
 
@@ -209,9 +210,48 @@ const search: IntegrationHandler = async (env, body) => {
 
 const FIRECRAWL_BILLING = { model: 'per_request' as const, baseCost: 0.009, currency: 'USD' }
 
+const scrapeSchema = z.object({
+  url: z.string(),
+  formats: z.array(z.string()).default(['markdown']),
+  onlyMainContent: z.boolean().default(true),
+  includeTags: z.array(z.string()).optional(),
+  excludeTags: z.array(z.string()).optional(),
+  waitFor: z.number().optional(),
+  timeout: z.number().optional(),
+})
+
+const crawlSchema = z.object({
+  url: z.string(),
+  limit: z.number().min(1).default(10),
+  maxDepth: z.number().optional(),
+  allowBackwardLinks: z.boolean().optional(),
+  allowExternalLinks: z.boolean().optional(),
+  includePaths: z.array(z.string()).optional(),
+  excludePaths: z.array(z.string()).optional(),
+  formats: z.array(z.string()).default(['markdown']),
+  onlyMainContent: z.boolean().default(true),
+})
+
+const mapSchema = z.object({
+  url: z.string(),
+  search: z.string().optional(),
+  ignoreSitemap: z.boolean().optional(),
+  sitemapOnly: z.boolean().optional(),
+  includeSubdomains: z.boolean().optional(),
+  limit: z.number().optional(),
+})
+
+const searchFirecrawlSchema = z.object({
+  query: z.string(),
+  limit: z.number().min(1).default(5),
+  lang: z.string().optional(),
+  country: z.string().optional(),
+  scrapeOptions: z.record(z.string(), z.unknown()).optional(),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
-  'firecrawl/scrape':  { handler: scrape,  billing: FIRECRAWL_BILLING },
-  'firecrawl/crawl':   { handler: crawl,   billing: FIRECRAWL_BILLING },
-  'firecrawl/map':     { handler: map,     billing: FIRECRAWL_BILLING },
-  'firecrawl/search':  { handler: search,  billing: FIRECRAWL_BILLING },
+  'firecrawl/scrape':  { handler: scrape,  billing: FIRECRAWL_BILLING, schema: scrapeSchema },
+  'firecrawl/crawl':   { handler: crawl,   billing: FIRECRAWL_BILLING, schema: crawlSchema },
+  'firecrawl/map':     { handler: map,     billing: FIRECRAWL_BILLING, schema: mapSchema },
+  'firecrawl/search':  { handler: search,  billing: FIRECRAWL_BILLING, schema: searchFirecrawlSchema },
 }

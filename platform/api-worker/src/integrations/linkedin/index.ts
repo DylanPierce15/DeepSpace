@@ -12,6 +12,7 @@
  * focuses on the SerpAPI-powered data retrieval.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 // ============================================================================
@@ -178,13 +179,28 @@ const analyzeProfileUrl: IntegrationHandler = async (env, body) => {
 // Exports
 // ============================================================================
 
+const searchProfilesSchema = z.object({
+  name: z.string().optional(),
+  company: z.string().optional(),
+  title: z.string().optional(),
+  education: z.string().optional(),
+  location: z.string().optional(),
+  page: z.number().min(1).default(1),
+})
+
+const analyzeProfileUrlSchema = z.object({
+  profileUrl: z.string(),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
   'linkedin/search-profiles': {
     handler: searchProfiles,
     billing: { model: 'per_request', baseCost: 0.02, currency: 'USD' },
+    schema: searchProfilesSchema,
   },
   'linkedin/analyze-profile-url': {
     handler: analyzeProfileUrl,
     billing: { model: 'per_request', baseCost: 0.05, currency: 'USD' },
+    schema: analyzeProfileUrlSchema,
   },
 }

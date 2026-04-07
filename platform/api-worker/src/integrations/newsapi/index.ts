@@ -3,6 +3,7 @@
  * Ported from Miyagi3 NewsAPIService.ts — preserves LLM-friendly headline formatting.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 // ============================================================================
@@ -111,7 +112,30 @@ const searchEverything: IntegrationHandler = async (env, body) => {
 
 const BILLING = { model: 'per_request' as const, baseCost: 0.018, currency: 'USD' }
 
+const topHeadlinesSchema = z.object({
+  country: z.string().default('us'),
+  category: z.string().optional(),
+  sources: z.string().optional(),
+  q: z.string().optional(),
+  pageSize: z.number().min(1).max(100).default(20),
+  page: z.number().min(1).default(1),
+})
+
+const searchEverythingSchema = z.object({
+  q: z.string().optional(),
+  query: z.string().optional(),
+  sources: z.string().optional(),
+  domains: z.string().optional(),
+  excludeDomains: z.string().optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  language: z.string().default('en'),
+  sortBy: z.string().default('publishedAt'),
+  pageSize: z.number().min(1).max(100).default(20),
+  page: z.number().min(1).default(1),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
-  'newsapi/top-headlines':    { handler: topHeadlines,    billing: BILLING },
-  'newsapi/search-everything': { handler: searchEverything, billing: BILLING },
+  'newsapi/top-headlines':    { handler: topHeadlines,    billing: BILLING, schema: topHeadlinesSchema },
+  'newsapi/search-everything': { handler: searchEverything, billing: BILLING, schema: searchEverythingSchema },
 }

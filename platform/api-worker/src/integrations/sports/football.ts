@@ -4,6 +4,7 @@
  * Ported from Miyagi3 ApiFootballService.ts.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 const API_BASE = 'https://v3.football.api-sports.io'
@@ -51,26 +52,31 @@ function footballEndpoint(path: string): IntegrationHandler {
   }
 }
 
+// ── Schema ────────────────────────────────────────────────────────────────────
+
+/** API-Sports endpoints accept variable query params — passthrough validation */
+const apiSportsSchema = z.object({}).passthrough()
+
 // ── Export ──────────────────────────────────────────────────────────────────────
 
 export const endpoints: Record<string, EndpointDefinition> = {
-  'api-football/countries':            { handler: footballEndpoint('countries'),            billing: BILLING },
-  'api-football/leagues':              { handler: footballEndpoint('leagues'),              billing: BILLING },
-  'api-football/teams':                { handler: footballEndpoint('teams'),                billing: BILLING },
-  'api-football/teams-statistics':     { handler: footballEndpoint('teams/statistics'),     billing: BILLING },
-  'api-football/fixtures':             { handler: footballEndpoint('fixtures'),             billing: BILLING },
-  'api-football/fixtures-headtohead':  { handler: footballEndpoint('fixtures/headtohead'),  billing: BILLING },
-  'api-football/fixtures-statistics':  { handler: footballEndpoint('fixtures/statistics'),  billing: BILLING },
-  'api-football/fixtures-events':      { handler: footballEndpoint('fixtures/events'),      billing: BILLING },
-  'api-football/fixtures-lineups':     { handler: footballEndpoint('fixtures/lineups'),     billing: BILLING },
-  'api-football/standings':            { handler: footballEndpoint('standings'),            billing: BILLING },
-  'api-football/players-topscorers':   { handler: footballEndpoint('players/topscorers'),   billing: BILLING },
-  'api-football/players-topassists':   { handler: footballEndpoint('players/topassists'),   billing: BILLING },
-  'api-football/players':              { handler: footballEndpoint('players'),              billing: BILLING },
-  'api-football/players-squads':       { handler: footballEndpoint('players/squads'),       billing: BILLING },
-  'api-football/transfers':            { handler: footballEndpoint('transfers'),            billing: BILLING },
-  'api-football/injuries':             { handler: footballEndpoint('injuries'),             billing: BILLING },
-  'api-football/predictions':          { handler: footballEndpoint('predictions'),          billing: BILLING },
-  'api-football/coachs':               { handler: footballEndpoint('coachs'),               billing: BILLING },
-  'api-football/venues':               { handler: footballEndpoint('venues'),               billing: BILLING },
+  'api-football/countries':            { handler: footballEndpoint('countries'),            billing: BILLING, schema: apiSportsSchema },
+  'api-football/leagues':              { handler: footballEndpoint('leagues'),              billing: BILLING, schema: apiSportsSchema },
+  'api-football/teams':                { handler: footballEndpoint('teams'),                billing: BILLING, schema: apiSportsSchema },
+  'api-football/teams-statistics':     { handler: footballEndpoint('teams/statistics'),     billing: BILLING, schema: apiSportsSchema },
+  'api-football/fixtures':             { handler: footballEndpoint('fixtures'),             billing: BILLING, schema: apiSportsSchema },
+  'api-football/fixtures-headtohead':  { handler: footballEndpoint('fixtures/headtohead'),  billing: BILLING, schema: apiSportsSchema },
+  'api-football/fixtures-statistics':  { handler: footballEndpoint('fixtures/statistics'),  billing: BILLING, schema: apiSportsSchema },
+  'api-football/fixtures-events':      { handler: footballEndpoint('fixtures/events'),      billing: BILLING, schema: apiSportsSchema },
+  'api-football/fixtures-lineups':     { handler: footballEndpoint('fixtures/lineups'),     billing: BILLING, schema: apiSportsSchema },
+  'api-football/standings':            { handler: footballEndpoint('standings'),            billing: BILLING, schema: apiSportsSchema },
+  'api-football/players-topscorers':   { handler: footballEndpoint('players/topscorers'),   billing: BILLING, schema: apiSportsSchema },
+  'api-football/players-topassists':   { handler: footballEndpoint('players/topassists'),   billing: BILLING, schema: apiSportsSchema },
+  'api-football/players':              { handler: footballEndpoint('players'),              billing: BILLING, schema: apiSportsSchema },
+  'api-football/players-squads':       { handler: footballEndpoint('players/squads'),       billing: BILLING, schema: apiSportsSchema },
+  'api-football/transfers':            { handler: footballEndpoint('transfers'),            billing: BILLING, schema: apiSportsSchema },
+  'api-football/injuries':             { handler: footballEndpoint('injuries'),             billing: BILLING, schema: apiSportsSchema },
+  'api-football/predictions':          { handler: footballEndpoint('predictions'),          billing: BILLING, schema: apiSportsSchema },
+  'api-football/coachs':               { handler: footballEndpoint('coachs'),               billing: BILLING, schema: apiSportsSchema },
+  'api-football/venues':               { handler: footballEndpoint('venues'),               billing: BILLING, schema: apiSportsSchema },
 }

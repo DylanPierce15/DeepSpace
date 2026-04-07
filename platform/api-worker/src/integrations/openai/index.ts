@@ -2,7 +2,30 @@
  * OpenAI integration — chat completions and image generation.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
+
+// ============================================================================
+// Schemas
+// ============================================================================
+
+const chatCompletionSchema = z.object({
+  messages: z.array(z.object({
+    role: z.enum(['user', 'system', 'assistant']),
+    content: z.string(),
+  })),
+  model: z.string().default('gpt-4o'),
+  max_tokens: z.number().int().min(1).max(16384).default(100),
+  temperature: z.number().min(0).max(2).optional(),
+})
+
+const generateImageSchema = z.object({
+  prompt: z.string(),
+  model: z.enum(['gpt-image-1', 'gpt-image-1-mini']).default('gpt-image-1'),
+  n: z.number().int().min(1).max(4).default(1),
+  size: z.enum(['1024x1024', '1536x1024', '1024x1536', 'auto']).default('1024x1024'),
+  quality: z.enum(['low', 'medium', 'high', 'auto']).default('auto'),
+})
 
 // ============================================================================
 // Chat completion
@@ -111,6 +134,7 @@ const generateImage: IntegrationHandler = async (env, body) => {
 export const endpoints: Record<string, EndpointDefinition> = {
   'openai/chat-completion': {
     handler: chatCompletion,
+    schema: chatCompletionSchema,
     billing: {
       model: 'per_token',
       baseCost: 0.00003,
@@ -130,6 +154,7 @@ export const endpoints: Record<string, EndpointDefinition> = {
   },
   'openai/generate-image': {
     handler: generateImage,
+    schema: generateImageSchema,
     billing: {
       model: 'per_token',
       baseCost: 0,

@@ -4,6 +4,7 @@
  * CurrencySearchService, MarketSymbolSearchService.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 const B = (cost: number) => ({ model: 'per_request' as const, baseCost: cost, currency: 'USD' })
@@ -81,10 +82,34 @@ const searchSymbols: IntegrationHandler = async (env, body) => {
   return response.json()
 }
 
+const cryptoPriceSchema = z.object({
+  symbol: z.string().optional(),
+  id: z.string().optional(),
+})
+
+const cryptoSearchSchema = z.object({
+  query: z.string().optional(),
+  q: z.string().optional(),
+})
+
+const currencySearchSchema = z.object({
+  query: z.string().optional(),
+  q: z.string().optional(),
+})
+
+const stockPriceSchema = z.object({
+  symbol: z.string(),
+})
+
+const searchSymbolsSchema = z.object({
+  keywords: z.string().optional(),
+  q: z.string().optional(),
+})
+
 export const endpoints: Record<string, EndpointDefinition> = {
-  'coinbase/crypto-price':      { handler: cryptoPrice,    billing: B(0.001) },
-  'coinbase/search-crypto':     { handler: cryptoSearch,   billing: B(0.001) },
-  'coinbase/search-currencies': { handler: currencySearch, billing: B(0.001) },
-  'finnhub/stock-price':        { handler: stockPrice,     billing: B(0.001) },
-  'alphavantage/search-symbols': { handler: searchSymbols, billing: B(0.001) },
+  'coinbase/crypto-price':      { handler: cryptoPrice,    billing: B(0.001), schema: cryptoPriceSchema },
+  'coinbase/search-crypto':     { handler: cryptoSearch,   billing: B(0.001), schema: cryptoSearchSchema },
+  'coinbase/search-currencies': { handler: currencySearch, billing: B(0.001), schema: currencySearchSchema },
+  'finnhub/stock-price':        { handler: stockPrice,     billing: B(0.001), schema: stockPriceSchema },
+  'alphavantage/search-symbols': { handler: searchSymbols, billing: B(0.001), schema: searchSymbolsSchema },
 }

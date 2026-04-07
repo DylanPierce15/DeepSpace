@@ -2,6 +2,7 @@
  * Freepik integration — text-to-image, image tools, video, and stock endpoints.
  */
 
+import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 import { pollForResult } from '../_polling'
 
@@ -312,6 +313,22 @@ const imageExpand = createAsyncFreepikHandler(
 )
 
 // =============================================================================
+// Schemas
+// =============================================================================
+
+/** Passthrough schema for endpoints that forward body directly to Freepik API */
+const passthroughSchema = z.object({}).passthrough()
+
+const downloadByIdSchema = z.object({
+  id: z.number(),
+})
+
+const downloadStockImagesSchema = z.object({
+  id: z.number(),
+  image_size: z.string().optional(),
+})
+
+// =============================================================================
 // Endpoint registry
 // =============================================================================
 
@@ -319,6 +336,7 @@ export const endpoints: Record<string, EndpointDefinition> = {
   // ---- Existing synchronous image endpoints ----
   'freepik/text-to-image-classic': {
     handler: createFreepikHandler('https://api.freepik.com/v1/ai/text-to-image'),
+    schema: passthroughSchema,
     billing: {
       model: 'per_request',
       baseCost: 0.005,
@@ -328,6 +346,7 @@ export const endpoints: Record<string, EndpointDefinition> = {
   },
   'freepik/generate-image-mystic': {
     handler: createFreepikHandler('https://api.freepik.com/v1/ai/mystic'),
+    schema: passthroughSchema,
     billing: {
       model: 'per_request',
       baseCost: 0.069,
@@ -339,54 +358,66 @@ export const endpoints: Record<string, EndpointDefinition> = {
   },
   'freepik/generate-image-flux-dev': {
     handler: createFreepikHandler('https://api.freepik.com/v1/ai/flux-dev'),
+    schema: passthroughSchema,
     billing: { model: 'per_request', baseCost: 0.012, currency: 'USD' },
   },
 
   // ---- Async image generation models ----
   'freepik/generate-image-flux-pro': {
     handler: createAsyncImageHandler('text-to-image/flux-pro-v1-1'),
+    schema: passthroughSchema,
     billing: { model: 'per_request', baseCost: 0.043, currency: 'USD' },
   },
   'freepik/generate-image-flux-2-pro': {
     handler: createAsyncImageHandler('text-to-image/flux-2-pro'),
+    schema: passthroughSchema,
     billing: { model: 'per_request', baseCost: 0.036, currency: 'USD' },
   },
   'freepik/generate-image-flux-2-turbo': {
     handler: createAsyncImageHandler('text-to-image/flux-2-turbo'),
+    schema: passthroughSchema,
     billing: { model: 'per_request', baseCost: 0.01, currency: 'USD' },
   },
   'freepik/generate-image-hyperflux': {
     handler: createAsyncImageHandler('text-to-image/hyperflux'),
+    schema: passthroughSchema,
     billing: { model: 'per_request', baseCost: 0.161, currency: 'USD' },
   },
   'freepik/generate-image-seedream': {
     handler: createAsyncImageHandler('text-to-image/seedream'),
+    schema: passthroughSchema,
     billing: { model: 'per_request', baseCost: 0.032, currency: 'USD' },
   },
   'freepik/generate-image-seedream-v4': {
     handler: createAsyncImageHandler('text-to-image/seedream-v4'),
+    schema: passthroughSchema,
     billing: { model: 'per_request', baseCost: 0.032, currency: 'USD' },
   },
   'freepik/generate-image-seedream-v4-5': {
     handler: createAsyncImageHandler('text-to-image/seedream-v4-5'),
+    schema: passthroughSchema,
     billing: { model: 'per_request', baseCost: 0.04, currency: 'USD' },
   },
   'freepik/generate-image-z-image': {
     handler: createAsyncImageHandler('text-to-image/z-image'),
+    schema: passthroughSchema,
     billing: { model: 'per_request', baseCost: 0.02, currency: 'USD' },
   },
   'freepik/generate-image-runway': {
     handler: createAsyncImageHandler('text-to-image/runway'),
+    schema: passthroughSchema,
     billing: { model: 'per_request', baseCost: 0.10, currency: 'USD' },
   },
 
   // ---- Image tools ----
   'freepik/remove-background': {
     handler: removeBackground,
+    schema: passthroughSchema,
     billing: { model: 'per_request', baseCost: 0.02, currency: 'EUR' },
   },
   'freepik/upscale-image-precision': {
     handler: upscaleImagePrecision,
+    schema: passthroughSchema,
     billing: {
       model: 'per_request',
       baseCost: 0.10,
@@ -405,34 +436,41 @@ export const endpoints: Record<string, EndpointDefinition> = {
   },
   'freepik/image-relight': {
     handler: imageRelight,
+    schema: passthroughSchema,
     billing: { model: 'per_request', baseCost: 0.10, currency: 'EUR' },
   },
   'freepik/image-style-transfer': {
     handler: imageStyleTransfer,
+    schema: passthroughSchema,
     billing: { model: 'per_request', baseCost: 0.10, currency: 'EUR' },
   },
   'freepik/image-expand': {
     handler: imageExpand,
+    schema: passthroughSchema,
     billing: { model: 'per_request', baseCost: 0.07, currency: 'EUR' },
   },
 
   // ---- Video ----
   'freepik/generate-video': {
     handler: generateVideo,
+    schema: passthroughSchema,
     billing: { model: 'per_second', baseCost: 0.022, currency: 'EUR' },
   },
 
   // ---- Stock / Downloads ----
   'freepik/download-icons': {
     handler: downloadIcons,
+    schema: downloadByIdSchema,
     billing: { model: 'per_request', baseCost: 0.01, currency: 'EUR' },
   },
   'freepik/download-stock-images': {
     handler: downloadStockImages,
+    schema: downloadStockImagesSchema,
     billing: { model: 'per_request', baseCost: 0.04, currency: 'EUR' },
   },
   'freepik/download-stock-videos': {
     handler: downloadStockVideos,
+    schema: downloadByIdSchema,
     billing: { model: 'per_request', baseCost: 0.06, currency: 'EUR' },
   },
 }
