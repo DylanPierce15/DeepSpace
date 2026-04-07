@@ -30,7 +30,7 @@ function resolveUrl(endpoint: string): string {
   if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
     return endpoint
   }
-  const path = endpoint.startsWith('/') ? endpoint : `${ENDPOINT_PREFIX}/${endpoint}`
+  const path = endpoint.startsWith('/') ? endpoint : endpoint ? `${ENDPOINT_PREFIX}/${endpoint}` : ENDPOINT_PREFIX
   if (typeof window !== 'undefined') {
     return `${window.location.origin}${path}`
   }

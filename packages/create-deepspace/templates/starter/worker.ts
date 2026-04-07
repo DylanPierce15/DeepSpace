@@ -178,6 +178,23 @@ app.all('/api/auth/*', async (c) => {
 // Integrations proxy → api-worker (OpenAI, search, etc.)
 // ---------------------------------------------------------------------------
 
+// Integration catalog (no auth required)
+app.get('/api/integrations', async (c) => {
+  try {
+    const url = c.env.API_WORKER
+      ? 'https://api-worker/api/integrations'
+      : `${c.env.API_WORKER_URL}/api/integrations`
+    const doFetch = c.env.API_WORKER ? c.env.API_WORKER.fetch.bind(c.env.API_WORKER) : fetch
+    const res = await doFetch(url)
+    const data = await res.text()
+    let parsed: any
+    try { parsed = JSON.parse(data) } catch { parsed = { raw: data } }
+    return c.json({ ...parsed, status: res.status })
+  } catch {
+    return c.json({ success: false, status: 502, error: 'Failed to fetch integration catalog' })
+  }
+})
+
 app.all('/api/integrations/:name/:endpoint', async (c) => {
   const integrationName = c.req.param('name')
   const billingMode = integrations[integrationName]?.billing ?? 'developer'

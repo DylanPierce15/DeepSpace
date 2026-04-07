@@ -16,9 +16,22 @@ import {
   COST_MARKUP_MULTIPLIER,
 } from '../billing/service'
 import { getIntegrationConfig } from '../billing/configs'
-import { HANDLER_REGISTRY } from '../integrations/_registry'
+import { HANDLER_REGISTRY, BILLING_CONFIGS } from '../integrations/_registry'
 
 const integrations = new Hono<Env>()
+
+// GET / — list all available integrations (no auth required)
+integrations.get('/', (c) => {
+  const catalog: Record<string, Array<{ endpoint: string; billing: { model: string; baseCost: number; currency: string } }>> = {}
+
+  for (const [key, config] of Object.entries(BILLING_CONFIGS)) {
+    const { integrationName, endpoint, ...billing } = config
+    if (!catalog[integrationName]) catalog[integrationName] = []
+    catalog[integrationName].push({ endpoint, billing: { model: billing.model, baseCost: billing.baseCost, currency: billing.currency } })
+  }
+
+  return c.json({ integrations: catalog })
+})
 
 // POST /:name/:endpoint — authenticated, billed integration call
 integrations.post('/:name/:endpoint', authMiddleware, async (c) => {
