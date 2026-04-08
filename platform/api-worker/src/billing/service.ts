@@ -192,10 +192,11 @@ export interface UserCreditsAvailable {
   purchasedCredits: number
 }
 
-type SubscriptionTier = 'free' | 'starter' | 'premium' | 'admin'
+type SubscriptionTier = 'free' | 'starter' | 'premium' | 'admin' | 'test'
 
 export function subscriptionTierToCredits(tier: SubscriptionTier): number {
   switch (tier) {
+    case 'test': return 0
     case 'free': return 500
     case 'starter': return 1600
     case 'premium': return 4250

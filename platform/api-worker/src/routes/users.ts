@@ -35,17 +35,20 @@ users.get('/me', authMiddleware, async (c) => {
 
   if (!billing) {
     const now = new Date()
+    const isTest = !!claims.isTestAccount
+    const tier = isTest ? 'test' : 'free'
+
     await db.insert(userProfiles).values({
       id: userId,
-      subscriptionTier: 'free',
-      subscriptionCredits: subscriptionTierToCredits('free'),
+      subscriptionTier: tier,
+      subscriptionCredits: isTest ? 0 : subscriptionTierToCredits('free'),
       createdAt: now,
       updatedAt: now,
     })
 
     billing = {
-      subscriptionStatus: 'free',
-      subscriptionTier: 'free',
+      subscriptionStatus: tier,
+      subscriptionTier: tier,
       createdAt: now,
     }
   }
