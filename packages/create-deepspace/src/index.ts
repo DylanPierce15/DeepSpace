@@ -113,8 +113,10 @@ async function main() {
   const cwd = process.cwd()
   const cwdName = basename(cwd)
   if (appName === '.') appName = cwdName
-  const isInPlace = (appName === cwdName) && existsSync(join(cwd, '.git')) && isNearEmpty(cwd)
-  const appDir = isInPlace ? cwd : resolve(appName)
+  const appDir = resolve(appName)
+  const isInPlace =
+    ((appName === cwdName) && existsSync(join(cwd, '.git')) && isNearEmpty(cwd)) ||
+    (existsSync(appDir) && existsSync(join(appDir, '.git')) && isNearEmpty(appDir))
 
   if (!isInPlace && existsSync(appDir)) {
     p.cancel(`Directory ${appName} already exists`)
