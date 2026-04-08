@@ -142,22 +142,5 @@ sync_worker "$ROOT/platform/platform-worker" "deepspace-platform-worker" \
   AUTH_JWT_ISSUER \
   INTERNAL_STORAGE_HMAC_SECRET
 
-# =============================================================================
-# Dev Workers (devnet — separate DB, separate JWT keys)
-# =============================================================================
-
-# ── Auth Worker (dev) ────────────────────────────────────────────────────────
-# Uses _DEV suffixed Doppler keys, remapped to the standard secret names.
-# Google OAuth uses the same credentials as prod (extra redirect URI added).
-sync_worker "$ROOT/platform/auth-worker" "deepspace-auth" --env dev \
-  BETTER_AUTH_SECRET_DEV=BETTER_AUTH_SECRET \
-  JWT_PRIVATE_KEY_DEV=JWT_PRIVATE_KEY \
-  AUTH_JWT_PUBLIC_KEY_DEV=AUTH_JWT_PUBLIC_KEY \
-  AUTH_BASE_URL_DEV=AUTH_BASE_URL \
-  GITHUB_CLIENT_ID_DEV=GITHUB_CLIENT_ID \
-  GITHUB_CLIENT_SECRET_DEV=GITHUB_CLIENT_SECRET \
-  GOOGLE_CLIENT_ID \
-  GOOGLE_CLIENT_SECRET
-
 echo ""
 echo "✓ All Cloudflare Worker secrets synced from Doppler ($CONFIG)"

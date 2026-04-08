@@ -9,7 +9,7 @@ import { join } from 'node:path'
 
 export const ENVS = {
   dev: {
-    auth: 'https://deepspace-auth-dev.eudaimonicincorporated.workers.dev',
+    auth: 'https://deepspace-auth.eudaimonicincorporated.workers.dev',
     api: 'https://deepspace-api.eudaimonicincorporated.workers.dev',  // always prod — real API calls, billed to developer
     deploy: 'https://deepspace-deploy.eudaimonicincorporated.workers.dev',
   },

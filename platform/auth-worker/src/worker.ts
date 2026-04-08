@@ -99,10 +99,18 @@ app.post('/api/auth/token', async (c) => {
     cachedPrivateKey = await importPKCS8(pem, 'ES256')
   }
 
+  // Check if this is a test account
+  await ensureTestAccountsTable(c.env.AUTH_DB)
+  const testRow = await c.env.AUTH_DB
+    .prepare('SELECT id FROM test_accounts WHERE user_id = ?')
+    .bind(session.user.id)
+    .first()
+
   const jwt = await new SignJWT({
     name: session.user.name,
     email: session.user.email,
     image: session.user.image,
+    ...(testRow ? { isTestAccount: true } : {}),
   })
     .setProtectedHeader({ alg: 'ES256' })
     .setSubject(session.user.id)
@@ -294,10 +302,18 @@ app.get('/login/cli/:sessionId/complete', async (c) => {
     cachedPrivateKey = await importPKCS8(pem, 'ES256')
   }
 
+  // Check if this is a test account
+  await ensureTestAccountsTable(c.env.AUTH_DB)
+  const cliTestRow = await c.env.AUTH_DB
+    .prepare('SELECT id FROM test_accounts WHERE user_id = ?')
+    .bind(session.user.id)
+    .first()
+
   const jwt = await new SignJWT({
     name: session.user.name,
     email: session.user.email,
     image: session.user.image,
+    ...(cliTestRow ? { isTestAccount: true } : {}),
   })
     .setProtectedHeader({ alg: 'ES256' })
     .setSubject(session.user.id)
@@ -640,8 +656,161 @@ function loginCompletePage(): string {
 }
 
 // ============================================================================
+// Test Account Management — developer-authenticated CRUD
+// ============================================================================
+
+/** Ensure test_accounts table exists (idempotent) */
+async function ensureTestAccountsTable(db: D1Database) {
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS test_accounts (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        developer_id TEXT NOT NULL,
+        email TEXT NOT NULL,
+        label TEXT,
+        created_at INTEGER NOT NULL,
+        UNIQUE(developer_id, email)
+      )`,
+    )
+    .run()
+}
+
+/** Helper: get authenticated developer session or return 401 */
+async function getDeveloperSession(c: any) {
+  const auth = createDeepSpaceAuth({
+    database: c.env.AUTH_DB,
+    baseURL: c.env.AUTH_BASE_URL,
+    secret: c.env.BETTER_AUTH_SECRET,
+  })
+  const session = await auth.api.getSession({ headers: c.req.raw.headers })
+  return { auth, session }
+}
+
+/**
+ * POST /api/auth/test-accounts
+ * Create a test account. Requires developer session. Max 10 per developer.
+ * Email must end with @deepspace.test.
+ */
+app.post('/api/auth/test-accounts', async (c) => {
+  const { auth, session } = await getDeveloperSession(c)
+  if (!session?.user) return c.json({ error: 'Unauthorized' }, 401)
+
+  const { email, password, name, label } = await c.req.json<{
+    email: string
+    password: string
+    name?: string
+    label?: string
+  }>()
+
+  if (!email?.endsWith('@deepspace.test')) {
+    return c.json({ error: 'Test account emails must end with @deepspace.test' }, 400)
+  }
+  if (!password || password.length < 8) {
+    return c.json({ error: 'Password must be at least 8 characters' }, 400)
+  }
+
+  await ensureTestAccountsTable(c.env.AUTH_DB)
+
+  // Create user via Better Auth's internal API
+  let signUpResult: any
+  try {
+    signUpResult = await auth.api.signUpEmail({
+      body: { email, password, name: name ?? email.split('@')[0] },
+    })
+  } catch (err: any) {
+    return c.json({ error: err.message ?? 'Failed to create test account' }, 400)
+  }
+
+  if (!signUpResult?.user?.id) {
+    return c.json({ error: 'Failed to create user' }, 500)
+  }
+
+  // Atomically insert only if developer has fewer than 10 test accounts.
+  // This prevents races where concurrent requests all read count=9.
+  const id = crypto.randomUUID()
+  const now = Date.now()
+
+  const insertResult = await c.env.AUTH_DB
+    .prepare(
+      `INSERT INTO test_accounts (id, user_id, developer_id, email, label, created_at)
+       SELECT ?, ?, ?, ?, ?, ?
+       WHERE (SELECT COUNT(*) FROM test_accounts WHERE developer_id = ?) < 10`,
+    )
+    .bind(id, signUpResult.user.id, session.user.id, email, label ?? null, now, session.user.id)
+    .run()
+
+  if (!insertResult.meta.changes) {
+    return c.json({ error: 'Maximum 10 test accounts per developer' }, 429)
+  }
+
+  return c.json({ id, email, userId: signUpResult.user.id, label: label ?? null, createdAt: now }, 201)
+})
+
+/**
+ * GET /api/auth/test-accounts
+ * List the developer's test accounts.
+ */
+app.get('/api/auth/test-accounts', async (c) => {
+  const { session } = await getDeveloperSession(c)
+  if (!session?.user) return c.json({ error: 'Unauthorized' }, 401)
+
+  await ensureTestAccountsTable(c.env.AUTH_DB)
+
+  const { results } = await c.env.AUTH_DB
+    .prepare('SELECT id, user_id, email, label, created_at FROM test_accounts WHERE developer_id = ? ORDER BY created_at')
+    .bind(session.user.id)
+    .all<{ id: string; user_id: string; email: string; label: string | null; created_at: number }>()
+
+  return c.json({
+    accounts: (results ?? []).map((r) => ({
+      id: r.id,
+      userId: r.user_id,
+      email: r.email,
+      label: r.label,
+      createdAt: r.created_at,
+    })),
+  })
+})
+
+/**
+ * DELETE /api/auth/test-accounts/:id
+ * Delete a test account. Only the owning developer can delete.
+ */
+app.delete('/api/auth/test-accounts/:id', async (c) => {
+  const { session } = await getDeveloperSession(c)
+  if (!session?.user) return c.json({ error: 'Unauthorized' }, 401)
+
+  const { id } = c.req.param()
+  await ensureTestAccountsTable(c.env.AUTH_DB)
+
+  const row = await c.env.AUTH_DB
+    .prepare('SELECT user_id FROM test_accounts WHERE id = ? AND developer_id = ?')
+    .bind(id, session.user.id)
+    .first<{ user_id: string }>()
+
+  if (!row) {
+    return c.json({ error: 'Test account not found' }, 404)
+  }
+
+  // Delete from test_accounts (leave the Better Auth user — it's harmless without sign-up access)
+  await c.env.AUTH_DB
+    .prepare('DELETE FROM test_accounts WHERE id = ?')
+    .bind(id)
+    .run()
+
+  return c.json({ deleted: true })
+})
+
+// ============================================================================
 // Better Auth Routes — catch-all for /api/auth/*
 // ============================================================================
+
+// Block public email/password sign-up (no email verification).
+// Sign-in remains enabled for existing users and test accounts.
+app.post('/api/auth/sign-up/email', (c) => {
+  return c.json({ error: 'Public signup disabled. Use OAuth or create a test account.' }, 403)
+})
 
 app.on(['GET', 'POST'], '/api/auth/*', async (c) => {
   const auth = createDeepSpaceAuth({
