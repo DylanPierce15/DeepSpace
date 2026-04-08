@@ -21,6 +21,7 @@ export type Env = {
     DEPLOY_JWT_PUBLIC_KEY_PEM: string
     AUTH_WORKER_URL: string
     INTERNAL_HMAC_SECRET: string
+    PLATFORM_IDENTITY_SECRET: string
   }
   Variables: {
     userId: string

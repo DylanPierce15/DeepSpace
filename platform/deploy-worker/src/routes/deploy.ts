@@ -114,6 +114,7 @@ deploy.post('/:appName', authMiddleware, async (c) => {
       jwtIssuer: c.env.AUTH_JWT_ISSUER,
       authWorkerUrl: c.env.AUTH_WORKER_URL,
       hmacSecret: c.env.INTERNAL_HMAC_SECRET,
+      platformIdentitySecret: c.env.PLATFORM_IDENTITY_SECRET,
       doManifest,
     },
   )

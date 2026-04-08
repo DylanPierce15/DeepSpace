@@ -48,6 +48,45 @@ test.describe('Deployed app — anonymous browsing', () => {
   })
 })
 
+test.describe('Deployed app — R2 file storage', () => {
+  test('upload, list, download, delete cycle', async ({ authedRequest }) => {
+    const base = APP_BASE!
+
+    // Upload a file
+    const uploadRes = await authedRequest.fetch(`${base}/api/files/upload?scope=self`, {
+      method: 'POST',
+      multipart: {
+        file: { name: 'test.txt', mimeType: 'text/plain', buffer: Buffer.from('hello from e2e') },
+      },
+    })
+    expect(uploadRes.status()).toBe(200)
+    const upload = await uploadRes.json() as { success: boolean; key: string; url: string }
+    expect(upload.success).toBe(true)
+    expect(upload.key).toBeTruthy()
+
+    // List files — should include our upload
+    const listRes = await authedRequest.fetch(`${base}/api/files?scope=self`)
+    expect(listRes.status()).toBe(200)
+    const list = await listRes.json() as { files: Array<{ key: string }> }
+    expect(list.files.some(f => f.key === upload.key)).toBe(true)
+
+    // Download the file
+    const dlRes = await authedRequest.fetch(`${base}/api/files/${upload.key}?scope=self`)
+    expect(dlRes.status()).toBe(200)
+    expect(await dlRes.text()).toBe('hello from e2e')
+
+    // Delete the file
+    const delRes = await authedRequest.fetch(`${base}/api/files/${upload.key}?scope=self`, {
+      method: 'DELETE',
+    })
+    expect(delRes.status()).toBe(200)
+
+    // Verify it's gone
+    const dl2Res = await authedRequest.fetch(`${base}/api/files/${upload.key}?scope=self`)
+    expect(dl2Res.status()).toBe(404)
+  })
+})
+
 test.describe('Deployed app — auth overlay', () => {
   test('opens and closes', async ({ page }) => {
     await page.goto(APP_BASE!, { waitUntil: 'networkidle' })

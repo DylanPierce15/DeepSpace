@@ -39,6 +39,7 @@ export interface WorkerBindings {
   jwtIssuer: string
   authWorkerUrl: string
   hmacSecret?: string
+  platformIdentitySecret: string
   doManifest?: DOManifestEntry[]
 }
 
@@ -187,6 +188,20 @@ export async function deployToWfP(
     const allSqliteClasses = doManifest.filter(e => e.sqlite).map(e => e.className)
     const migrationTag = `v${allSqliteClasses.length}`
 
+    // Compute app identity token: HMAC(PLATFORM_IDENTITY_SECRET, appName)
+    const encoder = new TextEncoder()
+    const hmacKey = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(bindings.platformIdentitySecret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign'],
+    )
+    const tokenBuf = await crypto.subtle.sign('HMAC', hmacKey, encoder.encode(bindings.appName))
+    const appIdentityToken = Array.from(new Uint8Array(tokenBuf))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+
     const metadata: Record<string, unknown> = {
       main_module: 'index.js',
       compatibility_date: '2025-01-01',
@@ -208,7 +223,6 @@ export async function deployToWfP(
       bindings: [
         { type: 'assets', name: 'ASSETS' },
         ...doBindingsList,
-        { type: 'r2_bucket', name: 'FILES', bucket_name: 'deepspace-user-files' },
         { type: 'service', name: 'PLATFORM_WORKER', service: 'deepspace-platform-worker' },
         { type: 'service', name: 'API_WORKER', service: 'deepspace-api' },
         { type: 'plain_text', name: 'APP_NAME', text: bindings.appName },
@@ -216,6 +230,7 @@ export async function deployToWfP(
         { type: 'secret_text', name: 'AUTH_JWT_PUBLIC_KEY', text: bindings.jwtPublicKey },
         { type: 'secret_text', name: 'AUTH_JWT_ISSUER', text: bindings.jwtIssuer },
         { type: 'plain_text', name: 'AUTH_WORKER_URL', text: bindings.authWorkerUrl },
+        { type: 'secret_text', name: 'APP_IDENTITY_TOKEN', text: appIdentityToken },
         ...(bindings.hmacSecret
           ? [{ type: 'secret_text', name: 'INTERNAL_STORAGE_HMAC_SECRET', text: bindings.hmacSecret }]
           : []),

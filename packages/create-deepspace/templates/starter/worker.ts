@@ -69,7 +69,9 @@ export class AppPresenceRoom extends PresenceRoom {}
 
 interface Env extends DOBindings<typeof __DO_MANIFEST__> {
   ASSETS: Fetcher
-  FILES: R2Bucket
+  FILES?: R2Bucket
+  PLATFORM_WORKER?: Fetcher
+  APP_IDENTITY_TOKEN?: string
   API_WORKER: Fetcher
   AUTH_JWT_PUBLIC_KEY: string
   AUTH_JWT_ISSUER: string
@@ -320,9 +322,10 @@ app.post('/api/actions/:name', async (c) => {
 // Scoped R2 files
 // ---------------------------------------------------------------------------
 
+// Local dev: direct R2 handler (FILES binding only exists in local dev)
 const r2Handlers: Record<string, ScopedR2Handler> = {}
 
-function getR2Handler(env: Env): ScopedR2Handler {
+function getLocalR2Handler(env: Env): ScopedR2Handler {
   if (!r2Handlers[env.APP_NAME]) {
     r2Handlers[env.APP_NAME] = createScopedR2Handler({
       resolvePrefix(scope, ctx) {
@@ -337,7 +340,51 @@ function getR2Handler(env: Env): ScopedR2Handler {
 
 app.all('/api/files/*', async (c) => {
   const auth = await resolveAuth(c.req.raw, c.env)
-  return getR2Handler(c.env)(c.req.raw, new URL(c.req.url), c.env.FILES, { userId: auth?.userId ?? null })
+  const userId = auth?.userId ?? null
+
+  // Local dev fallback: use direct R2 binding
+  if (!c.env.PLATFORM_WORKER && c.env.FILES) {
+    return getLocalR2Handler(c.env)(c.req.raw, new URL(c.req.url), c.env.FILES, { userId })
+  }
+
+  if (!c.env.PLATFORM_WORKER || !c.env.APP_IDENTITY_TOKEN) {
+    return c.json({ error: 'File storage not configured' }, 500)
+  }
+
+  // Production: proxy to platform worker via service binding
+  const url = new URL(c.req.url)
+  const platformUrl = new URL(c.req.url)
+  platformUrl.pathname = url.pathname.replace('/api/files', '/internal/files')
+
+  const headers = new Headers(c.req.raw.headers)
+  headers.set('x-app-identity-token', c.env.APP_IDENTITY_TOKEN)
+  headers.set('x-app-name', c.env.APP_NAME)
+  if (userId) headers.set('x-user-id', userId)
+
+  const resp = await c.env.PLATFORM_WORKER.fetch(
+    new Request(platformUrl.toString(), {
+      method: c.req.method,
+      headers,
+      body: c.req.raw.body,
+    }),
+  )
+
+  // Rewrite URLs in JSON responses to use the app's origin
+  const contentType = resp.headers.get('content-type') ?? ''
+  if (contentType.includes('application/json')) {
+    const body = (await resp.json()) as Record<string, unknown>
+    const rewriteUrl = (u: string) => u.replace(/^https?:\/\/[^/]+/, url.origin)
+    if (typeof body.url === 'string') body.url = rewriteUrl(body.url)
+    if (Array.isArray(body.files)) {
+      for (const f of body.files as Array<Record<string, unknown>>) {
+        if (typeof f.url === 'string') f.url = rewriteUrl(f.url)
+      }
+    }
+    return c.json(body, resp.status as any)
+  }
+
+  // Binary responses (downloads): pass through as-is
+  return new Response(resp.body, { status: resp.status, headers: resp.headers })
 })
 
 // ---------------------------------------------------------------------------

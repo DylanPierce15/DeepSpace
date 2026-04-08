@@ -31,6 +31,7 @@ export default defineConfig({
           AUTH_JWT_PUBLIC_KEY: TEST_PUBLIC_KEY_PEM,
           AUTH_JWT_ISSUER: TEST_ISSUER,
           INTERNAL_STORAGE_HMAC_SECRET: 'test-hmac-secret-key-for-internal-auth',
+          PLATFORM_IDENTITY_SECRET: 'test-platform-identity-secret',
           TEST_PRIVATE_KEY_PEM: TEST_PRIVATE_KEY_PEM,
         },
       },

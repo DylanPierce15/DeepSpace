@@ -23,6 +23,10 @@ deleted_classes = ["GatewaySession"]
 binding = "SCHEMA_REGISTRY"
 bucket_name = "deepspace-schema-registry"
 
+[[r2_buckets]]
+binding = "APP_FILES"
+bucket_name = "deepspace-app-files"
+
 [durable_objects]
 bindings = [
   { name = "RECORD_ROOMS", class_name = "GlobalRecordRoom" },

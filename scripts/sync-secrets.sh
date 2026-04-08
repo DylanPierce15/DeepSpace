@@ -134,13 +134,15 @@ sync_worker "$ROOT/platform/deploy-worker" "deepspace-deploy" \
   CLOUDFLARE_ACCOUNT_ID \
   JWT_PUBLIC_KEY \
   AUTH_WORKER_URL \
-  INTERNAL_STORAGE_HMAC_SECRET
+  INTERNAL_STORAGE_HMAC_SECRET \
+  PLATFORM_IDENTITY_SECRET
 
 # ── Platform Worker ──────────────────────────────────────────────────────────
 sync_worker "$ROOT/platform/platform-worker" "deepspace-platform-worker" \
   AUTH_JWT_PUBLIC_KEY \
   AUTH_JWT_ISSUER \
-  INTERNAL_STORAGE_HMAC_SECRET
+  INTERNAL_STORAGE_HMAC_SECRET \
+  PLATFORM_IDENTITY_SECRET
 
 echo ""
 echo "✓ All Cloudflare Worker secrets synced from Doppler ($CONFIG)"
