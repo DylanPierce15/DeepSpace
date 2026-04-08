@@ -42,6 +42,9 @@ e2e/.app-name
 e2e/.build/
 e2e/test-results/
 e2e/playwright-report/
+tests/e2e/.auth-state.json
+tests/e2e/.app-name
+tests/e2e/report/
 
 # DeepSpace local auth
 .deepspace/

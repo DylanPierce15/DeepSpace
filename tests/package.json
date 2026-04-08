@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "test": "npx playwright test",
-    "test:headed": "npx playwright test --headed"
+    "test:headed": "npx playwright test --headed",
+    "e2e": "npx tsx e2e/scripts/run.ts",
+    "e2e:deploy": "npx tsx e2e/scripts/run.ts --deploy",
+    "e2e:auth": "npx tsx e2e/scripts/run.ts --suite auth"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",
