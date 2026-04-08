@@ -6,7 +6,7 @@
  * Includes CLI login flow (browser-based OAuth with polling).
  */
 
-import { Hono } from 'hono'
+import { Hono, type Context } from 'hono'
 import { cors } from 'hono/cors'
 import { SignJWT, importPKCS8 } from 'jose'
 import { createDeepSpaceAuth } from 'deepspace/worker'
@@ -27,108 +27,98 @@ interface Env {
   GITHUB_CLIENT_SECRET?: string
 }
 
-// CLI session expires after 10 minutes
+type AppContext = Context<{ Bindings: Env }>
+
+// ============================================================================
+// Constants
+// ============================================================================
+
 const CLI_SESSION_TTL_MS = 10 * 60 * 1000
+const AUTH_CODE_TTL_MS = 5 * 60 * 1000
+const ALLOWED_PROVIDERS = new Set(['github', 'google'])
+
+// Trusted origin patterns for returnTo validation and CORS
+const TRUSTED_ORIGIN_SUFFIXES = ['.app.space', '.deep.space']
+
+function isTrustedOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin)
+    if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return true
+    return TRUSTED_ORIGIN_SUFFIXES.some((s) => url.hostname.endsWith(s))
+  } catch {
+    return false
+  }
+}
 
 // ============================================================================
-// App
+// Shared helpers
 // ============================================================================
 
-const app = new Hono<{ Bindings: Env }>()
-
-// CORS for cross-origin auth requests from deployed apps
-app.use(
-  '*',
-  cors({
-    origin: (origin) => {
-      if (!origin) return '*'
-      if (
-        origin.endsWith('.app.space') ||
-        origin.endsWith('.deep.space') ||
-        origin.includes('localhost')
-      ) {
-        return origin
-      }
-      return '*'
-    },
-    credentials: true,
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'Cookie'],
-    exposeHeaders: ['Set-Cookie'],
-  }),
-)
-
-// ============================================================================
-// Custom JWT Token Endpoint — must be before the Better Auth catch-all
-// ============================================================================
+/** Build a full createDeepSpaceAuth config from env, optionally including OAuth providers. */
+function authConfig(env: Env, includeOAuth = false) {
+  const config: Parameters<typeof createDeepSpaceAuth>[0] = {
+    database: env.AUTH_DB,
+    baseURL: env.AUTH_BASE_URL,
+    secret: env.BETTER_AUTH_SECRET,
+  }
+  if (includeOAuth) {
+    if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
+      config.google = { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }
+    }
+    if (env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) {
+      config.github = { clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET }
+    }
+  }
+  return config
+}
 
 let cachedPrivateKey: Awaited<ReturnType<typeof importPKCS8>> | null = null
 
-/**
- * GET /api/auth/jwks
- *
- * Returns the public key in JWK format for JWT verification.
- * Used by `deepspace dev` to configure local development.
- */
-app.get('/api/auth/jwks', (c) => {
-  return c.json({ publicKey: c.env.AUTH_JWT_PUBLIC_KEY }, 200, {
-    'Cache-Control': 'public, max-age=86400',
-  })
-})
-
-/**
- * POST /api/auth/token
- *
- * Issues a short-lived ES256 JWT for WebSocket and API authentication.
- * Requires a valid Better Auth session (cookie-based).
- */
-app.post('/api/auth/token', async (c) => {
-  const auth = createDeepSpaceAuth({
-    database: c.env.AUTH_DB,
-    baseURL: c.env.AUTH_BASE_URL,
-    secret: c.env.BETTER_AUTH_SECRET,
-  })
-
-  const session = await auth.api.getSession({ headers: c.req.raw.headers })
-  if (!session?.user) {
-    return c.json({ error: 'Unauthorized' }, 401)
-  }
-
+async function getPrivateKey(env: Env) {
   if (!cachedPrivateKey) {
-    const pem = c.env.JWT_PRIVATE_KEY.replace(/\\n/g, '\n')
+    const pem = env.JWT_PRIVATE_KEY.replace(/\\n/g, '\n')
     cachedPrivateKey = await importPKCS8(pem, 'ES256')
   }
+  return cachedPrivateKey
+}
 
-  // Check if this is a test account
-  await ensureTestAccountsTable(c.env.AUTH_DB)
-  const testRow = await c.env.AUTH_DB
-    .prepare('SELECT id FROM test_accounts WHERE user_id = ?')
-    .bind(session.user.id)
-    .first()
-
-  const jwt = await new SignJWT({
-    name: session.user.name,
-    email: session.user.email,
-    image: session.user.image,
-    ...(testRow ? { isTestAccount: true } : {}),
+/** Issue a signed JWT for a user. Includes isTestAccount if applicable. */
+async function issueJwt(env: Env, user: { id: string; name: string; email: string; image?: string | null }, isTestAccount: boolean) {
+  const key = await getPrivateKey(env)
+  return new SignJWT({
+    name: user.name,
+    email: user.email,
+    image: user.image,
+    ...(isTestAccount ? { isTestAccount: true } : {}),
   })
     .setProtectedHeader({ alg: 'ES256' })
-    .setSubject(session.user.id)
-    .setIssuer(c.env.AUTH_BASE_URL)
+    .setSubject(user.id)
+    .setIssuer(env.AUTH_BASE_URL)
     .setAudience('https://api.deep.space')
     .setIssuedAt()
     .setExpirationTime('5m')
-    .sign(cachedPrivateKey)
+    .sign(key)
+}
 
-  return c.json({ token: jwt })
-})
+/** Check if a user ID is a test account. */
+async function isTestAccountUser(db: D1Database, userId: string): Promise<boolean> {
+  await ensureTestAccountsTable(db)
+  const row = await db.prepare('SELECT id FROM test_accounts WHERE user_id = ?').bind(userId).first()
+  return !!row
+}
 
-// ============================================================================
-// CLI Login Flow — browser-based OAuth with polling
-// ============================================================================
+/** Get authenticated session or null. */
+async function getSession(c: AppContext) {
+  const auth = createDeepSpaceAuth(authConfig(c.env))
+  const session = await auth.api.getSession({ headers: c.req.raw.headers })
+  return { auth, session }
+}
 
-/** Ensure cli_sessions table exists (idempotent) */
+// ── Idempotent table creation (once per isolate) ───────────────────
+
+let _cliTableReady = false
 async function ensureCliTable(db: D1Database) {
+  if (_cliTableReady) return
   await db
     .prepare(
       `CREATE TABLE IF NOT EXISTS cli_sessions (
@@ -143,13 +133,91 @@ async function ensureCliTable(db: D1Database) {
       )`,
     )
     .run()
+  _cliTableReady = true
 }
 
-/**
- * POST /api/auth/cli/session
- * CLI calls this to create a pending login session.
- * Returns { sessionId, loginUrl } — CLI opens loginUrl in the browser.
- */
+let _authCodesTableReady = false
+async function ensureAuthCodesTable(db: D1Database) {
+  if (_authCodesTableReady) return
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS auth_codes (
+        id TEXT PRIMARY KEY,
+        code TEXT,
+        return_to TEXT NOT NULL,
+        session_token TEXT,
+        created_at INTEGER NOT NULL
+      )`,
+    )
+    .run()
+  _authCodesTableReady = true
+}
+
+let _testAccountsTableReady = false
+async function ensureTestAccountsTable(db: D1Database) {
+  if (_testAccountsTableReady) return
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS test_accounts (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        developer_id TEXT NOT NULL,
+        email TEXT NOT NULL,
+        label TEXT,
+        created_at INTEGER NOT NULL,
+        UNIQUE(developer_id, email)
+      )`,
+    )
+    .run()
+  _testAccountsTableReady = true
+}
+
+// ============================================================================
+// App
+// ============================================================================
+
+const app = new Hono<{ Bindings: Env }>()
+
+// CORS — strict origin validation
+app.use(
+  '*',
+  cors({
+    origin: (origin) => {
+      if (!origin) return null
+      if (isTrustedOrigin(origin)) return origin
+      return null
+    },
+    credentials: true,
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+    exposeHeaders: ['Set-Cookie'],
+  }),
+)
+
+// ============================================================================
+// JWT Token + JWKS
+// ============================================================================
+
+app.get('/api/auth/jwks', (c) => {
+  return c.json({ publicKey: c.env.AUTH_JWT_PUBLIC_KEY }, 200, {
+    'Cache-Control': 'public, max-age=86400',
+  })
+})
+
+app.post('/api/auth/token', async (c) => {
+  const { session } = await getSession(c)
+  if (!session?.user) return c.json({ error: 'Unauthorized' }, 401)
+
+  const isTest = await isTestAccountUser(c.env.AUTH_DB, session.user.id)
+  const jwt = await issueJwt(c.env, session.user, isTest)
+
+  return c.json({ token: jwt })
+})
+
+// ============================================================================
+// CLI Login Flow
+// ============================================================================
+
 app.post('/api/auth/cli/session', async (c) => {
   await ensureCliTable(c.env.AUTH_DB)
 
@@ -161,23 +229,15 @@ app.post('/api/auth/cli/session', async (c) => {
     .bind(sessionId, 'pending', now)
     .run()
 
-  // Clean up expired sessions older than 10 minutes
   await c.env.AUTH_DB
     .prepare('DELETE FROM cli_sessions WHERE created_at < ?')
     .bind(now - CLI_SESSION_TTL_MS)
     .run()
 
-  // AUTH_BASE_URL may include /api/auth — extract origin for page URLs
   const origin = new URL(c.env.AUTH_BASE_URL).origin
-  const loginUrl = `${origin}/login/cli/${sessionId}`
-
-  return c.json({ sessionId, loginUrl })
+  return c.json({ sessionId, loginUrl: `${origin}/login/cli/${sessionId}` })
 })
 
-/**
- * GET /api/auth/cli/status/:sessionId
- * CLI polls this until status is 'complete'.
- */
 app.get('/api/auth/cli/status/:sessionId', async (c) => {
   const { sessionId } = c.req.param()
 
@@ -194,21 +254,15 @@ app.get('/api/auth/cli/status/:sessionId', async (c) => {
       created_at: number
     }>()
 
-  if (!row) {
-    return c.json({ error: 'Session not found' }, 404)
-  }
+  if (!row) return c.json({ error: 'Session not found' }, 404)
 
-  // Check expiry
   if (Date.now() - row.created_at > CLI_SESSION_TTL_MS) {
     await c.env.AUTH_DB.prepare('DELETE FROM cli_sessions WHERE id = ?').bind(sessionId).run()
     return c.json({ error: 'Session expired' }, 410)
   }
 
-  if (row.status === 'pending') {
-    return c.json({ status: 'pending' })
-  }
+  if (row.status === 'pending') return c.json({ status: 'pending' })
 
-  // Complete — return credentials and delete the session
   await c.env.AUTH_DB.prepare('DELETE FROM cli_sessions WHERE id = ?').bind(sessionId).run()
 
   return c.json({
@@ -220,10 +274,6 @@ app.get('/api/auth/cli/status/:sessionId', async (c) => {
   })
 })
 
-/**
- * GET /login/cli/:sessionId
- * Browser-facing login page. Shows "Sign in with GitHub / Google" buttons.
- */
 app.get('/login/cli/:sessionId', async (c) => {
   const { sessionId } = c.req.param()
 
@@ -236,9 +286,7 @@ app.get('/login/cli/:sessionId', async (c) => {
     return c.html('<h1>Session expired or not found</h1><p>Run <code>deepspace login</code> again.</p>', 404)
   }
 
-  if (row.status === 'complete') {
-    return c.html(loginCompletePage())
-  }
+  if (row.status === 'complete') return c.html(loginCompletePage())
 
   const hasGithub = !!(c.env.GITHUB_CLIENT_ID && c.env.GITHUB_CLIENT_SECRET)
   const hasGoogle = !!(c.env.GOOGLE_CLIENT_ID && c.env.GOOGLE_CLIENT_SECRET)
@@ -247,15 +295,9 @@ app.get('/login/cli/:sessionId', async (c) => {
   return c.html(loginPage(sessionId, origin, c.env.AUTH_BASE_URL, hasGithub, hasGoogle))
 })
 
-/**
- * GET /login/cli/:sessionId/complete
- * Better Auth redirects here after OAuth. Reads the session cookie,
- * issues a JWT, and marks the CLI session as complete.
- */
 app.get('/login/cli/:sessionId/complete', async (c) => {
   const { sessionId } = c.req.param()
 
-  // Verify CLI session exists and is pending
   const row = await c.env.AUTH_DB
     .prepare('SELECT status, created_at FROM cli_sessions WHERE id = ?')
     .bind(sessionId)
@@ -265,65 +307,22 @@ app.get('/login/cli/:sessionId/complete', async (c) => {
     return c.html('<h1>Session expired</h1><p>Run <code>deepspace login</code> again.</p>', 410)
   }
 
-  if (row.status === 'complete') {
-    return c.html(loginCompletePage())
-  }
+  if (row.status === 'complete') return c.html(loginCompletePage())
 
-  // Read Better Auth session from cookie
-  const auth = createDeepSpaceAuth({
-    database: c.env.AUTH_DB,
-    baseURL: c.env.AUTH_BASE_URL,
-    secret: c.env.BETTER_AUTH_SECRET,
-    google:
-      c.env.GOOGLE_CLIENT_ID && c.env.GOOGLE_CLIENT_SECRET
-        ? { clientId: c.env.GOOGLE_CLIENT_ID, clientSecret: c.env.GOOGLE_CLIENT_SECRET }
-        : undefined,
-    github:
-      c.env.GITHUB_CLIENT_ID && c.env.GITHUB_CLIENT_SECRET
-        ? { clientId: c.env.GITHUB_CLIENT_ID, clientSecret: c.env.GITHUB_CLIENT_SECRET }
-        : undefined,
-  })
-
+  const auth = createDeepSpaceAuth(authConfig(c.env, true))
   const session = await auth.api.getSession({ headers: c.req.raw.headers })
   if (!session?.user) {
     return c.html('<h1>Authentication failed</h1><p>Could not verify session. Run <code>deepspace login</code> again.</p>', 401)
   }
 
-  // Extract session token from cookie
   const cookieHeader = c.req.header('cookie') ?? ''
   const cookieMatch = cookieHeader.match(/__Secure-better-auth\.session_token=([^;]+)/)
-  // Also try non-secure cookie name (local dev)
   const cookieMatchDev = cookieHeader.match(/better-auth\.session_token=([^;]+)/)
   const sessionToken = cookieMatch?.[1] ?? cookieMatchDev?.[1] ?? ''
 
-  // Issue JWT
-  if (!cachedPrivateKey) {
-    const pem = c.env.JWT_PRIVATE_KEY.replace(/\\n/g, '\n')
-    cachedPrivateKey = await importPKCS8(pem, 'ES256')
-  }
+  const isTest = await isTestAccountUser(c.env.AUTH_DB, session.user.id)
+  const jwt = await issueJwt(c.env, session.user, isTest)
 
-  // Check if this is a test account
-  await ensureTestAccountsTable(c.env.AUTH_DB)
-  const cliTestRow = await c.env.AUTH_DB
-    .prepare('SELECT id FROM test_accounts WHERE user_id = ?')
-    .bind(session.user.id)
-    .first()
-
-  const jwt = await new SignJWT({
-    name: session.user.name,
-    email: session.user.email,
-    image: session.user.image,
-    ...(cliTestRow ? { isTestAccount: true } : {}),
-  })
-    .setProtectedHeader({ alg: 'ES256' })
-    .setSubject(session.user.id)
-    .setIssuer(c.env.AUTH_BASE_URL)
-    .setAudience('https://api.deep.space')
-    .setIssuedAt()
-    .setExpirationTime('5m')
-    .sign(cachedPrivateKey)
-
-  // Mark CLI session as complete
   await c.env.AUTH_DB
     .prepare(
       `UPDATE cli_sessions
@@ -340,32 +339,22 @@ app.get('/login/cli/:sessionId/complete', async (c) => {
 // App Social Login — redirect-based OAuth for deployed apps
 // ============================================================================
 
-/** Ensure auth_codes table exists (idempotent) */
-async function ensureAuthCodesTable(db: D1Database) {
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS auth_codes (
-        id TEXT PRIMARY KEY,
-        code TEXT,
-        return_to TEXT NOT NULL,
-        session_token TEXT,
-        created_at INTEGER NOT NULL
-      )`,
-    )
-    .run()
-}
-
-/**
- * GET /login/social?provider=google&returnTo=https://my-app.app.space
- * App redirects here. Auto-initiates OAuth on the auth worker's domain
- * so state cookies work correctly.
- */
 app.get('/login/social', async (c) => {
   const provider = c.req.query('provider')
   const returnTo = c.req.query('returnTo')
 
   if (!provider || !returnTo) {
     return c.html('<h1>Bad request</h1><p>Missing provider or returnTo.</p>', 400)
+  }
+
+  // Validate provider against allowlist (prevents XSS via template interpolation)
+  if (!ALLOWED_PROVIDERS.has(provider)) {
+    return c.html('<h1>Bad request</h1><p>Invalid provider.</p>', 400)
+  }
+
+  // Validate returnTo against trusted origins (prevents open redirect)
+  if (!isTrustedOrigin(returnTo)) {
+    return c.html('<h1>Bad request</h1><p>Untrusted return URL.</p>', 400)
   }
 
   await ensureAuthCodesTable(c.env.AUTH_DB)
@@ -376,16 +365,15 @@ app.get('/login/social', async (c) => {
     .bind(codeId, returnTo, Date.now())
     .run()
 
-  // Clean up expired entries
   await c.env.AUTH_DB
     .prepare('DELETE FROM auth_codes WHERE created_at < ?')
-    .bind(Date.now() - CLI_SESSION_TTL_MS)
+    .bind(Date.now() - AUTH_CODE_TTL_MS)
     .run()
 
   const origin = new URL(c.env.AUTH_BASE_URL).origin
   const authBaseURL = c.env.AUTH_BASE_URL
+  const providerLabel = provider === 'google' ? 'Google' : 'GitHub'
 
-  // Page that auto-initiates the OAuth redirect
   return c.html(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -400,7 +388,7 @@ app.get('/login/social', async (c) => {
   </style>
 </head>
 <body>
-  <p>Redirecting to ${provider === 'google' ? 'Google' : 'GitHub'}...</p>
+  <p>Redirecting to ${providerLabel}...</p>
   <script>
     (async () => {
       try {
@@ -408,8 +396,8 @@ app.get('/login/social', async (c) => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            provider: '${provider}',
-            callbackURL: '${origin}/login/social/complete?code_id=${codeId}'
+            provider: ${JSON.stringify(provider)},
+            callbackURL: ${JSON.stringify(`${origin}/login/social/complete?code_id=${codeId}`)}
           }),
           credentials: 'include'
         });
@@ -428,11 +416,6 @@ app.get('/login/social', async (c) => {
 </html>`)
 })
 
-/**
- * GET /login/social/complete?code_id=XXX
- * After OAuth callback, Better Auth redirects here.
- * Generates a one-time code and redirects back to the app.
- */
 app.get('/login/social/complete', async (c) => {
   const codeId = c.req.query('code_id')
   if (!codeId) return c.html('<h1>Bad request</h1>', 400)
@@ -442,11 +425,10 @@ app.get('/login/social/complete', async (c) => {
     .bind(codeId)
     .first<{ return_to: string; created_at: number }>()
 
-  if (!row || Date.now() - row.created_at > CLI_SESSION_TTL_MS) {
+  if (!row || Date.now() - row.created_at > AUTH_CODE_TTL_MS) {
     return c.html('<h1>Session expired</h1><p>Please try signing in again.</p>', 410)
   }
 
-  // Extract session token from cookie
   const cookieHeader = c.req.header('cookie') ?? ''
   const cookieMatch = cookieHeader.match(/__Secure-better-auth\.session_token=([^;]+)/)
   const cookieMatchDev = cookieHeader.match(/better-auth\.session_token=([^;]+)/)
@@ -456,7 +438,6 @@ app.get('/login/social/complete', async (c) => {
     return c.html('<h1>Authentication failed</h1><p>No session found. Please try again.</p>', 401)
   }
 
-  // Generate one-time exchange code
   const exchangeCode = crypto.randomUUID()
 
   await c.env.AUTH_DB
@@ -464,33 +445,34 @@ app.get('/login/social/complete', async (c) => {
     .bind(exchangeCode, decodeURIComponent(sessionToken), codeId)
     .run()
 
-  // Redirect back to the app's oauth-complete endpoint with the exchange code
   const returnUrl = new URL('/api/auth/oauth-complete', row.return_to)
   returnUrl.searchParams.set('code', exchangeCode)
 
   return c.redirect(returnUrl.toString())
 })
 
-/**
- * POST /api/auth/exchange-code
- * App worker exchanges a one-time code for a session token.
- */
 app.post('/api/auth/exchange-code', async (c) => {
-  const { code } = await c.req.json<{ code: string }>()
+  let body: { code?: string }
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'Invalid request body' }, 400)
+  }
+
+  if (!body.code) return c.json({ error: 'Missing code' }, 400)
 
   const row = await c.env.AUTH_DB
     .prepare('SELECT session_token, created_at FROM auth_codes WHERE code = ?')
-    .bind(code)
+    .bind(body.code)
     .first<{ session_token: string; created_at: number }>()
 
-  if (!row || Date.now() - row.created_at > CLI_SESSION_TTL_MS) {
+  if (!row || Date.now() - row.created_at > AUTH_CODE_TTL_MS) {
     return c.json({ error: 'Invalid or expired code' }, 400)
   }
 
-  // Delete the code (one-time use)
   await c.env.AUTH_DB
     .prepare('DELETE FROM auth_codes WHERE code = ?')
-    .bind(code)
+    .bind(body.code)
     .run()
 
   return c.json({ sessionToken: row.session_token })
@@ -500,7 +482,6 @@ app.post('/api/auth/exchange-code', async (c) => {
 // HTML Templates
 // ============================================================================
 
-/** Login page HTML */
 function loginPage(sessionId: string, origin: string, authBaseURL: string, hasGithub: boolean, hasGoogle: boolean): string {
   const buttons: string[] = []
   if (hasGithub) {
@@ -518,6 +499,8 @@ function loginPage(sessionId: string, origin: string, authBaseURL: string, hasGi
       </button>`)
   }
 
+  // sessionId is a server-generated UUID, origin and authBaseURL are from env — safe to interpolate.
+  // The signIn function parameter comes from button onclick with hardcoded provider strings.
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -576,12 +559,12 @@ function loginPage(sessionId: string, origin: string, authBaseURL: string, hasGi
   <script>
     async function signIn(provider) {
       try {
-        const res = await fetch('${authBaseURL}/sign-in/social', {
+        const res = await fetch(${JSON.stringify(authBaseURL)} + '/sign-in/social', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             provider,
-            callbackURL: '${origin}/login/cli/${sessionId}/complete'
+            callbackURL: ${JSON.stringify(`${origin}/login/cli/${sessionId}/complete`)}
           }),
           credentials: 'include'
         });
@@ -602,7 +585,6 @@ function loginPage(sessionId: string, origin: string, authBaseURL: string, hasGi
 </html>`
 }
 
-/** Login complete page HTML */
 function loginCompletePage(): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -656,55 +638,21 @@ function loginCompletePage(): string {
 }
 
 // ============================================================================
-// Test Account Management — developer-authenticated CRUD
+// Test Account Management
 // ============================================================================
 
-/** Ensure test_accounts table exists (idempotent, runs at most once per isolate) */
-let testAccountsTableReady = false
-async function ensureTestAccountsTable(db: D1Database) {
-  if (testAccountsTableReady) return
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS test_accounts (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        developer_id TEXT NOT NULL,
-        email TEXT NOT NULL,
-        label TEXT,
-        created_at INTEGER NOT NULL,
-        UNIQUE(developer_id, email)
-      )`,
-    )
-    .run()
-  testAccountsTableReady = true
-}
-
-/** Helper: get authenticated developer session or return 401 */
-async function getDeveloperSession(c: any) {
-  const auth = createDeepSpaceAuth({
-    database: c.env.AUTH_DB,
-    baseURL: c.env.AUTH_BASE_URL,
-    secret: c.env.BETTER_AUTH_SECRET,
-  })
-  const session = await auth.api.getSession({ headers: c.req.raw.headers })
-  return { auth, session }
-}
-
-/**
- * POST /api/auth/test-accounts
- * Create a test account. Requires developer session. Max 10 per developer.
- * Email must end with @deepspace.test.
- */
 app.post('/api/auth/test-accounts', async (c) => {
-  const { auth, session } = await getDeveloperSession(c)
+  const { auth, session } = await getSession(c)
   if (!session?.user) return c.json({ error: 'Unauthorized' }, 401)
 
-  const { email, password, name, label } = await c.req.json<{
-    email: string
-    password: string
-    name?: string
-    label?: string
-  }>()
+  let body: { email?: string; password?: string; name?: string; label?: string }
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'Invalid request body' }, 400)
+  }
+
+  const { email, password, name, label } = body
 
   if (!email?.endsWith('@deepspace.test')) {
     return c.json({ error: 'Test account emails must end with @deepspace.test' }, 400)
@@ -715,7 +663,7 @@ app.post('/api/auth/test-accounts', async (c) => {
 
   await ensureTestAccountsTable(c.env.AUTH_DB)
 
-  // Check limit BEFORE creating the Better Auth user to avoid orphaned users
+  // Check limit BEFORE creating the Better Auth user to avoid orphans
   const countRow = await c.env.AUTH_DB
     .prepare('SELECT COUNT(*) as cnt FROM test_accounts WHERE developer_id = ?')
     .bind(session.user.id)
@@ -739,8 +687,7 @@ app.post('/api/auth/test-accounts', async (c) => {
     return c.json({ error: 'Failed to create user' }, 500)
   }
 
-  // Atomically insert only if developer still has fewer than 10 test accounts.
-  // Double-check prevents races where concurrent requests all passed the count check above.
+  // Atomic insert enforcing the limit again to handle races
   const id = crypto.randomUUID()
   const now = Date.now()
 
@@ -754,32 +701,20 @@ app.post('/api/auth/test-accounts', async (c) => {
     .run()
 
   if (!insertResult.meta.changes) {
-    // Race: limit was hit between the count check and INSERT.
-    // Delete the orphaned Better Auth user.
-    try {
-      await c.env.AUTH_DB
-        .prepare('DELETE FROM user WHERE id = ?')
-        .bind(signUpResult.user.id)
-        .run()
-      await c.env.AUTH_DB
-        .prepare('DELETE FROM account WHERE userId = ?')
-        .bind(signUpResult.user.id)
-        .run()
-    } catch {
-      // Best effort cleanup
-    }
+    // Race lost — clean up the orphaned Better Auth user
+    await c.env.AUTH_DB.batch([
+      c.env.AUTH_DB.prepare('DELETE FROM session WHERE userId = ?').bind(signUpResult.user.id),
+      c.env.AUTH_DB.prepare('DELETE FROM account WHERE userId = ?').bind(signUpResult.user.id),
+      c.env.AUTH_DB.prepare('DELETE FROM user WHERE id = ?').bind(signUpResult.user.id),
+    ]).catch(() => {})
     return c.json({ error: 'Maximum 10 test accounts per developer' }, 429)
   }
 
   return c.json({ id, email, userId: signUpResult.user.id, label: label ?? null, createdAt: now }, 201)
 })
 
-/**
- * GET /api/auth/test-accounts
- * List the developer's test accounts.
- */
 app.get('/api/auth/test-accounts', async (c) => {
-  const { session } = await getDeveloperSession(c)
+  const { session } = await getSession(c)
   if (!session?.user) return c.json({ error: 'Unauthorized' }, 401)
 
   await ensureTestAccountsTable(c.env.AUTH_DB)
@@ -800,12 +735,8 @@ app.get('/api/auth/test-accounts', async (c) => {
   })
 })
 
-/**
- * DELETE /api/auth/test-accounts/:id
- * Delete a test account. Only the owning developer can delete.
- */
 app.delete('/api/auth/test-accounts/:id', async (c) => {
-  const { session } = await getDeveloperSession(c)
+  const { session } = await getSession(c)
   if (!session?.user) return c.json({ error: 'Unauthorized' }, 401)
 
   const { id } = c.req.param()
@@ -816,11 +747,9 @@ app.delete('/api/auth/test-accounts/:id', async (c) => {
     .bind(id, session.user.id)
     .first<{ user_id: string }>()
 
-  if (!row) {
-    return c.json({ error: 'Test account not found' }, 404)
-  }
+  if (!row) return c.json({ error: 'Test account not found' }, 404)
 
-  // Delete from test_accounts and the Better Auth user + sessions
+  // Delete test_accounts row + Better Auth user, sessions, accounts
   await c.env.AUTH_DB.batch([
     c.env.AUTH_DB.prepare('DELETE FROM test_accounts WHERE id = ?').bind(id),
     c.env.AUTH_DB.prepare('DELETE FROM session WHERE userId = ?').bind(row.user_id),
@@ -835,27 +764,13 @@ app.delete('/api/auth/test-accounts/:id', async (c) => {
 // Better Auth Routes — catch-all for /api/auth/*
 // ============================================================================
 
-// Block public email/password sign-up (no email verification).
-// Sign-in remains enabled for existing users and test accounts.
+// Block public email/password sign-up. Sign-in remains enabled.
 app.post('/api/auth/sign-up/email', (c) => {
   return c.json({ error: 'Public signup disabled. Use OAuth or create a test account.' }, 403)
 })
 
 app.on(['GET', 'POST'], '/api/auth/*', async (c) => {
-  const auth = createDeepSpaceAuth({
-    database: c.env.AUTH_DB,
-    baseURL: c.env.AUTH_BASE_URL,
-    secret: c.env.BETTER_AUTH_SECRET,
-    google:
-      c.env.GOOGLE_CLIENT_ID && c.env.GOOGLE_CLIENT_SECRET
-        ? { clientId: c.env.GOOGLE_CLIENT_ID, clientSecret: c.env.GOOGLE_CLIENT_SECRET }
-        : undefined,
-    github:
-      c.env.GITHUB_CLIENT_ID && c.env.GITHUB_CLIENT_SECRET
-        ? { clientId: c.env.GITHUB_CLIENT_ID, clientSecret: c.env.GITHUB_CLIENT_SECRET }
-        : undefined,
-  })
-
+  const auth = createDeepSpaceAuth(authConfig(c.env, true))
   return auth.handler(c.req.raw)
 })
 
@@ -865,15 +780,16 @@ app.on(['GET', 'POST'], '/api/auth/*', async (c) => {
 
 app.get('/health', (c) => c.json({ status: 'ok', service: 'deepspace-auth' }))
 
-/**
- * POST /_migrate — run Better Auth's built-in DB migrations.
- * Handles all tables including plugin columns (twoFactor, organization, etc.).
- * Only available in local dev (wrangler dev). Blocked in production.
- */
 app.post('/_migrate', async (c) => {
-  if (c.env.AUTH_BASE_URL && !c.env.AUTH_BASE_URL.includes('localhost')) {
-    return c.json({ error: 'Migrations disabled in production' }, 403)
+  try {
+    const hostname = new URL(c.env.AUTH_BASE_URL).hostname
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      return c.json({ error: 'Migrations disabled in production' }, 403)
+    }
+  } catch {
+    return c.json({ error: 'Invalid AUTH_BASE_URL' }, 500)
   }
+
   const { getMigrations } = await import('better-auth/db/migration')
   const { runMigrations } = await getMigrations({
     database: c.env.AUTH_DB,
