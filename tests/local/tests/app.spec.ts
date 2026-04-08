@@ -10,6 +10,8 @@ async function signIn(page: import('@playwright/test').Page) {
   await page.locator('[data-testid="nav-sign-in-button"]').click()
   const overlay = page.locator('[data-testid="auth-overlay"]')
   await expect(overlay).toBeVisible({ timeout: 5_000 })
+  // Expand the email/password form (hidden by default)
+  await overlay.locator('[data-testid="auth-email-toggle"]').click()
   await overlay.locator('input[type="email"]').fill('local-test@deepspace.test')
   await overlay.locator('input[type="password"]').fill('LocalTestPass123!')
   await overlay.locator('button[type="submit"]').click()
@@ -65,11 +67,26 @@ test.describe('App — sign-in flow', () => {
     await expect(page.locator('[data-testid="auth-overlay"]')).not.toBeAttached({ timeout: 5_000 })
   })
 
+  test('email form hidden by default, revealed on click', async ({ page }) => {
+    await page.goto(APP_URL, { waitUntil: 'networkidle' })
+    await page.locator('[data-testid="nav-sign-in-button"]').click()
+    const overlay = page.locator('[data-testid="auth-overlay"]')
+    await expect(overlay).toBeVisible({ timeout: 5_000 })
+    // Form hidden
+    await expect(overlay.locator('input[type="email"]')).not.toBeAttached()
+    // Click toggle
+    await overlay.locator('[data-testid="auth-email-toggle"]').click()
+    // Form visible
+    await expect(overlay.locator('input[type="email"]')).toBeVisible()
+    await expect(overlay.locator('input[type="password"]')).toBeVisible()
+  })
+
   test('sign-in with wrong credentials shows error', async ({ page }) => {
     await page.goto(APP_URL, { waitUntil: 'networkidle' })
     await page.locator('[data-testid="nav-sign-in-button"]').click()
     const overlay = page.locator('[data-testid="auth-overlay"]')
     await expect(overlay).toBeVisible({ timeout: 5_000 })
+    await overlay.locator('[data-testid="auth-email-toggle"]').click()
     await overlay.locator('input[type="email"]').fill('wrong@wrong.com')
     await overlay.locator('input[type="password"]').fill('wrongpassword')
     await overlay.locator('button[type="submit"]').click()

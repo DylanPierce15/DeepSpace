@@ -11,8 +11,16 @@
 
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { verifyJwt, verifyInternalSignature, RecordRoom, getGlobalDOSchemas } from 'deepspace/worker'
-import type { JwtVerifierConfig, VerifiedAuth } from 'deepspace/worker'
+import {
+  verifyJwt,
+  verifyInternalSignature,
+  RecordRoom,
+  getGlobalDOSchemas,
+  createScopedR2Handler,
+  computeHmacHex,
+  timingSafeEqualHex,
+} from 'deepspace/worker'
+import type { JwtVerifierConfig, VerifiedAuth, ScopedR2Handler } from 'deepspace/worker'
 
 // =============================================================================
 // Global RecordRoom DO — all cross-app schemas baked in
@@ -38,11 +46,13 @@ export class GlobalRecordRoom extends RecordRoom {
 interface Env {
   RECORD_ROOMS: DurableObjectNamespace
   SCHEMA_REGISTRY: R2Bucket
+  APP_FILES: R2Bucket
   AUTH_JWT_PUBLIC_KEY: string
   AUTH_JWT_ISSUER: string
   AUTH_JWT_AUDIENCE?: string
   AUTH_JWT_CLOCK_SKEW_MS?: string
   INTERNAL_STORAGE_HMAC_SECRET?: string
+  PLATFORM_IDENTITY_SECRET: string
 }
 
 // =============================================================================
@@ -149,6 +159,47 @@ app.all('/internal/tools/:scopeId/:action{.+}', async (c) => {
   if (userId) doUrl.searchParams.set('userId', userId)
   doUrl.searchParams.set('appAction', 'true')
   return stub.fetch(new Request(doUrl.toString(), { method: c.req.method, headers: c.req.raw.headers, body: bodyText }))
+})
+
+// ── Scoped R2 files (service-binding from app workers) ────────────────────────
+
+const fileHandlers: Record<string, ScopedR2Handler> = {}
+
+function getFilesHandler(appName: string): ScopedR2Handler {
+  if (!fileHandlers[appName]) {
+    fileHandlers[appName] = createScopedR2Handler({
+      resolvePrefix(scope, ctx) {
+        if (scope === 'app') return { prefix: `apps/${appName}/` }
+        if (!ctx.userId) return { error: 'Authentication required for user files' }
+        return { prefix: `apps/${appName}/users/${ctx.userId}/` }
+      },
+    })
+  }
+  return fileHandlers[appName]
+}
+
+app.all('/internal/files/*', async (c) => {
+  const identityToken = c.req.header('x-app-identity-token')
+  const appName = c.req.header('x-app-name')
+
+  if (!identityToken || !appName) {
+    return c.json({ error: 'Missing app identity' }, 401)
+  }
+
+  const expected = await computeHmacHex(c.env.PLATFORM_IDENTITY_SECRET, appName)
+  const valid = await timingSafeEqualHex(identityToken, expected)
+  if (!valid) {
+    return c.json({ error: 'Invalid app identity token' }, 403)
+  }
+
+  const userId = c.req.header('x-user-id') || null
+
+  // Rewrite /internal/files/... → /api/files/...
+  const url = new URL(c.req.url)
+  url.pathname = url.pathname.replace('/internal/files', '/api/files')
+
+  const handler = getFilesHandler(appName)
+  return handler(c.req.raw, url, c.env.APP_FILES, { userId })
 })
 
 // ── WebSocket → global RecordRoom DOs (conv, dir, workspace) ────────────────

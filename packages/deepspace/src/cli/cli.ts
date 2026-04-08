@@ -13,6 +13,7 @@ import { execSync } from 'node:child_process'
 import login from './commands/login'
 import dev from './commands/dev'
 import test from './commands/test'
+import testAccounts from './commands/test-accounts'
 import deploy from './commands/deploy'
 import undeploy from './commands/undeploy'
 import whoami from './commands/whoami'
@@ -49,6 +50,7 @@ const main = defineCommand({
     whoami,
     dev,
     test,
+    'test-accounts': testAccounts,
     add,
     deploy,
     undeploy,

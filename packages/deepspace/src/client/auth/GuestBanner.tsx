@@ -8,8 +8,8 @@
  * Ported from Miyagi3's GuestBanner, adapted for Better Auth:
  * - Removed isWidgetContext() check (no widget concept in DeepSpace)
  * - Removed useMobileBlocked() dependency
- * - Removed useAuthLauncher() — buttons call optional onSignIn/onSignUp
- *   callbacks (e.g. to open the AuthOverlay or navigate to an auth page)
+ * - Removed useAuthLauncher() — button calls optional onSignIn
+ *   callback (e.g. to open the AuthOverlay or navigate to an auth page)
  */
 
 import React, { useEffect, useState } from 'react'
@@ -24,15 +24,12 @@ export interface GuestBannerProps {
   storageKey?: string
   /** Called when the user clicks "Sign In". */
   onSignIn?: () => void
-  /** Called when the user clicks "Sign Up". */
-  onSignUp?: () => void
 }
 
 export function GuestBanner({
   message = DEFAULT_MESSAGE,
   storageKey = DEFAULT_STORAGE_KEY,
   onSignIn,
-  onSignUp,
 }: GuestBannerProps): React.ReactElement | null {
   const { isLoaded, isSignedIn } = useAuth()
   const [mounted, setMounted] = useState(false)
@@ -154,8 +151,8 @@ export function GuestBanner({
         >
           <button
             type="button"
-            data-testid="guest-banner-signup"
-            onClick={onSignUp}
+            data-testid="guest-banner-signin"
+            onClick={onSignIn}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -177,41 +174,6 @@ export function GuestBanner({
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.filter = 'brightness(1)'
-            }}
-          >
-            Sign Up
-          </button>
-
-          <button
-            type="button"
-            data-testid="guest-banner-signin"
-            onClick={onSignIn}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '7px 16px',
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 500,
-              fontFamily: 'inherit',
-              whiteSpace: 'nowrap',
-              cursor: 'pointer',
-              color: 'var(--theme-text-secondary, rgba(255,255,255,0.65))',
-              background: 'var(--theme-button-bg, rgba(255,255,255,0.07))',
-              border: '1px solid var(--theme-button-border, rgba(255,255,255,0.1))',
-              transition: 'background 0.15s ease, color 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background =
-                'var(--theme-button-hover, rgba(255,255,255,0.12))'
-              e.currentTarget.style.color = 'var(--theme-text, rgba(255,255,255,0.92))'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background =
-                'var(--theme-button-bg, rgba(255,255,255,0.07))'
-              e.currentTarget.style.color =
-                'var(--theme-text-secondary, rgba(255,255,255,0.65))'
             }}
           >
             Sign In

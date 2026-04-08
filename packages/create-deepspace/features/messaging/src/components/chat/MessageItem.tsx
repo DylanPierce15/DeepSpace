@@ -12,7 +12,7 @@ import type { Message } from 'deepspace'
 import type { RecordData } from 'deepspace'
 import type { GroupedReaction } from 'deepspace'
 import { UserProfilePopover } from './UserProfilePopover'
-import { useLongPress } from '../../hooks/useLongPress'
+import { useLongPress } from '../hooks/useLongPress'
 
 const QUICK_EMOJIS = ['\u{1F44D}', '\u2764\uFE0F', '\u{1F602}', '\u{1F389}', '\u{1F525}', '\u{1F440}']
 

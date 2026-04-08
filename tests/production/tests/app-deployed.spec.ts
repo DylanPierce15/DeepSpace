@@ -83,7 +83,7 @@ test.describe('Deployed app — anonymous browsing', () => {
   })
 })
 
-test.describe('Deployed app — sign-in', () => {
+test.describe('Deployed app — sign-in overlay', () => {
   test('clicking sign-in opens closeable modal', async ({ page }) => {
     await page.goto(APP_BASE, { waitUntil: 'networkidle' })
     await page.locator('[data-testid="nav-sign-in-button"]').click()
@@ -93,16 +93,32 @@ test.describe('Deployed app — sign-in', () => {
     await expect(page.locator('[data-testid="auth-overlay"]')).not.toBeAttached({ timeout: 5_000 })
   })
 
-  test('can switch between sign-in and sign-up modes', async ({ page }) => {
+  test('overlay shows OAuth buttons, email form hidden by default', async ({ page }) => {
     await page.goto(APP_BASE, { waitUntil: 'networkidle' })
     await page.locator('[data-testid="nav-sign-in-button"]').click()
     const overlay = page.locator('[data-testid="auth-overlay"]')
     await expect(overlay).toBeVisible({ timeout: 5_000 })
     await expect(overlay.getByText('Sign in to DeepSpace')).toBeVisible()
-    await overlay.getByText("Don't have an account? Sign up").click()
-    await expect(overlay.getByText('Create your account')).toBeVisible()
-    await overlay.getByText('Already have an account? Sign in').click()
-    await expect(overlay.getByText('Sign in to DeepSpace')).toBeVisible()
+    // OAuth buttons present
+    await expect(overlay.getByText('Continue with GitHub')).toBeVisible()
+    await expect(overlay.getByText('Continue with Google')).toBeVisible()
+    // Email form hidden until toggled
+    await expect(overlay.getByText('Sign in with email')).toBeVisible()
+    await expect(overlay.locator('input[type="email"]')).not.toBeAttached()
+    await expect(overlay.locator('input[type="password"]')).not.toBeAttached()
+    // No sign-up toggle
+    await expect(overlay.getByText(/sign up/i)).not.toBeVisible()
+  })
+
+  test('clicking "Sign in with email" reveals form', async ({ page }) => {
+    await page.goto(APP_BASE, { waitUntil: 'networkidle' })
+    await page.locator('[data-testid="nav-sign-in-button"]').click()
+    const overlay = page.locator('[data-testid="auth-overlay"]')
+    await expect(overlay).toBeVisible({ timeout: 5_000 })
+    await overlay.locator('[data-testid="auth-email-toggle"]').click()
+    await expect(overlay.locator('input[type="email"]')).toBeVisible()
+    await expect(overlay.locator('input[type="password"]')).toBeVisible()
+    await expect(overlay.locator('button[type="submit"]')).toBeVisible()
   })
 
   test('shows error for wrong credentials', async ({ page }) => {
@@ -110,17 +126,19 @@ test.describe('Deployed app — sign-in', () => {
     await page.locator('[data-testid="nav-sign-in-button"]').click()
     const overlay = page.locator('[data-testid="auth-overlay"]')
     await expect(overlay).toBeVisible({ timeout: 5_000 })
+    await overlay.locator('[data-testid="auth-email-toggle"]').click()
     await overlay.locator('input[type="email"]').fill('wrong@wrong.com')
     await overlay.locator('input[type="password"]').fill('wrongpassword')
     await overlay.locator('button[type="submit"]').click()
     await expect(overlay.getByText(/fail|invalid|error|not found/i)).toBeVisible({ timeout: 10_000 })
   })
 
-  test('successful sign-in replaces sign-in button with user info', async ({ page }) => {
+  test('successful email sign-in replaces sign-in button with user info', async ({ page }) => {
     await page.goto(APP_BASE, { waitUntil: 'networkidle' })
     await page.locator('[data-testid="nav-sign-in-button"]').click()
     const overlay = page.locator('[data-testid="auth-overlay"]')
     await expect(overlay).toBeVisible({ timeout: 5_000 })
+    await overlay.locator('[data-testid="auth-email-toggle"]').click()
     await overlay.locator('input[type="email"]').fill('e2e-test@deepspace.test')
     await overlay.locator('input[type="password"]').fill('TestPass123!')
     await overlay.locator('button[type="submit"]').click()

@@ -159,7 +159,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-// ── Legacy email/password login (for CI/agents) ────────────────────
+// ── Email/password login (for test accounts and CI) ────────────────
 
 async function doEmailLogin(email: string, password: string): Promise<void> {
   const res = await fetch(`${AUTH_URL}/api/auth/sign-in/email`, {
