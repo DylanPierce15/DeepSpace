@@ -4,7 +4,7 @@
  * State file: tests/e2e/.e2e-state.json
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync, rmSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { execSync } from 'node:child_process'
 
@@ -34,7 +34,7 @@ export function hasState(): boolean {
 }
 
 export function clearState(): void {
-  try { require('node:fs').rmSync(STATE_PATH) } catch {}
+  try { rmSync(STATE_PATH) } catch {}
 }
 
 export function run(cmd: string, cwd: string, env?: Record<string, string>) {

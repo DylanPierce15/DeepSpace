@@ -17,7 +17,7 @@
   },
   "requires": [],
   "instructions": [
-    "Add route in App.tsx: <Route path=\"/files\" element={<FileManagerPage />} />",
+    "Add route in App.tsx: <Route path=\"/file-manager\" element={<FileManagerPage />} />",
     "Add navigation link to your sidebar or topbar"
   ],
   "patterns": [

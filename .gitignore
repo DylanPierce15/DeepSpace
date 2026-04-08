@@ -44,13 +44,9 @@ e2e/test-results/
 e2e/playwright-report/
 tests/e2e/.auth-state.json
 tests/e2e/.app-name
+tests/e2e/.e2e-state.json
 tests/e2e/report/
 
 # DeepSpace local auth
 .deepspace/
 .test-apps/
-
-# E2E ephemeral state
-tests/e2e/.e2e-state.json
-tests/e2e/.app-name
-tests/e2e/.auth-state.json
