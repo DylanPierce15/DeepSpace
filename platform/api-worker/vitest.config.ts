@@ -21,17 +21,32 @@ function loadDevVars(): Record<string, string> {
 
 const devVars = loadDevVars()
 
+// Test ES256 key pair — used for signing JWTs in integration tests.
+// The corresponding private key is in test-helpers.ts.
+const TEST_JWT_PUBLIC_KEY = [
+  '-----BEGIN PUBLIC KEY-----',
+  'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEHdCNTlzfguOe6KiVagYksU5ZTrQ2',
+  '9qMZbXQJesZQOsFR7tdd4qSBuVzv+ZhxOdYmDwGbcCyA+9gdTpdqqFxEOw==',
+  '-----END PUBLIC KEY-----',
+].join('\n')
+
+const TEST_JWT_ISSUER = 'https://auth.test.deep.space'
+
 export default defineConfig({
   plugins: [
     cloudflareTest({
       wrangler: { configPath: './wrangler.toml' },
       miniflare: {
         bindings: {
-          AUTH_JWT_PUBLIC_KEY: devVars.AUTH_JWT_PUBLIC_KEY || 'test-public-key',
-          AUTH_JWT_ISSUER: devVars.AUTH_JWT_ISSUER || 'https://auth.test.deep.space',
+          // Always use the test key pair so test-helpers.ts can sign valid JWTs
+          AUTH_JWT_PUBLIC_KEY: TEST_JWT_PUBLIC_KEY,
+          AUTH_JWT_ISSUER: TEST_JWT_ISSUER,
           STRIPE_SECRET_KEY: devVars.STRIPE_SECRET_KEY || 'sk_test_fake',
           STRIPE_WEBHOOK_SECRET: devVars.STRIPE_WEBHOOK_SECRET || 'whsec_test_fake',
           STRIPE_PUBLISHABLE_KEY: devVars.STRIPE_PUBLISHABLE_KEY || 'pk_test_fake',
+          STRIPE_STARTER_MONTHLY_PRICE_ID: devVars.STRIPE_STARTER_MONTHLY_PRICE_ID || 'price_test_starter',
+          STRIPE_PREMIUM_MONTHLY_PRICE_ID: devVars.STRIPE_PREMIUM_MONTHLY_PRICE_ID || 'price_test_premium',
+          STRIPE_PAY_PER_CREDIT_PRICE_ID: devVars.STRIPE_PAY_PER_CREDIT_PRICE_ID || 'price_test_credit',
           OPENAI_API_KEY: devVars.OPENAI_API_KEY || 'sk-test-fake',
           FREEPIK_API_KEY: devVars.FREEPIK_API_KEY || 'fpk-test-fake',
           SERPAPI_API_KEY: devVars.SERPAPI_API_KEY || 'serp-test-fake',

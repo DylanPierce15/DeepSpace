@@ -52,14 +52,74 @@ export async function undeployApp(appName: string): Promise<void> {
   })
 }
 
-export async function createCheckoutSession(): Promise<{ url: string }> {
-  return authedFetch<{ url: string }>('/api/stripe/create-checkout-session', {
+// ============================================================================
+// Stripe
+// ============================================================================
+
+export interface StripeConfig {
+  enabled: boolean
+  publishableKey: string
+  priceIds: {
+    starter_monthly: string
+    premium_monthly: string
+    pay_per_credit: string
+  }
+  tierPriceCents: Record<string, number>
+}
+
+export interface SubscriptionStatus {
+  currentTier: string
+  status: string
+  hasActiveSubscription: boolean
+  pendingTier: string | null
+  pendingEffectiveDate: string | null
+  currentPeriodEnd: string | null
+}
+
+export async function fetchStripeConfig(): Promise<StripeConfig> {
+  const res = await fetch('/api/stripe/config')
+  if (!res.ok) throw new Error('Failed to fetch Stripe config')
+  return res.json() as Promise<StripeConfig>
+}
+
+export async function fetchSubscriptionStatus(): Promise<SubscriptionStatus> {
+  return authedFetch<SubscriptionStatus>('/api/stripe/subscription-status')
+}
+
+export async function createCheckoutSession(priceId: string): Promise<{ url: string; sessionId: string }> {
+  return authedFetch<{ url: string; sessionId: string }>('/api/stripe/create-checkout-session', {
     method: 'POST',
+    body: JSON.stringify({ priceId, returnUrl: window.location.origin + '/billing' }),
+  })
+}
+
+export async function upgradeSubscription(targetPriceId: string): Promise<{
+  success: boolean
+  message: string
+  previousTier: string
+  newTier: string
+  charged: number
+  newCredits: number
+}> {
+  return authedFetch('/api/stripe/upgrade', {
+    method: 'POST',
+    body: JSON.stringify({ targetPriceId }),
+  })
+}
+
+export async function createCreditCheckout(quantity?: number): Promise<{ url: string; sessionId: string }> {
+  return authedFetch<{ url: string; sessionId: string }>('/api/stripe/create-credit-checkout', {
+    method: 'POST',
+    body: JSON.stringify({
+      quantity: quantity ?? 1,
+      returnUrl: window.location.origin + '/billing',
+    }),
   })
 }
 
 export async function createPortalSession(): Promise<{ url: string }> {
   return authedFetch<{ url: string }>('/api/stripe/create-portal-session', {
     method: 'POST',
+    body: JSON.stringify({ returnUrl: window.location.origin + '/billing' }),
   })
 }

@@ -4,7 +4,7 @@
 
 import { Hono } from 'hono'
 import Stripe from 'stripe'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import type { Env } from '../worker'
 import { authMiddleware } from '../middleware/auth'
 import { userProfiles, stripeInvoices } from '../db/schema'
@@ -17,14 +17,37 @@ import { getDb } from '../worker'
 
 type SubscriptionTier = 'free' | 'starter' | 'premium' | 'admin'
 
-const STRIPE_PRICE_IDS = {
-  starter_monthly: 'price_starter_monthly',
-  premium_monthly: 'price_premium_monthly',
-} as const
+/** Tier prices in cents — matches Miyagi3 */
+const TIER_PRICE_CENTS: Record<SubscriptionTier, number> = {
+  free: 0,
+  starter: 1399,
+  premium: 3399,
+  admin: 0,
+}
 
-const PRICE_TO_TIER_MAP: Record<string, SubscriptionTier> = {
-  [STRIPE_PRICE_IDS.starter_monthly]: 'starter',
-  [STRIPE_PRICE_IDS.premium_monthly]: 'premium',
+const TIER_ORDER: Record<SubscriptionTier, number> = {
+  free: 0,
+  starter: 1,
+  premium: 2,
+  admin: 3,
+}
+
+/** Returns price IDs from env bindings — must be called per-request. */
+function getStripePriceIds(env: Env['Bindings']) {
+  return {
+    starter_monthly: env.STRIPE_STARTER_MONTHLY_PRICE_ID,
+    premium_monthly: env.STRIPE_PREMIUM_MONTHLY_PRICE_ID,
+    pay_per_credit: env.STRIPE_PAY_PER_CREDIT_PRICE_ID,
+  }
+}
+
+/** Builds the price-ID-to-tier map dynamically from env. */
+function buildPriceToTierMap(env: Env['Bindings']): Record<string, SubscriptionTier> {
+  const ids = getStripePriceIds(env)
+  const map: Record<string, SubscriptionTier> = {}
+  if (ids.starter_monthly) map[ids.starter_monthly] = 'starter'
+  if (ids.premium_monthly) map[ids.premium_monthly] = 'premium'
+  return map
 }
 
 function creditsForTier(tier: string | null | undefined): number {
@@ -49,10 +72,12 @@ const stripe = new Hono<Env>()
 // ============================================================================
 
 stripe.get('/config', (c) => {
+  const priceIds = getStripePriceIds(c.env)
   return c.json({
     enabled: !!c.env.STRIPE_SECRET_KEY,
     publishableKey: c.env.STRIPE_PUBLISHABLE_KEY ?? '',
-    priceIds: STRIPE_PRICE_IDS,
+    priceIds,
+    tierPriceCents: TIER_PRICE_CENTS,
   })
 })
 
@@ -66,7 +91,9 @@ stripe.post('/create-checkout-session', authMiddleware, async (c) => {
   const userId = c.get('userId')
   const { priceId, returnUrl } = await c.req.json<{ priceId: string; returnUrl?: string }>()
 
-  if (!priceId || !Object.values(STRIPE_PRICE_IDS).includes(priceId as any)) {
+  const priceIds = getStripePriceIds(c.env)
+  const validPriceIds = [priceIds.starter_monthly, priceIds.premium_monthly]
+  if (!priceId || !validPriceIds.includes(priceId)) {
     return c.json({ error: 'Invalid price ID' }, 400)
   }
 
@@ -82,6 +109,173 @@ stripe.post('/create-checkout-session', authMiddleware, async (c) => {
     cancel_url: resolvedReturnUrl,
     metadata: { userId },
     subscription_data: { metadata: { userId } },
+  })
+
+  return c.json({ sessionId: session.id, url: session.url })
+})
+
+// ============================================================================
+// POST /upgrade — Mid-month subscription upgrade (JWT auth)
+// ============================================================================
+
+stripe.post('/upgrade', authMiddleware, async (c) => {
+  const stripeClient = getStripe(c.env)
+  const db = getDb(c.env)
+  const userId = c.get('userId')
+  const { targetPriceId } = await c.req.json<{ targetPriceId: string }>()
+
+  const priceToTier = buildPriceToTierMap(c.env)
+
+  if (!targetPriceId || !priceToTier[targetPriceId]) {
+    return c.json({ error: 'Invalid target price ID' }, 400)
+  }
+
+  const [profile] = await db
+    .select()
+    .from(userProfiles)
+    .where(eq(userProfiles.id, userId))
+    .limit(1)
+
+  if (!profile?.stripeSubscriptionId || !profile?.stripeCustomerId) {
+    return c.json({ error: 'No active subscription to upgrade. Please subscribe first.' }, 400)
+  }
+
+  const subscription = await stripeClient.subscriptions.retrieve(
+    profile.stripeSubscriptionId,
+    { expand: ['default_payment_method'] },
+  )
+  if (subscription.status !== 'active') {
+    return c.json({ error: 'Subscription is not active' }, 400)
+  }
+
+  const currentPriceId = subscription.items.data[0]?.price?.id
+  const currentTier = (currentPriceId ? priceToTier[currentPriceId] : null) ?? 'free'
+  const targetTier = priceToTier[targetPriceId]
+
+  const currentCents = TIER_PRICE_CENTS[currentTier]
+  const targetCents = TIER_PRICE_CENTS[targetTier]
+  if (targetCents <= currentCents) {
+    return c.json({ error: 'Can only upgrade to a higher tier. Use the customer portal for downgrades.' }, 400)
+  }
+
+  // Resolve payment method
+  let paymentMethodId: string | null = null
+  if (subscription.default_payment_method) {
+    paymentMethodId = typeof subscription.default_payment_method === 'string'
+      ? subscription.default_payment_method
+      : subscription.default_payment_method.id
+  }
+  if (!paymentMethodId) {
+    const customer = await stripeClient.customers.retrieve(profile.stripeCustomerId)
+    if (!customer.deleted && customer.invoice_settings?.default_payment_method) {
+      paymentMethodId = typeof customer.invoice_settings.default_payment_method === 'string'
+        ? customer.invoice_settings.default_payment_method
+        : customer.invoice_settings.default_payment_method.id
+    }
+  }
+  if (!paymentMethodId) {
+    return c.json({ error: 'No payment method found. Please update your payment method and try again.' }, 400)
+  }
+
+  const priceDiffCents = targetCents - currentCents
+  const newCredits = subscriptionTierToCredits(targetTier)
+
+  // Create one-off invoice for the price difference
+  const invoice = await stripeClient.invoices.create({
+    customer: profile.stripeCustomerId,
+    auto_advance: false,
+    collection_method: 'charge_automatically',
+    metadata: {
+      type: 'upgrade',
+      userId,
+      fromTier: currentTier,
+      toTier: targetTier,
+    },
+  })
+
+  await stripeClient.invoiceItems.create({
+    customer: profile.stripeCustomerId,
+    invoice: invoice.id,
+    amount: priceDiffCents,
+    currency: 'usd',
+    description: `Upgrade from ${currentTier} to ${targetTier}`,
+  })
+
+  // Finalize and pay immediately
+  try {
+    await stripeClient.invoices.finalizeInvoice(invoice.id)
+    await stripeClient.invoices.pay(invoice.id, { payment_method: paymentMethodId })
+  } catch (payError) {
+    await stripeClient.invoices.voidInvoice(invoice.id)
+    console.error(`Upgrade payment failed for user ${userId}:`, payError)
+    return c.json({ error: 'Payment failed. Please check your payment method and try again.' }, 400)
+  }
+
+  // Update Stripe subscription item to new price
+  const subscriptionItemId = subscription.items.data[0]?.id
+  if (subscriptionItemId) {
+    await stripeClient.subscriptions.update(subscription.id, {
+      items: [{ id: subscriptionItemId, price: targetPriceId }],
+      proration_behavior: 'none',
+      metadata: { userId },
+    })
+  }
+
+  // Update local profile
+  await db
+    .update(userProfiles)
+    .set({
+      subscriptionTier: targetTier,
+      subscriptionCredits: newCredits,
+      updatedAt: new Date(),
+    })
+    .where(eq(userProfiles.id, userId))
+
+  console.log(`Upgraded user ${userId}: ${currentTier} -> ${targetTier}, charged $${(priceDiffCents / 100).toFixed(2)}`)
+
+  return c.json({
+    success: true,
+    message: `Upgraded to ${targetTier}. Charged $${(priceDiffCents / 100).toFixed(2)}.`,
+    previousTier: currentTier,
+    newTier: targetTier,
+    charged: priceDiffCents,
+    newCredits,
+  })
+})
+
+// ============================================================================
+// POST /create-credit-checkout — Pay-per-credit purchase (JWT auth)
+// ============================================================================
+
+stripe.post('/create-credit-checkout', authMiddleware, async (c) => {
+  const stripeClient = getStripe(c.env)
+  const db = getDb(c.env)
+  const userId = c.get('userId')
+  const { quantity, returnUrl } = await c.req.json<{ quantity?: number; returnUrl?: string }>()
+
+  const priceIds = getStripePriceIds(c.env)
+  if (!priceIds.pay_per_credit) {
+    return c.json({ error: 'Pay-per-credit is not configured' }, 503)
+  }
+
+  const resolvedQuantity = quantity && quantity > 0 ? quantity : 1
+  const customer = await getOrCreateStripeCustomer(stripeClient, db, userId)
+  const resolvedReturnUrl = returnUrl || 'https://deep.space/'
+
+  const session = await stripeClient.checkout.sessions.create({
+    customer: customer.id,
+    payment_method_types: ['card'],
+    line_items: [{ price: priceIds.pay_per_credit, quantity: resolvedQuantity }],
+    mode: 'payment',
+    success_url: resolvedReturnUrl,
+    cancel_url: resolvedReturnUrl,
+    metadata: { userId, payPerCredit: 'true' },
+    invoice_creation: {
+      enabled: true,
+      invoice_data: {
+        metadata: { userId, payPerCredit: 'true' },
+      },
+    },
   })
 
   return c.json({ sessionId: session.id, url: session.url })
@@ -125,6 +319,105 @@ stripe.get('/credits-available', authMiddleware, async (c) => {
 })
 
 // ============================================================================
+// GET /subscription-status — JWT auth
+// ============================================================================
+
+stripe.get('/subscription-status', authMiddleware, async (c) => {
+  const stripeClient = getStripe(c.env)
+  const db = getDb(c.env)
+  const userId = c.get('userId')
+  const priceToTier = buildPriceToTierMap(c.env)
+
+  const [profile] = await db
+    .select()
+    .from(userProfiles)
+    .where(eq(userProfiles.id, userId))
+    .limit(1)
+
+  if (!profile) {
+    return c.json({
+      currentTier: 'free',
+      status: 'free',
+      hasActiveSubscription: false,
+      pendingTier: null,
+      pendingEffectiveDate: null,
+      currentPeriodEnd: null,
+    })
+  }
+
+  if (!profile.stripeSubscriptionId) {
+    return c.json({
+      currentTier: profile.subscriptionTier ?? 'free',
+      status: profile.subscriptionStatus ?? 'free',
+      hasActiveSubscription: false,
+      pendingTier: null,
+      pendingEffectiveDate: null,
+      currentPeriodEnd: null,
+    })
+  }
+
+  let pendingTier: string | null = null
+  let pendingEffectiveDate: string | null = null
+
+  try {
+    const subscription = await stripeClient.subscriptions.retrieve(
+      profile.stripeSubscriptionId,
+      { expand: ['schedule'] },
+    )
+
+    // Check subscription schedule for pending changes (e.g. downgrade at period end)
+    if (subscription.schedule && typeof subscription.schedule !== 'string') {
+      const phases = subscription.schedule.phases
+      if (phases && phases.length > 1) {
+        const nextPhase = phases[1]
+        const nextPriceId = typeof nextPhase.items?.[0]?.price === 'string'
+          ? nextPhase.items[0].price
+          : (nextPhase.items?.[0]?.price as any)?.id
+        if (nextPriceId && priceToTier[nextPriceId]) {
+          const nextTier = priceToTier[nextPriceId]
+          if (nextTier !== profile.subscriptionTier) {
+            pendingTier = nextTier
+            pendingEffectiveDate = nextPhase.start_date
+              ? new Date(nextPhase.start_date * 1000).toISOString()
+              : null
+          }
+        }
+      }
+    }
+
+    // Check cancel_at_period_end (downgrade to free)
+    if (subscription.cancel_at_period_end) {
+      pendingTier = 'free'
+      const periodEnd = subscription.items?.data?.[0]?.current_period_end
+      pendingEffectiveDate = periodEnd
+        ? new Date(periodEnd * 1000).toISOString()
+        : null
+    }
+
+    return c.json({
+      currentTier: profile.subscriptionTier ?? 'free',
+      status: subscription.status,
+      hasActiveSubscription: subscription.status === 'active',
+      pendingTier,
+      pendingEffectiveDate,
+      currentPeriodEnd: subscription.current_period_end
+        ? new Date(subscription.current_period_end * 1000).toISOString()
+        : null,
+    })
+  } catch (err) {
+    console.warn('Failed to fetch subscription from Stripe:', err)
+    return c.json({
+      currentTier: profile.subscriptionTier ?? 'free',
+      status: profile.subscriptionStatus ?? 'free',
+      hasActiveSubscription: profile.subscriptionStatus === 'active',
+      pendingTier: null,
+      pendingEffectiveDate: null,
+      currentPeriodEnd: null,
+    })
+  }
+})
+
+// ============================================================================
 // POST /webhook — raw body, no auth
 // ============================================================================
 
@@ -140,7 +433,8 @@ stripe.post('/webhook', async (c) => {
 
   let event: Stripe.Event
   try {
-    event = stripeClient.webhooks.constructEvent(rawBody, sig!, c.env.STRIPE_WEBHOOK_SECRET)
+    // Must use constructEventAsync — Cloudflare Workers use SubtleCrypto (async only)
+    event = await stripeClient.webhooks.constructEventAsync(rawBody, sig!, c.env.STRIPE_WEBHOOK_SECRET)
   } catch (err) {
     console.error('Webhook signature verification failed:', err)
     return c.text(`Webhook Error: ${err}`, 400)
@@ -151,7 +445,7 @@ stripe.post('/webhook', async (c) => {
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription
-        await handleSubscriptionUpdate(stripeClient, db, subscription)
+        await handleSubscriptionUpdate(stripeClient, db, subscription, c.env)
         break
       }
 
@@ -161,9 +455,16 @@ stripe.post('/webhook', async (c) => {
         break
       }
 
+      case 'invoice.payment_succeeded':
       case 'invoice.paid': {
         const invoice = event.data.object as Stripe.Invoice
-        await handleInvoicePaid(db, invoice)
+        await handleInvoicePaid(stripeClient, db, invoice)
+        break
+      }
+
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object as Stripe.Invoice
+        await handleInvoicePaymentFailed(stripeClient, db, invoice)
         break
       }
 
@@ -225,10 +526,82 @@ async function getOrCreateStripeCustomer(
   return customer
 }
 
+// ============================================================================
+// Invoice helpers — resolving userId and subscriptionId from invoices
+// ============================================================================
+
+/** Extract subscription ID from an invoice via multiple strategies. */
+function getSubscriptionIdFromInvoice(invoice: Stripe.Invoice): string | null {
+  // Direct subscription field
+  if (invoice.subscription) {
+    return typeof invoice.subscription === 'string'
+      ? invoice.subscription
+      : (invoice.subscription as any).id
+  }
+
+  // Check parent.subscription_details (newer API versions)
+  const parentSub = (invoice as any).parent?.subscription_details?.subscription
+  if (parentSub) return parentSub
+
+  // Check line items
+  for (const line of invoice.lines?.data || []) {
+    if ((line as any).subscription) {
+      return (line as any).subscription
+    }
+    const nestedSub = (line as any).parent?.subscription_item_details?.subscription
+    if (nestedSub) return nestedSub
+  }
+
+  return null
+}
+
+/** Resolve the userId for an invoice using multiple strategies. */
+async function resolveUserIdFromInvoice(
+  stripeClient: Stripe,
+  db: ReturnType<typeof getDb>,
+  invoice: Stripe.Invoice,
+): Promise<string | null> {
+  // Strategy 1: Invoice metadata
+  const metaUserId = (invoice.metadata as any)?.userId as string | undefined
+  if (metaUserId) return metaUserId
+
+  // Strategy 2: Subscription metadata
+  const subscriptionId = getSubscriptionIdFromInvoice(invoice)
+  if (subscriptionId) {
+    try {
+      const sub = await stripeClient.subscriptions.retrieve(subscriptionId)
+      const subUserId = (sub.metadata as any)?.userId as string | undefined
+      if (subUserId) return subUserId
+    } catch {
+      // subscription may have been deleted
+    }
+  }
+
+  // Strategy 3: Look up customer in our database
+  const customerId = typeof invoice.customer === 'string'
+    ? invoice.customer
+    : invoice.customer?.id
+  if (customerId) {
+    const [profile] = await db
+      .select({ id: userProfiles.id })
+      .from(userProfiles)
+      .where(eq(userProfiles.stripeCustomerId, customerId))
+      .limit(1)
+    if (profile) return profile.id
+  }
+
+  return null
+}
+
+// ============================================================================
+// Webhook handlers
+// ============================================================================
+
 async function handleSubscriptionUpdate(
   stripeClient: Stripe,
   db: ReturnType<typeof getDb>,
   subscription: Stripe.Subscription,
+  env: Env['Bindings'],
 ): Promise<void> {
   const userId = (subscription.metadata as any)?.userId as string | undefined
   if (!userId) {
@@ -236,8 +609,9 @@ async function handleSubscriptionUpdate(
     return
   }
 
+  const priceToTier = buildPriceToTierMap(env)
   const priceId = subscription.items.data[0]?.price?.id
-  const tier = priceId ? PRICE_TO_TIER_MAP[priceId] || 'free' : 'free'
+  const tier = priceId ? priceToTier[priceId] || 'free' : 'free'
   const firstItem = subscription.items.data[0] as any
   const periodEnd = firstItem?.current_period_end
     ? new Date(firstItem.current_period_end * 1000)
@@ -289,11 +663,13 @@ async function handleSubscriptionDeleted(
 }
 
 async function handleInvoicePaid(
+  stripeClient: Stripe,
   db: ReturnType<typeof getDb>,
   invoice: Stripe.Invoice,
 ): Promise<void> {
-  const userId = (invoice.metadata as any)?.userId as string | undefined
+  const userId = await resolveUserIdFromInvoice(stripeClient, db, invoice)
 
+  // Record the invoice
   await db
     .insert(stripeInvoices)
     .values({
@@ -304,21 +680,94 @@ async function handleInvoicePaid(
       amountDue: invoice.amount_due,
       amountPaid: invoice.amount_paid,
       status: 'paid',
-      creditsPurchased: invoice.metadata?.credits
-        ? parseFloat(invoice.metadata.credits)
-        : null,
+      creditsPurchased: null,
     })
     .onConflictDoUpdate({
       target: stripeInvoices.id,
       set: {
         amountPaid: invoice.amount_paid,
         status: 'paid',
-        creditsPurchased: invoice.metadata?.credits
-          ? parseFloat(invoice.metadata.credits)
-          : undefined,
         updatedAt: new Date(),
       },
     })
+
+  if (!userId) {
+    console.warn(`Could not resolve userId for invoice ${invoice.id}`)
+    return
+  }
+
+  // Determine if this is a pay-per-credit invoice
+  const isPayPerCredit = (invoice.metadata as any)?.payPerCredit === 'true'
+  const hasSubscription = !!getSubscriptionIdFromInvoice(invoice)
+
+  if (isPayPerCredit || (!hasSubscription && invoice.amount_paid > 0)) {
+    // Check if we already processed this invoice (idempotency)
+    const [existing] = await db
+      .select({ status: stripeInvoices.status, creditsPurchased: stripeInvoices.creditsPurchased })
+      .from(stripeInvoices)
+      .where(eq(stripeInvoices.id, invoice.id))
+      .limit(1)
+
+    if (existing?.creditsPurchased && existing.creditsPurchased > 0) {
+      console.log(`Invoice ${invoice.id} already processed for credits, skipping`)
+      return
+    }
+
+    const creditsToAdd = dollarsToCredits(invoice.amount_paid / 100)
+    if (creditsToAdd <= 0) return
+
+    await db
+      .update(userProfiles)
+      .set({
+        purchasedCredits: sql`coalesce(${userProfiles.purchasedCredits}, 0) + ${creditsToAdd}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(userProfiles.id, userId))
+
+    // Mark credits on the invoice record
+    await db
+      .update(stripeInvoices)
+      .set({ creditsPurchased: creditsToAdd, updatedAt: new Date() })
+      .where(eq(stripeInvoices.id, invoice.id))
+
+    console.log(`Added ${creditsToAdd} purchased credits for user ${userId} (invoice ${invoice.id})`)
+  }
+}
+
+async function handleInvoicePaymentFailed(
+  stripeClient: Stripe,
+  db: ReturnType<typeof getDb>,
+  invoice: Stripe.Invoice,
+): Promise<void> {
+  const userId = await resolveUserIdFromInvoice(stripeClient, db, invoice)
+
+  await db
+    .insert(stripeInvoices)
+    .values({
+      id: invoice.id,
+      userId: userId ?? null,
+      stripeCustomerId:
+        typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id ?? null,
+      amountDue: invoice.amount_due,
+      amountPaid: 0,
+      status: 'payment_failed',
+    })
+    .onConflictDoUpdate({
+      target: stripeInvoices.id,
+      set: {
+        status: 'payment_failed',
+        updatedAt: new Date(),
+      },
+    })
+
+  if (userId) {
+    await db
+      .update(userProfiles)
+      .set({ subscriptionStatus: 'past_due', updatedAt: new Date() })
+      .where(eq(userProfiles.id, userId))
+
+    console.warn(`Payment failed for user ${userId}, invoice ${invoice.id}`)
+  }
 }
 
 export default stripe
