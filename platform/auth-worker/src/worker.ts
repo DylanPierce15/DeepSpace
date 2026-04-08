@@ -659,8 +659,10 @@ function loginCompletePage(): string {
 // Test Account Management — developer-authenticated CRUD
 // ============================================================================
 
-/** Ensure test_accounts table exists (idempotent) */
+/** Ensure test_accounts table exists (idempotent, runs at most once per isolate) */
+let testAccountsTableReady = false
 async function ensureTestAccountsTable(db: D1Database) {
+  if (testAccountsTableReady) return
   await db
     .prepare(
       `CREATE TABLE IF NOT EXISTS test_accounts (
@@ -674,6 +676,7 @@ async function ensureTestAccountsTable(db: D1Database) {
       )`,
     )
     .run()
+  testAccountsTableReady = true
 }
 
 /** Helper: get authenticated developer session or return 401 */
@@ -712,6 +715,16 @@ app.post('/api/auth/test-accounts', async (c) => {
 
   await ensureTestAccountsTable(c.env.AUTH_DB)
 
+  // Check limit BEFORE creating the Better Auth user to avoid orphaned users
+  const countRow = await c.env.AUTH_DB
+    .prepare('SELECT COUNT(*) as cnt FROM test_accounts WHERE developer_id = ?')
+    .bind(session.user.id)
+    .first<{ cnt: number }>()
+
+  if (countRow && countRow.cnt >= 10) {
+    return c.json({ error: 'Maximum 10 test accounts per developer' }, 429)
+  }
+
   // Create user via Better Auth's internal API
   let signUpResult: any
   try {
@@ -726,8 +739,8 @@ app.post('/api/auth/test-accounts', async (c) => {
     return c.json({ error: 'Failed to create user' }, 500)
   }
 
-  // Atomically insert only if developer has fewer than 10 test accounts.
-  // This prevents races where concurrent requests all read count=9.
+  // Atomically insert only if developer still has fewer than 10 test accounts.
+  // Double-check prevents races where concurrent requests all passed the count check above.
   const id = crypto.randomUUID()
   const now = Date.now()
 
@@ -741,6 +754,20 @@ app.post('/api/auth/test-accounts', async (c) => {
     .run()
 
   if (!insertResult.meta.changes) {
+    // Race: limit was hit between the count check and INSERT.
+    // Delete the orphaned Better Auth user.
+    try {
+      await c.env.AUTH_DB
+        .prepare('DELETE FROM user WHERE id = ?')
+        .bind(signUpResult.user.id)
+        .run()
+      await c.env.AUTH_DB
+        .prepare('DELETE FROM account WHERE userId = ?')
+        .bind(signUpResult.user.id)
+        .run()
+    } catch {
+      // Best effort cleanup
+    }
     return c.json({ error: 'Maximum 10 test accounts per developer' }, 429)
   }
 
@@ -793,11 +820,13 @@ app.delete('/api/auth/test-accounts/:id', async (c) => {
     return c.json({ error: 'Test account not found' }, 404)
   }
 
-  // Delete from test_accounts (leave the Better Auth user — it's harmless without sign-up access)
-  await c.env.AUTH_DB
-    .prepare('DELETE FROM test_accounts WHERE id = ?')
-    .bind(id)
-    .run()
+  // Delete from test_accounts and the Better Auth user + sessions
+  await c.env.AUTH_DB.batch([
+    c.env.AUTH_DB.prepare('DELETE FROM test_accounts WHERE id = ?').bind(id),
+    c.env.AUTH_DB.prepare('DELETE FROM session WHERE userId = ?').bind(row.user_id),
+    c.env.AUTH_DB.prepare('DELETE FROM account WHERE userId = ?').bind(row.user_id),
+    c.env.AUTH_DB.prepare('DELETE FROM user WHERE id = ?').bind(row.user_id),
+  ])
 
   return c.json({ deleted: true })
 })
