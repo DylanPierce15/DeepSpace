@@ -45,7 +45,7 @@ export const authMiddleware = createMiddleware<Env>(async (c, next) => {
  * Test accounts get tier 'test' with 0 credits.
  * Regular users get tier 'free' with 500 credits.
  */
-async function ensureBillingProfile(
+export async function ensureBillingProfile(
   env: Env['Bindings'],
   userId: string,
   claims: Record<string, unknown>,

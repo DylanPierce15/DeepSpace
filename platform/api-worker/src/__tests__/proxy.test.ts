@@ -132,6 +132,89 @@ describe('AI proxy routes', () => {
       const body = await res.json() as any
       expect(body.error).toMatch(/Insufficient credits/i)
     })
+
+    it('rejects when credits cover < estimated worst-case cost', async () => {
+      // 1 credit ≈ $0.01. Sonnet output is $0.000015/tok with 1.3x markup.
+      // A request with max_tokens=100000 worst-cases at:
+      //   100_000 * 0.000015 * 1.3 ≈ $1.95 ≈ 195 credits
+      // A user with only 5 credits should be rejected before any upstream call.
+      await insertProfile({
+        subscriptionCredits: 5,
+        purchasedCredits: 0,
+        bonusCreditsRemaining: 0,
+      })
+
+      const res = await authedFetch(
+        '/api/proxy/anthropic/v1/messages',
+        'proxy-test-user',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 100_000,
+            messages: [{ role: 'user', content: 'hi' }],
+          }),
+        },
+      )
+      expect(res.status).toBe(402)
+      const body = await res.json() as { error: string; required: number; available: number }
+      expect(body.error).toMatch(/Insufficient credits/i)
+      expect(body.available).toBe(5)
+      expect(body.required).toBeGreaterThan(5)
+    })
+
+    it('rejects X-Billing-User-Id from an end-user JWT (abuse vector)', async () => {
+      // A signed-in "attacker" with zero credits must not be able to charge
+      // another user by setting X-Billing-User-Id. Only internal/service
+      // callers (HMAC-signed or service binding) may override the billing
+      // subject.
+      const db = getDb()
+      const now = new Date()
+      await db.insert(userProfiles).values([
+        {
+          id: 'attacker',
+          subscriptionTier: 'free',
+          subscriptionCredits: 0,
+          purchasedCredits: 0,
+          bonusCreditsRemaining: 0,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: 'victim',
+          subscriptionTier: 'premium',
+          subscriptionCredits: 4250,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ])
+
+      const token = await signTestJwt('attacker')
+      const res = await SELF.fetch('https://fake-host/api/proxy/anthropic/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          'X-Billing-User-Id': 'victim',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 10,
+          messages: [{ role: 'user', content: 'hi' }],
+        }),
+      })
+
+      // Attacker is broke, so if the header is ignored they hit the 402 gate.
+      // If the header were honored, they'd pass the gate and hit upstream.
+      expect(res.status).toBe(402)
+
+      // And no usage row should be attributed to the victim.
+      const rows = await db
+        .select()
+        .from(integrationUsage)
+        .where(eq(integrationUsage.userId, 'victim'))
+      expect(rows.length).toBe(0)
+    })
   })
 
   // ========================================================================
@@ -322,61 +405,40 @@ describe('AI proxy routes', () => {
         expect(res.status).toBeGreaterThanOrEqual(400)
       }
     })
-  })
 
-  // ========================================================================
-  // X-Billing-User-Id header
-  // ========================================================================
-
-  describe('billing user override', () => {
-    it.skipIf(!hasRealKey('ANTHROPIC_API_KEY'))(
-      'charges the X-Billing-User-Id user instead of the caller',
-      async () => {
-        // Create two users: caller and billing target
-        const db = getDb()
-        const now = new Date()
-        await db.insert(userProfiles).values([
-          {
-            id: 'caller-user',
-            subscriptionTier: 'starter',
-            subscriptionCredits: 1600,
-            createdAt: now,
-            updatedAt: now,
-          },
-          {
-            id: 'billing-target-user',
-            subscriptionTier: 'premium',
-            subscriptionCredits: 4250,
-            createdAt: now,
-            updatedAt: now,
-          },
-        ])
-
-        const token = await signTestJwt('caller-user')
-        await SELF.fetch('https://fake-host/api/proxy/anthropic/v1/messages', {
+    it('strips content-encoding and content-length from forwarded responses', async () => {
+      // Cloudflare auto-decodes upstream gzip/br, so the upstream
+      // content-encoding header would no longer match the body bytes we
+      // re-emit. Returning it would make clients fail to decode plain text.
+      // content-length is similarly stale after we read & re-emit the body.
+      await insertProfile()
+      const res = await authedFetch(
+        '/api/proxy/anthropic/v1/messages',
+        'proxy-test-user',
+        {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-            'X-Billing-User-Id': 'billing-target-user',
-          },
           body: JSON.stringify({
-            model: 'claude-haiku-4-5-20251001',
+            model: 'claude-sonnet-4-20250514',
             max_tokens: 10,
-            messages: [{ role: 'user', content: 'Say "hello" and nothing else.' }],
+            messages: [{ role: 'user', content: 'test' }],
           }),
-        })
+        },
+      )
 
-        // Usage should be recorded against billing-target-user
-        const rows = await db
-          .select()
-          .from(integrationUsage)
-          .where(eq(integrationUsage.userId, 'billing-target-user'))
-
-        expect(rows.length).toBeGreaterThanOrEqual(1)
-        expect(rows[0].callerUserId).toBe('caller-user')
-      },
-      30_000,
-    )
+      expect(res.headers.get('content-encoding')).toBeNull()
+      // content-length may be re-set by the runtime; if present it must match
+      // the actual decoded body length, not whatever upstream said.
+      const len = res.headers.get('content-length')
+      if (len !== null) {
+        const body = await res.clone().text()
+        expect(parseInt(len, 10)).toBe(new TextEncoder().encode(body).length)
+      }
+    })
   })
+
+  // ========================================================================
+  // Billing always uses the JWT subject — X-Billing-User-Id is NOT honored.
+  // To bill a different user (e.g. the app owner for autonomous server-side
+  // calls), use a JWT whose subject is that user (e.g. APP_OWNER_JWT).
+  // ========================================================================
 })

@@ -29,8 +29,6 @@ import {
   CanvasRoom,
   MediaRoom,
   PresenceRoom,
-  createScopedR2Handler,
-  type ScopedR2Handler,
 } from 'deepspace/worker'
 import type { ActionTools, ActionResult, DOManifest, DOBindings } from 'deepspace/worker'
 import { streamText } from 'ai'
@@ -82,6 +80,13 @@ interface Env extends DOBindings<typeof __DO_MANIFEST__> {
   AUTH_WORKER_URL: string
   APP_NAME: string
   OWNER_USER_ID: string
+  /**
+   * Long-lived JWT minted for the app owner at deploy time. Server-side
+   * code (actions, cron, AI helpers) uses this to authenticate to the
+   * api-worker for developer-billed calls — the owner is billed because
+   * they are the JWT subject.
+   */
+  APP_OWNER_JWT: string
   INTERNAL_STORAGE_HMAC_SECRET: string
 }
 
@@ -199,13 +204,16 @@ app.all('/api/integrations/:name/:endpoint', async (c) => {
     'Content-Type': c.req.header('Content-Type') ?? 'application/json',
   }
 
-  // Forward the caller's JWT for API worker auth
-  const token = c.req.header('Authorization')?.slice(7)
-  if (token) headers['Authorization'] = `Bearer ${token}`
-
-  // Bill the owner for developer-pays integrations, otherwise bill the user
+  // Pick the JWT whose subject is the user we want billed:
+  //   - developer-billed → the app owner (via APP_OWNER_JWT)
+  //   - user-billed      → the caller (forward their Bearer token)
+  // The api-worker bills the JWT subject; it does not accept any
+  // client-supplied billing override.
   if (billingMode === 'developer') {
-    headers['X-Billing-User-Id'] = c.env.OWNER_USER_ID
+    headers['Authorization'] = `Bearer ${c.env.APP_OWNER_JWT}`
+  } else {
+    const token = c.req.header('Authorization')?.slice(7)
+    if (token) headers['Authorization'] = `Bearer ${token}`
   }
 
   const hasBody = c.req.method !== 'GET' && c.req.method !== 'HEAD'
@@ -282,7 +290,8 @@ app.post('/api/actions/:name', async (c) => {
   const action = actions[name]
   if (!action) return c.json({ error: 'Action not found' }, 404)
   const params = await c.req.json<Record<string, unknown>>()
-  const tools = createActionTools(c.env, auth.userId)
+  const callerJwt = c.req.header('Authorization')!.slice(7)
+  const tools = createActionTools(c.env, auth.userId, callerJwt)
   const result = await action({ userId: auth.userId, params, tools })
   return c.json(result as unknown as Record<string, unknown>)
 })
@@ -339,21 +348,6 @@ app.post('/api/ai/chat', async (c) => {
 // ---------------------------------------------------------------------------
 // Scoped R2 files → platform-worker
 // ---------------------------------------------------------------------------
-
-const r2Handlers: Record<string, ScopedR2Handler> = {}
-
-function getR2Handler(env: Env): ScopedR2Handler {
-  if (!r2Handlers[env.APP_NAME]) {
-    r2Handlers[env.APP_NAME] = createScopedR2Handler({
-      resolvePrefix(scope, ctx) {
-        if (scope === 'app') return { prefix: `apps/${env.APP_NAME}/` }
-        if (!ctx.userId) return { error: 'Authentication required for user files' }
-        return { prefix: `apps/${env.APP_NAME}/users/${ctx.userId}/` }
-      },
-    })
-  }
-  return r2Handlers[env.APP_NAME]
-}
 
 app.all('/api/files/*', async (c) => {
   const auth = await resolveAuth(c.req.raw, c.env)
@@ -428,7 +422,7 @@ app.get('*', async (c) => {
 // Action Tools — route to app's own RecordRoom DO
 // =============================================================================
 
-function createActionTools(env: Env, userId: string): ActionTools {
+function createActionTools(env: Env, userId: string, callerJwt: string): ActionTools {
   const scopeId = `app:${env.APP_NAME}`
 
   async function execTool(tool: string, params: Record<string, unknown>): Promise<ActionResult> {
@@ -450,16 +444,16 @@ function createActionTools(env: Env, userId: string): ActionTools {
     const integrationName = endpoint.split('/')[0]
     const billingMode = integrations[integrationName]?.billing ?? 'developer'
 
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    if (billingMode === 'developer') {
-      headers['X-Billing-User-Id'] = env.OWNER_USER_ID
-    } else {
-      headers['X-Billing-User-Id'] = userId
-    }
+    // Use the owner JWT for developer-billed calls, the caller's JWT otherwise.
+    // The api-worker bills the JWT subject — no client-supplied override.
+    const jwt = billingMode === 'developer' ? env.APP_OWNER_JWT : callerJwt
 
     const res = await env.API_WORKER.fetch(`https://api-worker/api/integrations/${endpoint}`, {
       method: 'POST',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${jwt}`,
+      },
       body: data != null ? JSON.stringify(data) : undefined,
     })
     return res.json() as Promise<ActionResult>

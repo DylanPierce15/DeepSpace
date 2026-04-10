@@ -34,7 +34,7 @@
 
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createOpenAI } from '@ai-sdk/openai'
-import { createCerebras } from '@ai-sdk/cerebras'
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 
 type Provider = 'anthropic' | 'openai' | 'cerebras'
 
@@ -55,11 +55,13 @@ export interface DeepSpaceAIOptions {
   /**
    * Explicit auth token for this call. Use this for user-initiated flows
    * where the caller's own JWT should be billed. If omitted, the helper
-   * falls back to `env.APP_OWNER_JWT`.
+   * falls back to `env.APP_OWNER_JWT` (bills the app owner).
+   *
+   * Billing is always against the JWT subject — to bill a different user,
+   * pass a JWT whose subject is that user. The proxy does not accept any
+   * client-supplied billing override.
    */
   authToken?: string
-  /** Override the billing user (defaults to the JWT subject). */
-  billingUserId?: string
 }
 
 /**
@@ -94,13 +96,12 @@ export function createDeepSpaceAI(
 
     const headers = new Headers(init?.headers)
     // Strip the AI SDK's provider-auth headers (Authorization for OpenAI/
-    // Cerebras/Groq, x-api-key for Anthropic). They carry our placeholder
+    // Cerebras, x-api-key for Anthropic). They carry our placeholder
     // apiKey value 'platform-managed' which would collide with the proxy's
     // JWT auth below and fail verifyJwt.
     headers.delete('authorization')
     headers.delete('x-api-key')
     headers.set('X-Auth-Token', authToken)
-    if (options.billingUserId) headers.set('X-Billing-User-Id', options.billingUserId)
 
     if (transport.kind === 'binding') {
       return transport.fetcher.fetch(url, { ...init, headers } as RequestInit)
@@ -119,11 +120,35 @@ export function createDeepSpaceAI(
 
   switch (provider) {
     case 'anthropic':
+      // Anthropic always returns usage in both streaming and non-streaming
+      // responses, so no extra config is needed.
       return createAnthropic({ baseURL, apiKey: 'platform-managed', fetch: proxyFetch })
+
     case 'openai':
-      return createOpenAI({ baseURL, apiKey: 'platform-managed', fetch: proxyFetch })
+      // `compatibility: 'strict'` makes the SDK send `stream_options.include_usage: true`
+      // on streaming requests. Without it, OpenAI's streaming responses
+      // contain zero usage data — the proxy would extract 0 tokens and
+      // bill nothing.
+      return createOpenAI({
+        baseURL,
+        apiKey: 'platform-managed',
+        fetch: proxyFetch,
+        compatibility: 'strict',
+      })
+
     case 'cerebras':
-      return createCerebras({ baseURL, apiKey: 'platform-managed', fetch: proxyFetch })
+      // `createCerebras` doesn't expose `includeUsage`, so use the underlying
+      // openai-compatible primitive directly. Same wire format Cerebras's own
+      // wrapper produces, but with `include_usage` flipped on so streaming
+      // responses carry token counts.
+      return createOpenAICompatible({
+        name: 'cerebras',
+        baseURL,
+        apiKey: 'platform-managed',
+        fetch: proxyFetch,
+        includeUsage: true,
+      })
+
     default: {
       const _exhaustive: never = provider
       throw new Error(`Unknown provider: ${String(_exhaustive)}`)
