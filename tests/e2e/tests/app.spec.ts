@@ -81,9 +81,10 @@ test.describe('Deployed app — R2 file storage', () => {
     })
     expect(delRes.status()).toBe(200)
 
-    // Verify it's gone
+    // Verify it's gone — platform worker uses safeJson so 404 is in the body
     const dl2Res = await authedRequest.fetch(`${base}/api/files/${upload.key}?scope=self`)
-    expect(dl2Res.status()).toBe(404)
+    const dl2Body = await dl2Res.json() as { status: number }
+    expect(dl2Body.status).toBe(404)
   })
 })
 

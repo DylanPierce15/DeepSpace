@@ -28,6 +28,12 @@ import type { Context } from 'hono'
  * Return a Hono JSON response with HTTP 200 but the real status encoded in
  * the body as `status`. Always prefer this over `c.json(data, nonOkStatus)`
  * in worker code that may be called via the Vite dev plugin.
+ *
+ * WARNING: `data` must not contain a top-level `status` field — it will be
+ * silently overwritten by the numeric HTTP status this helper injects. If
+ * you need to express domain state, use a different name (e.g. `state`,
+ * `subscriptionStatus`). Nested `status` fields inside arrays or sub-objects
+ * are unaffected.
  */
 export function safeJson<T extends Record<string, unknown>>(
   c: Context,
