@@ -26,6 +26,33 @@ deploy.post('/:appName', authMiddleware, async (c) => {
     return c.json({ error: 'App name must be 2-63 characters, lowercase alphanumeric with hyphens' }, 400)
   }
 
+  // Mint the long-lived app-owner JWT via the auth-worker. The deploy-worker
+  // forwards its own authenticated caller JWT so the auth-worker knows which
+  // user to bind the token to. The resulting JWT is then baked into the
+  // deployed app's env as APP_OWNER_JWT for server-side LLM / integration
+  // calls that run without a user context (cron, DO alarms, autonomous
+  // agents). See auth-worker `/api/auth/mint-app-token`.
+  const callerBearer = c.req.header('Authorization') ?? ''
+  if (!callerBearer.startsWith('Bearer ')) {
+    return c.json({ error: 'Missing caller JWT for token minting' }, 401)
+  }
+  const mintRes = await fetch(`${c.env.AUTH_WORKER_URL}/api/auth/mint-app-token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: callerBearer,
+    },
+    body: JSON.stringify({ appName }),
+  })
+  if (!mintRes.ok) {
+    const err = await mintRes.text().catch(() => '')
+    return c.json({ error: `Failed to mint app owner JWT (${mintRes.status}): ${err}` }, 500)
+  }
+  const { token: appOwnerJwt } = (await mintRes.json()) as { token?: string }
+  if (!appOwnerJwt) {
+    return c.json({ error: 'Auth worker returned empty app owner JWT' }, 500)
+  }
+
   // Check ownership: either new app or user owns it
   const registryKey = `app-registry/${appName}.json`
   const existing = await c.env.APP_REGISTRY.get(registryKey)
@@ -115,6 +142,7 @@ deploy.post('/:appName', authMiddleware, async (c) => {
       authWorkerUrl: c.env.AUTH_WORKER_URL,
       hmacSecret: c.env.INTERNAL_HMAC_SECRET,
       platformIdentitySecret: c.env.PLATFORM_IDENTITY_SECRET,
+      appOwnerJwt,
       doManifest,
     },
   )

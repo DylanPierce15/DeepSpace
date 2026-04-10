@@ -38,6 +38,17 @@ const TOKEN_PRICING: Record<string, { input: number; output: number }> = {
   'gpt-4.1': { input: 0.000002, output: 0.000008 },
   'gpt-4.1-mini': { input: 0.0000004, output: 0.0000016 },
   'gpt-4.1-nano': { input: 0.0000001, output: 0.0000004 },
+  // Groq (public pricing as of late 2025)
+  'llama-3.1-8b-instant': { input: 0.00000005, output: 0.00000008 },
+  'llama-3.3-70b-versatile': { input: 0.00000059, output: 0.00000079 },
+  'openai/gpt-oss-20b': { input: 0.0000001, output: 0.0000005 },
+  'openai/gpt-oss-120b': { input: 0.0000015, output: 0.0000075 },
+  'moonshotai/kimi-k2-instruct': { input: 0.000001, output: 0.000003 },
+  // Cerebras (public pricing as of late 2025 — very fast, very cheap)
+  'llama3.1-8b': { input: 0.0000001, output: 0.0000001 },
+  'llama-3.3-70b': { input: 0.00000085, output: 0.0000012 },
+  'qwen-3-32b': { input: 0.0000004, output: 0.0000008 },
+  'qwen-3-235b-a22b-instruct-2507': { input: 0.0000006, output: 0.0000012 },
 }
 
 // Fallback pricing when model not in the map
@@ -116,6 +127,83 @@ const PROVIDERS: Record<string, ProviderConfig> = {
       headers.delete('authorization')
       headers.delete('x-api-key')
       headers.set('authorization', `Bearer ${env.OPENAI_API_KEY}`)
+    },
+    extractUsage(body: unknown): UsageData {
+      const b = body as Record<string, any> | null
+      return {
+        inputTokens: b?.usage?.prompt_tokens ?? 0,
+        outputTokens: b?.usage?.completion_tokens ?? 0,
+        model: b?.model ?? 'unknown',
+      }
+    },
+    extractStreamingUsage(accumulated: string): UsageData {
+      let inputTokens = 0
+      let outputTokens = 0
+      let model = 'unknown'
+      for (const line of accumulated.split('\n')) {
+        if (!line.startsWith('data: ') || line === 'data: [DONE]') continue
+        try {
+          const data = JSON.parse(line.slice(6))
+          if (data.model) model = data.model
+          if (data.usage) {
+            inputTokens = data.usage.prompt_tokens ?? inputTokens
+            outputTokens = data.usage.completion_tokens ?? outputTokens
+          }
+        } catch { /* skip non-JSON lines */ }
+      }
+      return { inputTokens, outputTokens, model }
+    },
+  },
+
+  // Groq exposes an OpenAI-compatible API at https://api.groq.com/openai/v1.
+  // Auth is Bearer-token. Usage shape matches OpenAI chat-completions.
+  groq: {
+    baseUrl: 'https://api.groq.com/openai',
+    apiKeyEnvVar: 'GROQ_API_KEY',
+    setAuthHeaders(headers, env) {
+      headers.delete('authorization')
+      headers.delete('x-api-key')
+      headers.set('authorization', `Bearer ${env.GROQ_API_KEY}`)
+    },
+    extractUsage(body: unknown): UsageData {
+      const b = body as Record<string, any> | null
+      return {
+        inputTokens: b?.usage?.prompt_tokens ?? 0,
+        outputTokens: b?.usage?.completion_tokens ?? 0,
+        model: b?.model ?? 'unknown',
+      }
+    },
+    extractStreamingUsage(accumulated: string): UsageData {
+      let inputTokens = 0
+      let outputTokens = 0
+      let model = 'unknown'
+      for (const line of accumulated.split('\n')) {
+        if (!line.startsWith('data: ') || line === 'data: [DONE]') continue
+        try {
+          const data = JSON.parse(line.slice(6))
+          if (data.model) model = data.model
+          // Groq puts usage on `x_groq.usage` in the last chunk, and also in
+          // the standard `usage` field on some models.
+          const usage = data?.x_groq?.usage ?? data?.usage
+          if (usage) {
+            inputTokens = usage.prompt_tokens ?? inputTokens
+            outputTokens = usage.completion_tokens ?? outputTokens
+          }
+        } catch { /* skip non-JSON lines */ }
+      }
+      return { inputTokens, outputTokens, model }
+    },
+  },
+
+  // Cerebras exposes an OpenAI-compatible API at https://api.cerebras.ai/v1.
+  // Auth is Bearer-token. Usage shape matches OpenAI chat-completions.
+  cerebras: {
+    baseUrl: 'https://api.cerebras.ai',
+    apiKeyEnvVar: 'CEREBRAS_API_KEY',
+    setAuthHeaders(headers, env) {
+      headers.delete('authorization')
+      headers.delete('x-api-key')
+      headers.set('authorization', `Bearer ${env.CEREBRAS_API_KEY}`)
     },
     extractUsage(body: unknown): UsageData {
       const b = body as Record<string, any> | null
@@ -360,5 +448,7 @@ const proxyAuth = createMiddleware<Env>(async (c, next) => {
 
 proxy.all('/anthropic/*', proxyAuth, createProxyHandler('anthropic'))
 proxy.all('/openai/*', proxyAuth, createProxyHandler('openai'))
+proxy.all('/groq/*', proxyAuth, createProxyHandler('groq'))
+proxy.all('/cerebras/*', proxyAuth, createProxyHandler('cerebras'))
 
 export default proxy

@@ -40,15 +40,20 @@ export default defineCommand({
       process.exit(1)
     }
 
-    // Always write .dev.vars pointing to dev workers
-    let ownerId = 'test-owner'
+    // Always write .dev.vars pointing to dev workers. A logged-in user is
+    // required so writeDevVars can mint APP_OWNER_JWT via the auth-worker.
+    let token: string
+    let ownerId: string
     try {
-      const token = await ensureToken()
+      token = await ensureToken()
       const payload = JSON.parse(atob(token.split('.')[1]))
       ownerId = payload.sub
-    } catch { /* Not logged in — use default */ }
+    } catch (err) {
+      console.error('`deepspace test` requires you to be logged in. Run `deepspace login` first.')
+      process.exit(1)
+    }
 
-    await writeDevVars(appDir, 'dev', ownerId)
+    await writeDevVars(appDir, 'dev', ownerId, token)
 
     if (suite !== 'unit') {
       ensurePlaywright(appDir)

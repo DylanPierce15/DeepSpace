@@ -9,7 +9,7 @@
 import { Hono, type Context } from 'hono'
 import { cors } from 'hono/cors'
 import { SignJWT, importPKCS8 } from 'jose'
-import { createDeepSpaceAuth } from 'deepspace/worker'
+import { createDeepSpaceAuth, verifyJwt } from 'deepspace/worker'
 
 // ============================================================================
 // Types
@@ -97,6 +97,39 @@ async function issueJwt(env: Env, user: { id: string; name: string; email: strin
     .setAudience('https://api.deep.space')
     .setIssuedAt()
     .setExpirationTime('5m')
+    .sign(key)
+}
+
+/**
+ * Issue a long-lived JWT scoped to a specific app, used by deployed apps to
+ * authenticate server-side (autonomous) calls to the DeepSpace API worker
+ * without holding a user session token.
+ *
+ * - sub: owner user id → bills the owner automatically via proxyAuth
+ * - scope: app:<appName> → makes clear this is app-bound, not a general session
+ * - exp: 10 years → functionally permanent from the app's perspective
+ * - jti: random UUID → available for future revocation lists
+ */
+async function issueAppOwnerJwt(
+  env: Env,
+  user: { id: string; name: string; email: string },
+  appName: string,
+): Promise<string> {
+  const key = await getPrivateKey(env)
+  const TEN_YEARS_SECONDS = 60 * 60 * 24 * 365 * 10
+  return new SignJWT({
+    name: user.name,
+    email: user.email,
+    scope: `app:${appName}`,
+    app_name: appName,
+  })
+    .setProtectedHeader({ alg: 'ES256' })
+    .setSubject(user.id)
+    .setIssuer(env.AUTH_BASE_URL)
+    .setAudience('https://api.deep.space')
+    .setIssuedAt()
+    .setExpirationTime(Math.floor(Date.now() / 1000) + TEN_YEARS_SECONDS)
+    .setJti(crypto.randomUUID())
     .sign(key)
 }
 
@@ -212,6 +245,74 @@ app.post('/api/auth/token', async (c) => {
   const jwt = await issueJwt(c.env, session.user, isTest)
 
   return c.json({ token: jwt })
+})
+
+/**
+ * Mint a long-lived app-owner JWT for a deployed or locally-developing app.
+ *
+ * Called by `deepspace dev` (writes into .dev.vars) and by the deploy-worker
+ * at deploy time (injects as APP_OWNER_JWT secret). The resulting token has
+ * `sub = ownerUserId` and a 10-year expiry, so server-side code in the app
+ * (cron handlers, DO alarm loops) can call the API worker proxy without any
+ * further auth plumbing.
+ *
+ * Accepts either:
+ *   - a browser session cookie (CLI calls via login flow), OR
+ *   - a Bearer JWT in the Authorization header (deploy-worker calls
+ *     server-to-server using the user's verified JWT).
+ */
+app.post('/api/auth/mint-app-token', async (c) => {
+  // Resolve the caller's user id from either a session cookie or a Bearer JWT.
+  let callerUser:
+    | { id: string; name: string; email: string; image?: string | null }
+    | null = null
+
+  const bearer = c.req.header('Authorization')
+  if (bearer?.startsWith('Bearer ')) {
+    const token = bearer.slice(7)
+    const { result } = await verifyJwt(
+      {
+        publicKey: c.env.AUTH_JWT_PUBLIC_KEY,
+        issuer: `${c.env.AUTH_BASE_URL}/api/auth`,
+      },
+      token,
+    )
+    if (result) {
+      callerUser = {
+        id: result.userId,
+        name: (result.claims.name as string | undefined) ?? 'Unknown',
+        email: (result.claims.email as string | undefined) ?? '',
+        image: (result.claims.image as string | null | undefined) ?? null,
+      }
+    }
+  }
+
+  if (!callerUser) {
+    const { session } = await getSession(c)
+    if (session?.user) callerUser = session.user
+  }
+
+  if (!callerUser) {
+    return c.json({ token: null, error: 'Unauthorized' }, 401)
+  }
+
+  let body: { appName?: string }
+  try {
+    body = await c.req.json<{ appName?: string }>()
+  } catch {
+    return c.json({ token: null, error: 'Invalid JSON body' }, 400)
+  }
+
+  const appName = body.appName?.trim()
+  if (!appName) {
+    return c.json({ token: null, error: 'appName is required' }, 400)
+  }
+  if (!/^[a-z0-9][a-z0-9_-]{0,63}$/i.test(appName)) {
+    return c.json({ token: null, error: 'appName must be 1-64 chars, alphanumeric + _ -' }, 400)
+  }
+
+  const jwt = await issueAppOwnerJwt(c.env, callerUser, appName)
+  return c.json({ token: jwt, appName, ownerUserId: callerUser.id })
 })
 
 // ============================================================================

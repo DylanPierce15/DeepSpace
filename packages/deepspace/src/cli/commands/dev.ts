@@ -61,7 +61,7 @@ export default defineCommand({
     console.log(`Logged in as ${payload.name ?? payload.email}`)
     console.log(`Environment: ${env}`)
 
-    await writeDevVars(appDir, env, payload.sub)
+    await writeDevVars(appDir, env, payload.sub, token)
     console.log('Starting dev server...\n')
 
     const vite = spawn('npx', ['vite'], { cwd: appDir, stdio: 'inherit' })

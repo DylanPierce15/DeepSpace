@@ -31,6 +31,8 @@ export type Env = {
     // Integration API keys
     OPENAI_API_KEY: string
     ANTHROPIC_API_KEY: string
+    GROQ_API_KEY: string
+    CEREBRAS_API_KEY: string
     FREEPIK_API_KEY: string
     SERPAPI_API_KEY: string
     OPENWEATHER_API_KEY: string

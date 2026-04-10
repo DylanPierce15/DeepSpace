@@ -20,7 +20,7 @@ import {
   verifyJwt,
   verifyInternalSignature,
   buildInternalPayload,
-  createDeepSpaceAIFromBinding,
+  createDeepSpaceAI,
 } from 'deepspace/worker'
 import type { JwtVerifierConfig, VerifyResult } from 'deepspace/worker'
 import {
@@ -302,7 +302,7 @@ app.post('/api/ai/chat', async (c) => {
 
   const jwt = c.req.header('Authorization')!.slice(7)
 
-  const anthropic = createDeepSpaceAIFromBinding(c.env.API_WORKER, 'anthropic', { authToken: jwt })
+  const anthropic = createDeepSpaceAI(c.env, 'anthropic', { authToken: jwt })
 
   // Read-only tools that execute against the app's RecordRoom DO
   const scopeId = `app:${c.env.APP_NAME}`
