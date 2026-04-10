@@ -2,7 +2,7 @@
  * AI provider helpers — create Vercel AI SDK providers that route through
  * the DeepSpace API worker proxy for per-user billing.
  *
- * Supported providers: anthropic, openai, groq, cerebras.
+ * Supported providers: anthropic, openai, cerebras.
  *
  * The API worker can be reached in two ways:
  *   - Service binding `env.API_WORKER` (Cloudflare Fetcher) — preferred in
@@ -34,10 +34,9 @@
 
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createOpenAI } from '@ai-sdk/openai'
-import { createGroq } from '@ai-sdk/groq'
 import { createCerebras } from '@ai-sdk/cerebras'
 
-type Provider = 'anthropic' | 'openai' | 'groq' | 'cerebras'
+type Provider = 'anthropic' | 'openai' | 'cerebras'
 
 export interface DeepSpaceAIEnv {
   /** Cloudflare service binding for the DeepSpace API worker. Preferred. */
@@ -94,6 +93,12 @@ export function createDeepSpaceAI(
           : (input as Request).url
 
     const headers = new Headers(init?.headers)
+    // Strip the AI SDK's provider-auth headers (Authorization for OpenAI/
+    // Cerebras/Groq, x-api-key for Anthropic). They carry our placeholder
+    // apiKey value 'platform-managed' which would collide with the proxy's
+    // JWT auth below and fail verifyJwt.
+    headers.delete('authorization')
+    headers.delete('x-api-key')
     headers.set('X-Auth-Token', authToken)
     if (options.billingUserId) headers.set('X-Billing-User-Id', options.billingUserId)
 
@@ -117,8 +122,6 @@ export function createDeepSpaceAI(
       return createAnthropic({ baseURL, apiKey: 'platform-managed', fetch: proxyFetch })
     case 'openai':
       return createOpenAI({ baseURL, apiKey: 'platform-managed', fetch: proxyFetch })
-    case 'groq':
-      return createGroq({ baseURL, apiKey: 'platform-managed', fetch: proxyFetch })
     case 'cerebras':
       return createCerebras({ baseURL, apiKey: 'platform-managed', fetch: proxyFetch })
     default: {
