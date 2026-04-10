@@ -13,10 +13,10 @@
  */
 
 import { defineCommand } from 'citty'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { execSync, spawnSync } from 'node:child_process'
-import { ensureToken, SESSION_PATH } from '../auth'
+import { ensureToken } from '../auth'
 import { writeDevVars } from '../env'
 
 export default defineCommand({
@@ -40,16 +40,20 @@ export default defineCommand({
       process.exit(1)
     }
 
-    // Always write .dev.vars pointing to dev workers
-    let ownerId = 'test-owner'
+    // Always write .dev.vars pointing to dev workers. A logged-in user is
+    // required so writeDevVars can mint APP_OWNER_JWT via the auth-worker.
+    let token: string
+    let ownerId: string
     try {
-      const token = await ensureToken()
+      token = await ensureToken()
       const payload = JSON.parse(atob(token.split('.')[1]))
       ownerId = payload.sub
-    } catch { /* Not logged in — use default */ }
+    } catch (err) {
+      console.error('`deepspace test` requires you to be logged in. Run `deepspace login` first.')
+      process.exit(1)
+    }
 
-    const ownerSession = existsSync(SESSION_PATH) ? readFileSync(SESSION_PATH, 'utf-8').trim() : undefined
-    await writeDevVars(appDir, 'dev', ownerId, ownerSession)
+    await writeDevVars(appDir, 'dev', ownerId, token)
 
     if (suite !== 'unit') {
       ensurePlaywright(appDir)

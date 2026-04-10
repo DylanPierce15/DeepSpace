@@ -40,6 +40,12 @@ export interface WorkerBindings {
   authWorkerUrl: string
   hmacSecret?: string
   platformIdentitySecret: string
+  /**
+   * Long-lived app-owner JWT minted by the auth-worker. Injected as a secret
+   * on the deployed app so its server-side code (DO alarms, cron, autonomous
+   * agents) can call the API worker proxy without a user context.
+   */
+  appOwnerJwt: string
   doManifest?: DOManifestEntry[]
 }
 
@@ -231,6 +237,7 @@ export async function deployToWfP(
         { type: 'secret_text', name: 'AUTH_JWT_ISSUER', text: bindings.jwtIssuer },
         { type: 'plain_text', name: 'AUTH_WORKER_URL', text: bindings.authWorkerUrl },
         { type: 'secret_text', name: 'APP_IDENTITY_TOKEN', text: appIdentityToken },
+        { type: 'secret_text', name: 'APP_OWNER_JWT', text: bindings.appOwnerJwt },
         ...(bindings.hmacSecret
           ? [{ type: 'secret_text', name: 'INTERNAL_STORAGE_HMAC_SECRET', text: bindings.hmacSecret }]
           : []),

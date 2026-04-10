@@ -2,8 +2,8 @@
  * User profile routes.
  *
  * Identity (name, email, image) comes from JWT claims — the auth-worker is
- * the source of truth. The billing profile in BILLING_DB only stores
- * subscription / credit data and is ensured on first access.
+ * the source of truth. The billing profile in BILLING_DB is ensured by
+ * the auth middleware on first access.
  */
 
 import { Hono } from 'hono'
@@ -12,7 +12,6 @@ import type { Env } from '../worker'
 import { authMiddleware } from '../middleware/auth'
 import { userProfiles } from '../db/schema'
 import { getDb } from '../worker'
-import { subscriptionTierToCredits } from '../billing/service'
 
 const users = new Hono<Env>()
 
@@ -22,8 +21,8 @@ users.get('/me', authMiddleware, async (c) => {
   const userId = c.get('userId')
   const claims = c.get('claims')
 
-  // Ensure billing profile exists (upsert)
-  let [billing] = await db
+  // Profile is guaranteed to exist — authMiddleware calls ensureBillingProfile.
+  const [billing] = await db
     .select({
       subscriptionStatus: userProfiles.subscriptionStatus,
       subscriptionTier: userProfiles.subscriptionTier,
@@ -33,33 +32,11 @@ users.get('/me', authMiddleware, async (c) => {
     .where(eq(userProfiles.id, userId))
     .limit(1)
 
-  if (!billing) {
-    const now = new Date()
-    const isTest = !!claims.isTestAccount
-    const tier = isTest ? 'test' : 'free'
-
-    await db.insert(userProfiles).values({
-      id: userId,
-      subscriptionTier: tier,
-      subscriptionCredits: isTest ? 0 : subscriptionTierToCredits('free'),
-      createdAt: now,
-      updatedAt: now,
-    })
-
-    billing = {
-      subscriptionStatus: tier,
-      subscriptionTier: tier,
-      createdAt: now,
-    }
-  }
-
   return c.json({
     id: userId,
-    // Identity from JWT — always fresh
     name: claims.name ?? null,
     email: claims.email ?? null,
     image: claims.image ?? null,
-    // Billing from D1
     subscriptionStatus: billing.subscriptionStatus,
     subscriptionTier: billing.subscriptionTier,
     createdAt: billing.createdAt,

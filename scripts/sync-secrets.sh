@@ -99,6 +99,7 @@ sync_worker "$ROOT/platform/api-worker" "deepspace-api" \
   STRIPE_CONNECT_WEBHOOK_SECRET \
   OPENAI_API_KEY \
   ANTHROPIC_API_KEY \
+  CEREBRAS_API_KEY \
   FREEPIK_API_KEY \
   GEMINI_API_KEY \
   ELEVENLABS_API_KEY \

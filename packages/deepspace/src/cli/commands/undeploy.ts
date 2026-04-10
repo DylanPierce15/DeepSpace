@@ -61,7 +61,7 @@ export default defineCommand({
       headers: { Authorization: `Bearer ${token}` },
     })
 
-    const body = (await res.json()) as { success?: boolean; error?: string }
+    const body = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string }
 
     if (!res.ok || !body.success) {
       s.stop('Failed')

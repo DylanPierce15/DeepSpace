@@ -1,14 +1,16 @@
 /**
- * Shared auth utilities — used by both CLI (Node) and worker (Cloudflare Workers).
+ * CLI session helpers — exchange a Better Auth session cookie for a short-lived
+ * JWT against the auth worker. Shared by `auth.ts` (token refresh for all
+ * authenticated commands) and `login.ts` (email/password flow).
  */
 
-import { SESSION_COOKIE } from './constants'
+export const SESSION_COOKIE = '__Secure-better-auth.session_token'
 
 /**
  * Exchange a Better Auth session token for a fresh JWT.
  * Returns null if the session is invalid or expired.
  */
-export async function exchangeSessionForJwt(
+export async function exchangeSession(
   authUrl: string,
   sessionToken: string,
 ): Promise<string | null> {
@@ -20,6 +22,6 @@ export async function exchangeSessionForJwt(
     },
   })
   if (!res.ok) return null
-  const { token } = (await res.json()) as { token: string }
-  return token
+  const data = (await res.json()) as { token?: string | null }
+  return data.token ?? null
 }

@@ -125,7 +125,7 @@ integrations.post('/:name/:endpoint', authMiddleware, async (c) => {
     // Mark completed
     await updateUsageStatus(db, usageId, 'completed')
 
-    return c.json({ success: true, data: result })
+    return c.json({ success: true, data: result as Record<string, unknown> })
   } catch (error) {
     await updateUsageStatus(db, usageId, 'failed')
     console.error(`Integration ${handlerKey} failed:`, error)

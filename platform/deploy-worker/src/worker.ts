@@ -19,7 +19,19 @@ export type Env = {
     CLOUDFLARE_API_TOKEN: string
     CLOUDFLARE_ACCOUNT_ID: string
     DEPLOY_JWT_PUBLIC_KEY_PEM: string
+    /**
+     * HTTPS URL for the auth worker — baked into the deployed app's env so
+     * the app worker can talk to the auth worker. Not used by the deploy
+     * worker itself; the deploy worker uses the AUTH_WORKER service binding.
+     */
     AUTH_WORKER_URL: string
+    /**
+     * Service binding to the auth worker. Used to mint APP_OWNER_JWT during
+     * deploy. We must use a service binding (not the public HTTPS URL)
+     * because Cloudflare blocks Worker→Worker subrequests via *.workers.dev
+     * with error 1042.
+     */
+    AUTH_WORKER: Fetcher
     INTERNAL_HMAC_SECRET: string
     PLATFORM_IDENTITY_SECRET: string
   }

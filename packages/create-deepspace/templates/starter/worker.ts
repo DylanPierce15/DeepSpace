@@ -6,6 +6,8 @@
  * Handles:
  *   - WebSocket → app's own RecordRoom DO (real-time data)
  *   - Auth proxy → auth-worker (same-origin cookies)
+ *   - Integration proxy → api-worker (LLM, search, etc.)
+ *   - AI chat (Vercel AI SDK + DeepSpace proxy)
  *   - Server actions (app-defined, bypass user RBAC)
  *   - Scoped R2 file storage
  *   - HMAC-authenticated cron
@@ -18,7 +20,7 @@ import {
   verifyJwt,
   verifyInternalSignature,
   buildInternalPayload,
-  getOwnerJwt,
+  createDeepSpaceAI,
 } from 'deepspace/worker'
 import type { JwtVerifierConfig, VerifyResult } from 'deepspace/worker'
 import {
@@ -27,14 +29,14 @@ import {
   CanvasRoom,
   MediaRoom,
   PresenceRoom,
-  createScopedR2Handler,
-  type ScopedR2Handler,
 } from 'deepspace/worker'
 import type { ActionTools, ActionResult, DOManifest, DOBindings } from 'deepspace/worker'
+import { streamText } from 'ai'
 import { actions } from './src/actions/index.js'
 import { handleCron } from './src/cron.js'
 import { schemas } from './src/schemas.js'
 import { integrations } from './src/integrations.js'
+import { buildSystemPrompt, buildReadOnlyTools } from './src/ai/tools.js'
 
 // =============================================================================
 // DO Manifest — declares all Durable Objects for dynamic deploy bindings
@@ -69,18 +71,22 @@ export class AppPresenceRoom extends PresenceRoom {}
 
 interface Env extends DOBindings<typeof __DO_MANIFEST__> {
   ASSETS: Fetcher
-  FILES?: R2Bucket
-  PLATFORM_WORKER?: Fetcher
-  APP_IDENTITY_TOKEN?: string
+  FILES: R2Bucket
+  PLATFORM_WORKER: Fetcher
+  APP_IDENTITY_TOKEN: string
   API_WORKER: Fetcher
   AUTH_JWT_PUBLIC_KEY: string
   AUTH_JWT_ISSUER: string
   AUTH_WORKER_URL: string
-  API_WORKER_URL: string
   APP_NAME: string
   OWNER_USER_ID: string
-  OWNER_SESSION_TOKEN?: string
-  OWNER_AUTH_URL?: string
+  /**
+   * Long-lived JWT minted for the app owner at deploy time. Server-side
+   * code (actions, cron, AI helpers) uses this to authenticate to the
+   * api-worker for developer-billed calls — the owner is billed because
+   * they are the JWT subject.
+   */
+  APP_OWNER_JWT: string
   INTERNAL_STORAGE_HMAC_SECRET: string
 }
 
@@ -112,7 +118,6 @@ async function resolveAuth(req: Request, env: Env): Promise<VerifyResult | null>
 // Social OAuth redirect + code exchange
 // ---------------------------------------------------------------------------
 
-/** Redirect to auth worker for social sign-in */
 app.get('/api/auth/social-redirect', (c) => {
   const provider = c.req.query('provider')
   if (!provider) return c.json({ error: 'Missing provider' }, 400)
@@ -125,27 +130,22 @@ app.get('/api/auth/social-redirect', (c) => {
   )
 })
 
-/** OAuth complete — exchange one-time code for session, redirect to app */
 app.get('/api/auth/oauth-complete', async (c) => {
   const code = c.req.query('code')
   const appOrigin = new URL(c.req.url).origin
 
-  if (!code) {
-    return c.redirect(appOrigin)
-  }
+  if (!code) return c.redirect(appOrigin)
 
-  // Exchange code for session token
   const res = await fetch(`${c.env.AUTH_WORKER_URL}/api/auth/exchange-code`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code }),
   })
 
-  if (!res.ok) {
-    return c.redirect(appOrigin)
-  }
-
-  const { sessionToken } = (await res.json()) as { sessionToken: string }
+  if (!res.ok) return c.redirect(appOrigin)
+  const data = (await res.json()) as { sessionToken?: string }
+  if (!data.sessionToken) return c.redirect(appOrigin)
+  const sessionToken = data.sessionToken
 
   return new Response(null, {
     status: 302,
@@ -177,23 +177,15 @@ app.all('/api/auth/*', async (c) => {
 })
 
 // ---------------------------------------------------------------------------
-// Integrations proxy → api-worker (OpenAI, search, etc.)
+// Integrations proxy → api-worker
 // ---------------------------------------------------------------------------
 
-// Integration catalog (no auth required)
 app.get('/api/integrations', async (c) => {
   try {
-    const url = c.env.API_WORKER
-      ? 'https://api-worker/api/integrations'
-      : `${c.env.API_WORKER_URL}/api/integrations`
-    const doFetch = c.env.API_WORKER ? c.env.API_WORKER.fetch.bind(c.env.API_WORKER) : fetch
-    const res = await doFetch(url)
-    const data = await res.text()
-    let parsed: any
-    try { parsed = JSON.parse(data) } catch { parsed = { raw: data } }
-    return c.json({ ...parsed, status: res.status })
+    const res = await c.env.API_WORKER.fetch('https://api-worker/api/integrations')
+    return new Response(res.body, { status: res.status, headers: res.headers })
   } catch {
-    return c.json({ success: false, status: 502, error: 'Failed to fetch integration catalog' })
+    return c.json({ error: 'Failed to fetch integration catalog' }, 502)
   }
 })
 
@@ -203,57 +195,45 @@ app.all('/api/integrations/:name/:endpoint', async (c) => {
 
   const auth = await resolveAuth(c.req.raw, c.env)
   if (!auth && billingMode === 'user') {
-    return c.json({ success: false, status: 401, error: 'Sign in required for this integration' })
+    return c.json({ error: 'Sign in required for this integration' }, 401)
   }
 
   const target = `/api/integrations/${integrationName}/${c.req.param('endpoint')}`
-  const url = c.env.API_WORKER
-    ? `https://api-worker${target}`
-    : `${c.env.API_WORKER_URL}${target}`
 
   const headers: Record<string, string> = {
     'Content-Type': c.req.header('Content-Type') ?? 'application/json',
   }
 
+  // Pick the JWT whose subject is the user we want billed:
+  //   - developer-billed → the app owner (via APP_OWNER_JWT)
+  //   - user-billed      → the caller (forward their Bearer token)
+  // The api-worker bills the JWT subject; it does not accept any
+  // client-supplied billing override.
   if (billingMode === 'developer') {
-    // Developer pays — use owner's JWT so the prod API worker accepts it.
-    // In dev mode, the owner's session token is exchanged for a fresh JWT.
-    const ownerJwt = await getOwnerJwt(c.env)
-    if (ownerJwt) headers['Authorization'] = `Bearer ${ownerJwt}`
-    headers['X-Billing-User-Id'] = c.env.OWNER_USER_ID
+    headers['Authorization'] = `Bearer ${c.env.APP_OWNER_JWT}`
   } else {
-    // User pays — forward the user's JWT
     const token = c.req.header('Authorization')?.slice(7)
     if (token) headers['Authorization'] = `Bearer ${token}`
   }
 
   const hasBody = c.req.method !== 'GET' && c.req.method !== 'HEAD'
   const body = hasBody ? await c.req.text() : undefined
-  const doFetch = c.env.API_WORKER ? c.env.API_WORKER.fetch.bind(c.env.API_WORKER) : fetch
 
   try {
-    const res = await doFetch(url, { method: c.req.method, headers, body })
-    const data = await res.text()
-    // Always return 200 — Cloudflare Vite plugin crashes on non-2xx in dev.
-    // Real status is in the response body for the client to read.
-    let parsed: any
-    try { parsed = JSON.parse(data) } catch { parsed = { raw: data } }
-    return c.json({ ...parsed, status: res.status })
+    const res = await c.env.API_WORKER.fetch(`https://api-worker${target}`, {
+      method: c.req.method,
+      headers,
+      body,
+    })
+    return new Response(res.body, { status: res.status, headers: res.headers })
   } catch {
-    return c.json({ success: false, status: 502, error: 'Integration proxy failed' })
+    return c.json({ error: 'Integration proxy failed' }, 502)
   }
 })
 
 // ---------------------------------------------------------------------------
-// WebSocket auth helper
+// WebSocket routes
 // ---------------------------------------------------------------------------
-
-async function resolveWsAuth(req: Request, env: Env): Promise<VerifyResult | null> {
-  const url = new URL(req.url)
-  const token = url.searchParams.get('token')
-  if (!token) return null
-  return (await verifyJwt(jwtConfig(env), token)).result
-}
 
 function wsRoute(
   doNamespace: (env: Env) => DurableObjectNamespace,
@@ -261,8 +241,9 @@ function wsRoute(
 ) {
   return async (c: any) => {
     const id = c.req.param('roomId') ?? c.req.param('docId') ?? c.req.param('scopeId')
-    const auth = await resolveWsAuth(c.req.raw, c.env)
-    console.log(`[ws] ${id} (user: ${auth?.userId ?? 'anon'})`)
+    const url = new URL(c.req.url)
+    const token = url.searchParams.get('token')
+    const auth = token ? (await verifyJwt(jwtConfig(c.env), token)).result : null
 
     const doUrl = new URL(c.req.url)
     if (auth) {
@@ -280,10 +261,6 @@ function wsRoute(
     return stub.fetch(new Request(doUrl.toString(), c.req.raw))
   }
 }
-
-// ---------------------------------------------------------------------------
-// WebSocket routes
-// ---------------------------------------------------------------------------
 
 app.get('/ws/:roomId', wsRoute((env) => env.RECORD_ROOMS))
 
@@ -313,45 +290,69 @@ app.post('/api/actions/:name', async (c) => {
   const action = actions[name]
   if (!action) return c.json({ error: 'Action not found' }, 404)
   const params = await c.req.json<Record<string, unknown>>()
-  const tools = createActionTools(c.env, auth.userId)
+  const callerJwt = c.req.header('Authorization')!.slice(7)
+  const tools = createActionTools(c.env, auth.userId, callerJwt)
   const result = await action({ userId: auth.userId, params, tools })
-  return c.json(result)
+  return c.json(result as unknown as Record<string, unknown>)
 })
 
 // ---------------------------------------------------------------------------
-// Scoped R2 files
+// AI chat — multi-turn tool-use via Vercel AI SDK + DeepSpace proxy
 // ---------------------------------------------------------------------------
 
-// Local dev: direct R2 handler (FILES binding only exists in local dev)
-const r2Handlers: Record<string, ScopedR2Handler> = {}
+app.post('/api/ai/chat', async (c) => {
+  const auth = await resolveAuth(c.req.raw, c.env)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
 
-function getLocalR2Handler(env: Env): ScopedR2Handler {
-  if (!r2Handlers[env.APP_NAME]) {
-    r2Handlers[env.APP_NAME] = createScopedR2Handler({
-      resolvePrefix(scope, ctx) {
-        if (scope === 'app') return { prefix: `apps/${env.APP_NAME}/` }
-        if (!ctx.userId) return { error: 'Authentication required for user files' }
-        return { prefix: `apps/${env.APP_NAME}/users/${ctx.userId}/` }
-      },
-    })
+  const { messages } = await c.req.json<{ messages: Array<{ role: string; content: string }> }>()
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return c.json({ error: 'messages array is required' }, 400)
   }
-  return r2Handlers[env.APP_NAME]
-}
+
+  const jwt = c.req.header('Authorization')!.slice(7)
+
+  const anthropic = createDeepSpaceAI(c.env, 'anthropic', { authToken: jwt })
+
+  // Read-only tools that execute against the app's RecordRoom DO
+  const scopeId = `app:${c.env.APP_NAME}`
+  const tools = buildReadOnlyTools(async (toolName, params) => {
+    const doId = c.env.RECORD_ROOMS.idFromName(scopeId)
+    const stub = c.env.RECORD_ROOMS.get(doId)
+    const res = await stub.fetch(new Request('https://internal/api/tools/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-user-id': auth.userId },
+      body: JSON.stringify({ tool: toolName, params }),
+    }))
+    return res.json()
+  })
+
+  const result = streamText({
+    model: anthropic('claude-sonnet-4-20250514'),
+    system: buildSystemPrompt(c.env.APP_NAME, schemas),
+    messages,
+    tools,
+    maxSteps: 5,
+    onError: ({ error }) => {
+      console.error('[ai-chat] streamText error:', error)
+    },
+  })
+
+  return result.toDataStreamResponse({
+    getErrorMessage: (error) => {
+      console.error('[ai-chat] response error:', error)
+      return error instanceof Error ? error.message : String(error)
+    },
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Scoped R2 files → platform-worker
+// ---------------------------------------------------------------------------
 
 app.all('/api/files/*', async (c) => {
   const auth = await resolveAuth(c.req.raw, c.env)
   const userId = auth?.userId ?? null
 
-  // Local dev fallback: use direct R2 binding
-  if (!c.env.PLATFORM_WORKER && c.env.FILES) {
-    return getLocalR2Handler(c.env)(c.req.raw, new URL(c.req.url), c.env.FILES, { userId })
-  }
-
-  if (!c.env.PLATFORM_WORKER || !c.env.APP_IDENTITY_TOKEN) {
-    return c.json({ error: 'File storage not configured' }, 500)
-  }
-
-  // Production: proxy to platform worker via service binding
   const url = new URL(c.req.url)
   const platformUrl = new URL(c.req.url)
   platformUrl.pathname = url.pathname.replace('/api/files', '/internal/files')
@@ -383,7 +384,6 @@ app.all('/api/files/*', async (c) => {
     return c.json(body, resp.status as any)
   }
 
-  // Binary responses (downloads): pass through as-is
   return new Response(resp.body, { status: resp.status, headers: resp.headers })
 })
 
@@ -422,7 +422,7 @@ app.get('*', async (c) => {
 // Action Tools — route to app's own RecordRoom DO
 // =============================================================================
 
-function createActionTools(env: Env, userId: string): ActionTools {
+function createActionTools(env: Env, userId: string, callerJwt: string): ActionTools {
   const scopeId = `app:${env.APP_NAME}`
 
   async function execTool(tool: string, params: Record<string, unknown>): Promise<ActionResult> {
@@ -444,20 +444,16 @@ function createActionTools(env: Env, userId: string): ActionTools {
     const integrationName = endpoint.split('/')[0]
     const billingMode = integrations[integrationName]?.billing ?? 'developer'
 
-    const target = `/api/integrations/${endpoint}`
-    const fetcher = env.API_WORKER ?? null
-    const url = fetcher ? `https://api-worker${target}` : `${env.API_WORKER_URL}${target}`
+    // Use the owner JWT for developer-billed calls, the caller's JWT otherwise.
+    // The api-worker bills the JWT subject — no client-supplied override.
+    const jwt = billingMode === 'developer' ? env.APP_OWNER_JWT : callerJwt
 
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    if (billingMode === 'developer') {
-      headers['X-Billing-User-Id'] = env.OWNER_USER_ID
-    } else {
-      headers['X-Billing-User-Id'] = userId
-    }
-
-    const res = await (fetcher ?? globalThis).fetch(url, {
+    const res = await env.API_WORKER.fetch(`https://api-worker/api/integrations/${endpoint}`, {
       method: 'POST',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${jwt}`,
+      },
       body: data != null ? JSON.stringify(data) : undefined,
     })
     return res.json() as Promise<ActionResult>

@@ -17,8 +17,7 @@ import { platform } from 'node:os'
 import * as p from '@clack/prompts'
 
 import { ENVS } from '../env'
-import { SESSION_COOKIE } from '../../shared/constants'
-import { exchangeSessionForJwt } from '../../shared/auth-utils'
+import { exchangeSession, SESSION_COOKIE } from '../session'
 
 const AUTH_URL = process.env.DEEPSPACE_AUTH_URL ?? ENVS.prod.auth
 
@@ -61,11 +60,14 @@ export default defineCommand({
       p.cancel('Could not create login session')
       process.exit(1)
     }
-
-    const { sessionId, loginUrl } = (await sessionRes.json()) as {
-      sessionId: string
-      loginUrl: string
+    const sessionData = (await sessionRes.json()) as { sessionId?: string; loginUrl?: string }
+    if (!sessionData.sessionId || !sessionData.loginUrl) {
+      s.stop('Failed')
+      p.cancel('Could not create login session')
+      process.exit(1)
     }
+
+    const { sessionId, loginUrl } = sessionData as { sessionId: string; loginUrl: string }
 
     s.stop('Opening browser...')
     p.log.info(`If the browser doesn't open, visit:\n  ${loginUrl}`)
@@ -108,18 +110,18 @@ async function pollForCompletion(sessionId: string): Promise<LoginResult | null>
     try {
       const res = await fetch(`${AUTH_URL}/api/auth/cli/status/${sessionId}`)
 
-      if (res.status === 410) return null // expired
-      if (res.status === 404) return null // not found
+      if (res.status === 410 || res.status === 404) return null // expired / not found
+      if (!res.ok) continue
 
       const data = (await res.json()) as {
-        status: string
+        state?: string
         sessionToken?: string
         jwt?: string
         email?: string
         name?: string
       }
 
-      if (data.status === 'complete' && data.sessionToken && data.jwt) {
+      if (data.state === 'complete' && data.sessionToken && data.jwt) {
         return {
           sessionToken: data.sessionToken,
           jwt: data.jwt,
@@ -181,7 +183,7 @@ async function doEmailLogin(email: string, password: string): Promise<void> {
   }
   const sessionToken = decodeURIComponent(cookieMatch[1])
 
-  const jwt = await exchangeSessionForJwt(AUTH_URL, sessionToken)
+  const jwt = await exchangeSession(AUTH_URL, sessionToken)
   if (!jwt) {
     throw new Error('JWT issuance failed')
   }

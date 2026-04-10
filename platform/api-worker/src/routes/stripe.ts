@@ -111,7 +111,7 @@ stripe.post('/create-checkout-session', authMiddleware, async (c) => {
     subscription_data: { metadata: { userId } },
   })
 
-  return c.json({ sessionId: session.id, url: session.url })
+  return c.json({ sessionId: session.id, url: session.url ?? '' })
 })
 
 // ============================================================================
@@ -278,7 +278,7 @@ stripe.post('/create-credit-checkout', authMiddleware, async (c) => {
     },
   })
 
-  return c.json({ sessionId: session.id, url: session.url })
+  return c.json({ sessionId: session.id, url: session.url ?? '' })
 })
 
 // ============================================================================
@@ -314,7 +314,7 @@ stripe.get('/credits-available', authMiddleware, async (c) => {
     return c.json({ success: true, credits: result.credits })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to get credits'
-    return c.json({ success: false, credits: null, error: message })
+    return c.json({ success: false, credits: null, error: message }, 500)
   }
 })
 
@@ -337,7 +337,6 @@ stripe.get('/subscription-status', authMiddleware, async (c) => {
   if (!profile) {
     return c.json({
       currentTier: 'free',
-      status: 'free',
       hasActiveSubscription: false,
       pendingTier: null,
       pendingEffectiveDate: null,
@@ -348,7 +347,6 @@ stripe.get('/subscription-status', authMiddleware, async (c) => {
   if (!profile.stripeSubscriptionId) {
     return c.json({
       currentTier: profile.subscriptionTier ?? 'free',
-      status: profile.subscriptionStatus ?? 'free',
       hasActiveSubscription: false,
       pendingTier: null,
       pendingEffectiveDate: null,
@@ -396,19 +394,17 @@ stripe.get('/subscription-status', authMiddleware, async (c) => {
 
     return c.json({
       currentTier: profile.subscriptionTier ?? 'free',
-      status: subscription.status,
       hasActiveSubscription: subscription.status === 'active',
       pendingTier,
       pendingEffectiveDate,
-      currentPeriodEnd: subscription.current_period_end
-        ? new Date(subscription.current_period_end * 1000).toISOString()
+      currentPeriodEnd: subscription.items.data[0]?.current_period_end
+        ? new Date(subscription.items.data[0].current_period_end * 1000).toISOString()
         : null,
     })
   } catch (err) {
     console.warn('Failed to fetch subscription from Stripe:', err)
     return c.json({
       currentTier: profile.subscriptionTier ?? 'free',
-      status: profile.subscriptionStatus ?? 'free',
       hasActiveSubscription: profile.subscriptionStatus === 'active',
       pendingTier: null,
       pendingEffectiveDate: null,
@@ -532,24 +528,18 @@ async function getOrCreateStripeCustomer(
 
 /** Extract subscription ID from an invoice via multiple strategies. */
 function getSubscriptionIdFromInvoice(invoice: Stripe.Invoice): string | null {
-  // Direct subscription field
-  if (invoice.subscription) {
-    return typeof invoice.subscription === 'string'
-      ? invoice.subscription
-      : (invoice.subscription as any).id
+  // Primary path: invoice.parent.subscription_details.subscription
+  // The legacy top-level `invoice.subscription` field was removed in Stripe
+  // API version 2024-09-30.acacia.
+  const parentSub = invoice.parent?.subscription_details?.subscription
+  if (parentSub) {
+    return typeof parentSub === 'string' ? parentSub : parentSub.id
   }
 
-  // Check parent.subscription_details (newer API versions)
-  const parentSub = (invoice as any).parent?.subscription_details?.subscription
-  if (parentSub) return parentSub
-
-  // Check line items
-  for (const line of invoice.lines?.data || []) {
-    if ((line as any).subscription) {
-      return (line as any).subscription
-    }
-    const nestedSub = (line as any).parent?.subscription_item_details?.subscription
-    if (nestedSub) return nestedSub
+  // Fallback: derive from line items
+  for (const line of invoice.lines?.data ?? []) {
+    const lineSub = line.parent?.subscription_item_details?.subscription
+    if (lineSub) return lineSub
   }
 
   return null

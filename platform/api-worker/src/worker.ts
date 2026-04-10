@@ -11,6 +11,7 @@ import stripeRoutes from './routes/stripe'
 import usersRoutes from './routes/users'
 import integrationsRoutes from './routes/integrations'
 import usageRoutes from './routes/usage'
+import proxyRoutes from './routes/proxy'
 
 // ============================================================================
 // Env type — Cloudflare bindings + Hono variables
@@ -30,6 +31,7 @@ export type Env = {
     // Integration API keys
     OPENAI_API_KEY: string
     ANTHROPIC_API_KEY: string
+    CEREBRAS_API_KEY: string
     FREEPIK_API_KEY: string
     SERPAPI_API_KEY: string
     OPENWEATHER_API_KEY: string
@@ -105,6 +107,7 @@ app.route('/api/stripe', stripeRoutes)
 app.route('/api/users', usersRoutes)
 app.route('/api/integrations', integrationsRoutes)
 app.route('/api/usage', usageRoutes)
+app.route('/api/proxy', proxyRoutes)
 
 // D1 migration (dev only)
 app.post('/_migrate', async (c) => {

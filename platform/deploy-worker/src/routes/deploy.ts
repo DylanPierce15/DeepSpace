@@ -98,6 +98,59 @@ deploy.post('/:appName', authMiddleware, async (c) => {
     })
   }
 
+  // Mint the long-lived app-owner JWT via the auth-worker. Baked into the
+  // deployed worker as APP_OWNER_JWT for server-side LLM / integration calls
+  // that run without a user context (cron, DO alarms, autonomous agents).
+  // Runs after all input validation so bad requests never touch the auth
+  // worker, and immediately before deploy so transient auth-worker outages
+  // surface a targeted error instead of halfway-initialized state.
+  // See auth-worker `/api/auth/mint-app-token`.
+  const callerBearer = c.req.header('Authorization') ?? ''
+  if (!callerBearer.startsWith('Bearer ')) {
+    return c.json({ error: 'Missing caller JWT for token minting' }, 401)
+  }
+  // Use the AUTH_WORKER service binding rather than the public HTTPS URL.
+  // Cloudflare blocks Worker→Worker subrequests on *.workers.dev with error
+  // 1042 ("error code: 1042"), so HTTPS calls between deploy-worker and
+  // auth-worker fail even though external curl works fine. Service bindings
+  // route the request internally and avoid the constraint entirely.
+  let mintRes: Response
+  try {
+    mintRes = await c.env.AUTH_WORKER.fetch('https://auth-worker/api/auth/mint-app-token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: callerBearer,
+      },
+      body: JSON.stringify({ appName }),
+    })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    return c.json(
+      {
+        error:
+          'Could not reach auth worker to mint APP_OWNER_JWT. Auth worker may be ' +
+          `down — retry in a moment. (${msg})`,
+      },
+      503,
+    )
+  }
+  if (!mintRes.ok) {
+    const err = await mintRes.text().catch(() => '')
+    const hint =
+      mintRes.status === 401
+        ? 'Your login may have expired — run `deepspace login` and retry.'
+        : 'Retry in a moment; if this persists, the auth worker is unhealthy.'
+    return c.json(
+      { error: `Failed to mint APP_OWNER_JWT (auth worker ${mintRes.status}): ${err}. ${hint}` },
+      mintRes.status === 401 ? 401 : 502,
+    )
+  }
+  const { token: appOwnerJwt } = (await mintRes.json()) as { token?: string }
+  if (!appOwnerJwt) {
+    return c.json({ error: 'Auth worker returned empty APP_OWNER_JWT — contact support.' }, 502)
+  }
+
   // Deploy
   const result = await deployToWfP(
     {
@@ -115,12 +168,13 @@ deploy.post('/:appName', authMiddleware, async (c) => {
       authWorkerUrl: c.env.AUTH_WORKER_URL,
       hmacSecret: c.env.INTERNAL_HMAC_SECRET,
       platformIdentitySecret: c.env.PLATFORM_IDENTITY_SECRET,
+      appOwnerJwt,
       doManifest,
     },
   )
 
   if (!result.success) {
-    return c.json({ error: result.error }, 500)
+    return c.json({ error: result.error ?? 'Deploy failed' }, 500)
   }
 
   // Register cron tasks in dispatch worker's KV (or clean up if no tasks)
@@ -182,7 +236,7 @@ deploy.delete('/:appName', authMiddleware, async (c) => {
   )
 
   if (!result.success) {
-    return c.json({ error: result.error }, 500)
+    return c.json({ error: result.error ?? 'Delete failed' }, 500)
   }
 
   // Remove cron tasks and app registry entry

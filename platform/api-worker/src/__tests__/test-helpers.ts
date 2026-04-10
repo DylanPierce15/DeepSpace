@@ -208,15 +208,39 @@ export function buildInvoice(overrides: {
   amountPaid?: number
   metadata?: Record<string, string>
 }): Record<string, unknown> {
+  // When a subscription ID is provided, populate the modern Stripe invoice
+  // shape that the handler's resolver reads: `parent.subscription_details`
+  // plus a matching line item. The legacy top-level `invoice.subscription`
+  // field was removed in Stripe API 2024-09-30.acacia.
+  const parent = overrides.subscriptionId
+    ? {
+        type: 'subscription_details',
+        subscription_details: { subscription: overrides.subscriptionId },
+      }
+    : null
+  const lines = overrides.subscriptionId
+    ? {
+        object: 'list',
+        data: [
+          {
+            parent: {
+              type: 'subscription_item_details',
+              subscription_item_details: { subscription: overrides.subscriptionId },
+            },
+          },
+        ],
+      }
+    : { object: 'list', data: [] }
+
   return {
     id: overrides.id ?? `in_test_${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`,
     object: 'invoice',
     customer: overrides.customerId ?? `cus_test_${crypto.randomUUID().replace(/-/g, '').slice(0, 14)}`,
-    subscription: overrides.subscriptionId ?? null,
+    parent,
     amount_due: overrides.amountDue ?? 0,
     amount_paid: overrides.amountPaid ?? 0,
     status: 'paid',
     metadata: overrides.metadata ?? {},
-    lines: { object: 'list', data: [] },
+    lines,
   }
 }

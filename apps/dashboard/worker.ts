@@ -49,8 +49,11 @@ export default {
       if (!exchangeRes.ok) {
         return Response.redirect(url.origin, 302)
       }
-
-      const { sessionToken } = (await exchangeRes.json()) as { sessionToken: string }
+      const data = (await exchangeRes.json()) as { sessionToken?: string }
+      if (!data.sessionToken) {
+        return Response.redirect(url.origin, 302)
+      }
+      const sessionToken = data.sessionToken
 
       return new Response(null, {
         status: 302,

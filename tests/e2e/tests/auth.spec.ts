@@ -239,7 +239,8 @@ test.describe('Test account validation', () => {
       data: { email: 'bad@example.com', password: 'TestBad123!', name: 'Bad' },
     })
     expect(res.status()).toBe(400)
-    expect((await res.json()).error).toContain('@deepspace.test')
+    const body = await res.json()
+    expect(body.error).toContain('@deepspace.test')
   })
 
   test('reject short password', async ({ auth, request }) => {
@@ -248,7 +249,8 @@ test.describe('Test account validation', () => {
       data: { email: `short-${Date.now()}@deepspace.test`, password: 'short', name: 'Short' },
     })
     expect(res.status()).toBe(400)
-    expect((await res.json()).error).toContain('8 characters')
+    const body = await res.json()
+    expect(body.error).toContain('8 characters')
   })
 
   test('unauthenticated requests return 401', async ({ request }) => {

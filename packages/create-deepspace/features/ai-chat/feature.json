@@ -1,0 +1,28 @@
+{
+  "id": "ai-chat",
+  "name": "AI Chat",
+  "category": "assistant",
+  "description": "Read-only AI assistant that can inspect app data via tools",
+  "details": "Adds a chat page backed by the app worker's /api/ai/chat route. The assistant uses Vercel AI SDK with Claude via the DeepSpace proxy, and can query records and schemas through read-only tools.",
+  "files": [
+    { "src": "src/AiChatPage.tsx", "dest": "src/pages/assistant.tsx" }
+  ],
+  "route": {
+    "path": "/assistant",
+    "component": "AssistantPage",
+    "protected": false
+  },
+  "requires": [],
+  "dependencies": {
+    "@ai-sdk/react": "^1.0.0"
+  },
+  "instructions": [
+    "The frontend uses useChat from @ai-sdk/react which handles streaming and message state.",
+    "The backend route at /api/ai/chat uses streamText with read-only tools (schema.*, records.query, records.get, user.current).",
+    "AI calls route through the DeepSpace API worker proxy for per-user billing."
+  ],
+  "patterns": [
+    "Tool execution happens server-side — the model never talks to storage directly.",
+    "maxSteps: 5 limits tool-use rounds to prevent runaway loops."
+  ]
+}

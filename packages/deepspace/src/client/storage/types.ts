@@ -89,52 +89,6 @@ export interface RoomUser {
 }
 
 // ============================================================================
-// Team Types
-// ============================================================================
-
-export interface Team {
-  id: string
-  name: string
-  createdBy: string
-  createdAt: string
-  isOpen?: boolean
-  members?: TeamMember[]
-}
-
-export interface TeamMember {
-  userId: string
-  roleInTeam: string
-  joinedAt: string
-  /** Whether this member is active (connected user) or pending (invited, not yet connected) */
-  status: 'active' | 'pending'
-  /** Email address — set for pending invites where no userId is resolved yet */
-  email?: string
-}
-
-/**
- * Identifier for adding a team member.
- * Provide exactly one of userId, email, or username.
- */
-export type TeamMemberIdentifier =
-  | { userId: string }
-  | { email: string }
-  | { username: string }
-
-/**
- * Result of an addMember operation.
- */
-export interface AddMemberResult {
-  /** What happened: added directly, invited (pending), or error */
-  status: 'added' | 'invited' | 'already_member' | 'error'
-  /** Resolved userId (set when user was found and added) */
-  userId?: string
-  /** Email used for pending invite */
-  email?: string
-  /** Error message if status is 'error' */
-  error?: string
-}
-
-// ============================================================================
 // Connection Types
 // ============================================================================
 

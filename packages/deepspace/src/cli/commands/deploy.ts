@@ -148,7 +148,11 @@ export default defineCommand({
       body: form,
     })
 
-    const body = (await res.json()) as { success?: boolean; url?: string; error?: string }
+    const body = (await res.json().catch(() => ({}))) as {
+      success?: boolean
+      url?: string
+      error?: string
+    }
 
     if (!res.ok || !body.success) {
       s.stop('Deploy failed')

@@ -52,10 +52,16 @@ export async function getAuthToken(): Promise<string | null> {
       return null
     }
 
-    const { token } = (await res.json()) as { token: string }
-    cachedToken = token
-    tokenExpiry = extractExpiry(token)
-    return token
+    const data = (await res.json()) as { token?: string | null }
+    if (!data.token) {
+      cachedToken = null
+      tokenExpiry = 0
+      return null
+    }
+
+    cachedToken = data.token
+    tokenExpiry = extractExpiry(data.token)
+    return data.token
   } catch {
     return null
   }

@@ -23,6 +23,8 @@ export interface ActionTools {
     orderDir?: 'asc' | 'desc'
     limit?: number
   }): Promise<ActionResult>
+  /** Call an integration endpoint (e.g. 'openai/completions') via the API worker */
+  integration(endpoint: string, data?: unknown): Promise<ActionResult>
 }
 
 export interface ActionContext {

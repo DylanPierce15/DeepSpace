@@ -15,13 +15,13 @@ async function authedFetch<T>(url: string, init?: RequestInit): Promise<T> {
     },
   })
 
-  const body = await res.json()
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>
 
   if (!res.ok) {
-    throw new Error((body as { error?: string }).error ?? `Request failed (${res.status})`)
+    throw new Error((data.error as string) ?? `Request failed (${res.status})`)
   }
 
-  return body as T
+  return data as T
 }
 
 export async function fetchApps(): Promise<AppEntry[]> {
@@ -69,7 +69,6 @@ export interface StripeConfig {
 
 export interface SubscriptionStatus {
   currentTier: string
-  status: string
   hasActiveSubscription: boolean
   pendingTier: string | null
   pendingEffectiveDate: string | null
@@ -79,7 +78,7 @@ export interface SubscriptionStatus {
 export async function fetchStripeConfig(): Promise<StripeConfig> {
   const res = await fetch('/api/stripe/config')
   if (!res.ok) throw new Error('Failed to fetch Stripe config')
-  return res.json() as Promise<StripeConfig>
+  return (await res.json()) as StripeConfig
 }
 
 export async function fetchSubscriptionStatus(): Promise<SubscriptionStatus> {

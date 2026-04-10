@@ -10,7 +10,7 @@ import { join } from 'node:path'
 import { homedir } from 'node:os'
 
 import { ENVS } from './env'
-import { exchangeSessionForJwt } from '../shared/auth-utils'
+import { exchangeSession } from './session'
 
 const AUTH_URL = process.env.DEEPSPACE_AUTH_URL ?? ENVS.prod.auth
 
@@ -38,7 +38,7 @@ export async function ensureToken(): Promise<string> {
   }
 
   // Refresh from session
-  const token = await exchangeSessionForJwt(AUTH_URL, sessionToken)
+  const token = await exchangeSession(AUTH_URL, sessionToken)
   if (!token) {
     throw new Error('Session expired. Run `deepspace login` to re-authenticate.')
   }

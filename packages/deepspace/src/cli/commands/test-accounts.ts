@@ -19,7 +19,8 @@ import { join } from 'node:path'
 import { homedir } from 'node:os'
 import { ensureToken, SESSION_PATH } from '../auth'
 import { ENVS } from '../env'
-import { SESSION_COOKIE } from '../../shared/constants'
+
+const SESSION_COOKIE = '__Secure-better-auth.session_token'
 
 const AUTH_URL = process.env.DEEPSPACE_AUTH_URL ?? ENVS.prod.auth
 const DIR = join(homedir(), '.deepspace')
@@ -105,13 +106,21 @@ const create = defineCommand({
       }),
     })
 
-    if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string }
-      console.error(`Failed: ${body.error ?? res.statusText}`)
+    const data = (await res.json().catch(() => ({}))) as {
+      id?: string
+      email?: string
+      userId?: string
+      label?: string | null
+      createdAt?: number
+      error?: string
+    }
+
+    if (!res.ok || !data.id) {
+      console.error(`Failed: ${data.error ?? 'Unknown error'}`)
       process.exit(1)
     }
 
-    const account = (await res.json()) as { id: string; email: string; userId: string; label: string | null; createdAt: number }
+    const account = data as { id: string; email: string; userId: string; label: string | null; createdAt: number }
 
     // Save credentials locally
     const accounts = loadAccounts()
@@ -152,15 +161,17 @@ const list = defineCommand({
       },
     })
 
-    if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string }
-      console.error(`Failed: ${body.error ?? res.statusText}`)
+    const data = (await res.json().catch(() => ({}))) as {
+      accounts?: Array<{ id: string; email: string; userId: string; label: string | null; createdAt: number }>
+      error?: string
+    }
+
+    if (!res.ok || !data.accounts) {
+      console.error(`Failed: ${data.error ?? 'Unknown error'}`)
       process.exit(1)
     }
 
-    const { accounts: remote } = (await res.json()) as {
-      accounts: Array<{ id: string; email: string; userId: string; label: string | null; createdAt: number }>
-    }
+    const remote = data.accounts
 
     if (remote.length === 0) {
       console.log('No test accounts. Create one with: deepspace test-accounts create --email <email> --password <password>')
@@ -209,9 +220,10 @@ const del = defineCommand({
       },
     })
 
+    const data = (await res.json().catch(() => ({}))) as { deleted?: boolean; error?: string }
+
     if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string }
-      console.error(`Failed: ${body.error ?? res.statusText}`)
+      console.error(`Failed: ${data.error ?? 'Unknown error'}`)
       process.exit(1)
     }
 

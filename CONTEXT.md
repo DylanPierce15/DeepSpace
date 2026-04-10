@@ -64,15 +64,15 @@ Data is keyed by `scopeId`:
 - Dashboard uses Vite + React 19.
 
 ## Testing
-- `./scripts/test-local.sh` — Scaffolds a fresh test app, starts local workers, runs Playwright (25 tests).
-- `npx tsx tests/production/scripts/run-full-e2e.ts` — Scaffolds, deploys to `*.app.space`, runs Playwright (29 tests), undeploys.
-- `./scripts/scaffold-test-app.sh <name>` — Creates a test app in `.test-apps/` using local tarballs.
+- `npx tsx tests/e2e/scripts/run.ts` — Auth + CLI tests (no deploy needed).
+- `npx tsx tests/e2e/scripts/run.ts --deploy` — Full suite: scaffolds, deploys to `*.app.space`, runs Playwright, undeploys.
+- `cd platform/api-worker && pnpm test` — Vitest with `@cloudflare/vitest-pool-workers`.
+- No local dev workers — `deepspace dev` always connects to deployed production workers.
 - Test apps are scaffolded from the template each time (single source of truth).
 
 ## Secrets
 - Managed via **Doppler** (project: `deepspace-sdk`, configs: `dev`, `prd`).
-- Local dev: `scripts/setup-env.sh` syncs to `.dev.vars` per worker.
-- Test app secrets are copied by `scaffold-test-app.sh`.
+- `scripts/setup-env.sh` syncs Doppler secrets to `.dev.vars` per worker.
 
 ## Durable Objects
 All app DOs use `new_sqlite_classes` (not legacy `new_classes`). Even ephemeral DOs like PresenceRoom are declared as SQLite — Cloudflare recommends SQLite for all new DOs; KV-backed DOs are legacy.
