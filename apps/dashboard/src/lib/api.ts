@@ -1,4 +1,4 @@
-import { getAuthToken, parseSafeResponse } from 'deepspace'
+import { getAuthToken } from 'deepspace'
 import type { AppEntry, AppAnalytics, UserProfile, UsageSummary } from './types'
 
 async function authedFetch<T>(url: string, init?: RequestInit): Promise<T> {
@@ -15,10 +15,10 @@ async function authedFetch<T>(url: string, init?: RequestInit): Promise<T> {
     },
   })
 
-  const { data, ok, status } = await parseSafeResponse<Record<string, unknown>>(res)
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>
 
-  if (!ok) {
-    throw new Error((data.error as string) ?? `Request failed (${status})`)
+  if (!res.ok) {
+    throw new Error((data.error as string) ?? `Request failed (${res.status})`)
   }
 
   return data as T
@@ -77,9 +77,8 @@ export interface SubscriptionStatus {
 
 export async function fetchStripeConfig(): Promise<StripeConfig> {
   const res = await fetch('/api/stripe/config')
-  const { data, ok } = await parseSafeResponse<StripeConfig>(res)
-  if (!ok) throw new Error('Failed to fetch Stripe config')
-  return data
+  if (!res.ok) throw new Error('Failed to fetch Stripe config')
+  return (await res.json()) as StripeConfig
 }
 
 export async function fetchSubscriptionStatus(): Promise<SubscriptionStatus> {

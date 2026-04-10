@@ -5,7 +5,6 @@
 
 import { Hono } from 'hono'
 import { z } from 'zod'
-import { safeJson } from 'deepspace/worker'
 import type { Env } from '../worker'
 import { authMiddleware } from '../middleware/auth'
 import { getDb } from '../worker'
@@ -62,7 +61,7 @@ integrations.get('/', (c) => {
     })
   }
 
-  return safeJson(c, { integrations: catalog })
+  return c.json({ integrations: catalog })
 })
 
 // POST /:name/:endpoint — authenticated, billed integration call
@@ -80,13 +79,13 @@ integrations.post('/:name/:endpoint', authMiddleware, async (c) => {
   const handlerKey = `${integrationName}/${endpoint}`
   const handler = HANDLER_REGISTRY.get(handlerKey)
   if (!handler) {
-    return safeJson(c, { error: `Unknown integration: ${handlerKey}` }, 404)
+    return c.json({ error: `Unknown integration: ${handlerKey}` }, 404)
   }
 
   // Validate billing config exists and is active
   const config = getIntegrationConfig(integrationName, endpoint)
   if (!config || !config.isActive) {
-    return safeJson(c, { error: `Integration not active: ${handlerKey}` }, 404)
+    return c.json({ error: `Integration not active: ${handlerKey}` }, 404)
   }
 
   const rawBody = await c.req.json()
@@ -99,7 +98,7 @@ integrations.post('/:name/:endpoint', authMiddleware, async (c) => {
       body = schema.parse(rawBody) as Record<string, unknown>
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return safeJson(c, {
+        return c.json({
           success: false,
           error: 'Validation failed',
           issues: error.issues,
@@ -126,12 +125,12 @@ integrations.post('/:name/:endpoint', authMiddleware, async (c) => {
     // Mark completed
     await updateUsageStatus(db, usageId, 'completed')
 
-    return safeJson(c, { success: true, data: result as Record<string, unknown> })
+    return c.json({ success: true, data: result as Record<string, unknown> })
   } catch (error) {
     await updateUsageStatus(db, usageId, 'failed')
     console.error(`Integration ${handlerKey} failed:`, error)
     const message = error instanceof Error ? error.message : 'Integration call failed'
-    return safeJson(c, { success: false, error: message }, 502)
+    return c.json({ success: false, error: message }, 502)
   }
 })
 

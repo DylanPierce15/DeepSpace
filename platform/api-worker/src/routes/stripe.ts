@@ -5,7 +5,6 @@
 import { Hono } from 'hono'
 import Stripe from 'stripe'
 import { eq, sql } from 'drizzle-orm'
-import { safeJson } from 'deepspace/worker'
 import type { Env } from '../worker'
 import { authMiddleware } from '../middleware/auth'
 import { userProfiles, stripeInvoices } from '../db/schema'
@@ -74,7 +73,7 @@ const stripe = new Hono<Env>()
 
 stripe.get('/config', (c) => {
   const priceIds = getStripePriceIds(c.env)
-  return safeJson(c, {
+  return c.json({
     enabled: !!c.env.STRIPE_SECRET_KEY,
     publishableKey: c.env.STRIPE_PUBLISHABLE_KEY ?? '',
     priceIds,
@@ -95,7 +94,7 @@ stripe.post('/create-checkout-session', authMiddleware, async (c) => {
   const priceIds = getStripePriceIds(c.env)
   const validPriceIds = [priceIds.starter_monthly, priceIds.premium_monthly]
   if (!priceId || !validPriceIds.includes(priceId)) {
-    return safeJson(c, { error: 'Invalid price ID' }, 400)
+    return c.json({ error: 'Invalid price ID' }, 400)
   }
 
   const customer = await getOrCreateStripeCustomer(stripeClient, db, userId)
@@ -112,7 +111,7 @@ stripe.post('/create-checkout-session', authMiddleware, async (c) => {
     subscription_data: { metadata: { userId } },
   })
 
-  return safeJson(c, { sessionId: session.id, url: session.url ?? '' })
+  return c.json({ sessionId: session.id, url: session.url ?? '' })
 })
 
 // ============================================================================
@@ -128,7 +127,7 @@ stripe.post('/upgrade', authMiddleware, async (c) => {
   const priceToTier = buildPriceToTierMap(c.env)
 
   if (!targetPriceId || !priceToTier[targetPriceId]) {
-    return safeJson(c, { error: 'Invalid target price ID' }, 400)
+    return c.json({ error: 'Invalid target price ID' }, 400)
   }
 
   const [profile] = await db
@@ -138,7 +137,7 @@ stripe.post('/upgrade', authMiddleware, async (c) => {
     .limit(1)
 
   if (!profile?.stripeSubscriptionId || !profile?.stripeCustomerId) {
-    return safeJson(c, { error: 'No active subscription to upgrade. Please subscribe first.' }, 400)
+    return c.json({ error: 'No active subscription to upgrade. Please subscribe first.' }, 400)
   }
 
   const subscription = await stripeClient.subscriptions.retrieve(
@@ -146,7 +145,7 @@ stripe.post('/upgrade', authMiddleware, async (c) => {
     { expand: ['default_payment_method'] },
   )
   if (subscription.status !== 'active') {
-    return safeJson(c, { error: 'Subscription is not active' }, 400)
+    return c.json({ error: 'Subscription is not active' }, 400)
   }
 
   const currentPriceId = subscription.items.data[0]?.price?.id
@@ -156,7 +155,7 @@ stripe.post('/upgrade', authMiddleware, async (c) => {
   const currentCents = TIER_PRICE_CENTS[currentTier]
   const targetCents = TIER_PRICE_CENTS[targetTier]
   if (targetCents <= currentCents) {
-    return safeJson(c, { error: 'Can only upgrade to a higher tier. Use the customer portal for downgrades.' }, 400)
+    return c.json({ error: 'Can only upgrade to a higher tier. Use the customer portal for downgrades.' }, 400)
   }
 
   // Resolve payment method
@@ -175,7 +174,7 @@ stripe.post('/upgrade', authMiddleware, async (c) => {
     }
   }
   if (!paymentMethodId) {
-    return safeJson(c, { error: 'No payment method found. Please update your payment method and try again.' }, 400)
+    return c.json({ error: 'No payment method found. Please update your payment method and try again.' }, 400)
   }
 
   const priceDiffCents = targetCents - currentCents
@@ -209,7 +208,7 @@ stripe.post('/upgrade', authMiddleware, async (c) => {
   } catch (payError) {
     await stripeClient.invoices.voidInvoice(invoice.id)
     console.error(`Upgrade payment failed for user ${userId}:`, payError)
-    return safeJson(c, { error: 'Payment failed. Please check your payment method and try again.' }, 400)
+    return c.json({ error: 'Payment failed. Please check your payment method and try again.' }, 400)
   }
 
   // Update Stripe subscription item to new price
@@ -234,7 +233,7 @@ stripe.post('/upgrade', authMiddleware, async (c) => {
 
   console.log(`Upgraded user ${userId}: ${currentTier} -> ${targetTier}, charged $${(priceDiffCents / 100).toFixed(2)}`)
 
-  return safeJson(c, {
+  return c.json({
     success: true,
     message: `Upgraded to ${targetTier}. Charged $${(priceDiffCents / 100).toFixed(2)}.`,
     previousTier: currentTier,
@@ -256,7 +255,7 @@ stripe.post('/create-credit-checkout', authMiddleware, async (c) => {
 
   const priceIds = getStripePriceIds(c.env)
   if (!priceIds.pay_per_credit) {
-    return safeJson(c, { error: 'Pay-per-credit is not configured' }, 503)
+    return c.json({ error: 'Pay-per-credit is not configured' }, 503)
   }
 
   const resolvedQuantity = quantity && quantity > 0 ? quantity : 1
@@ -279,7 +278,7 @@ stripe.post('/create-credit-checkout', authMiddleware, async (c) => {
     },
   })
 
-  return safeJson(c, { sessionId: session.id, url: session.url ?? '' })
+  return c.json({ sessionId: session.id, url: session.url ?? '' })
 })
 
 // ============================================================================
@@ -299,7 +298,7 @@ stripe.post('/create-portal-session', authMiddleware, async (c) => {
     return_url: returnUrl || 'https://deep.space/',
   })
 
-  return safeJson(c, { url: session.url })
+  return c.json({ url: session.url })
 })
 
 // ============================================================================
@@ -312,10 +311,10 @@ stripe.get('/credits-available', authMiddleware, async (c) => {
 
   try {
     const result = await creditsAvailableForUser(db, userId)
-    return safeJson(c, { success: true, credits: result.credits })
+    return c.json({ success: true, credits: result.credits })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to get credits'
-    return safeJson(c, { success: false, credits: null, error: message }, 500)
+    return c.json({ success: false, credits: null, error: message }, 500)
   }
 })
 
@@ -336,7 +335,7 @@ stripe.get('/subscription-status', authMiddleware, async (c) => {
     .limit(1)
 
   if (!profile) {
-    return safeJson(c, {
+    return c.json({
       currentTier: 'free',
       hasActiveSubscription: false,
       pendingTier: null,
@@ -346,7 +345,7 @@ stripe.get('/subscription-status', authMiddleware, async (c) => {
   }
 
   if (!profile.stripeSubscriptionId) {
-    return safeJson(c, {
+    return c.json({
       currentTier: profile.subscriptionTier ?? 'free',
       hasActiveSubscription: false,
       pendingTier: null,
@@ -393,7 +392,7 @@ stripe.get('/subscription-status', authMiddleware, async (c) => {
         : null
     }
 
-    return safeJson(c, {
+    return c.json({
       currentTier: profile.subscriptionTier ?? 'free',
       hasActiveSubscription: subscription.status === 'active',
       pendingTier,
@@ -404,7 +403,7 @@ stripe.get('/subscription-status', authMiddleware, async (c) => {
     })
   } catch (err) {
     console.warn('Failed to fetch subscription from Stripe:', err)
-    return safeJson(c, {
+    return c.json({
       currentTier: profile.subscriptionTier ?? 'free',
       hasActiveSubscription: profile.subscriptionStatus === 'active',
       pendingTier: null,
@@ -420,7 +419,7 @@ stripe.get('/subscription-status', authMiddleware, async (c) => {
 
 stripe.post('/webhook', async (c) => {
   if (!c.env.STRIPE_SECRET_KEY || !c.env.STRIPE_WEBHOOK_SECRET) {
-    return safeJson(c, { error: 'Stripe is not configured' }, 503)
+    return c.json({ error: 'Stripe is not configured' }, 503)
   }
 
   const stripeClient = getStripe(c.env)
@@ -469,10 +468,10 @@ stripe.post('/webhook', async (c) => {
         console.log(`Unhandled event type: ${event.type}`)
     }
 
-    return safeJson(c, { received: true })
+    return c.json({ received: true })
   } catch (error) {
     console.error('Error processing webhook:', error)
-    return safeJson(c, { error: 'Webhook processing failed' }, 500)
+    return c.json({ error: 'Webhook processing failed' }, 500)
   }
 })
 

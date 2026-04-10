@@ -1,5 +1,5 @@
 import { createMiddleware } from 'hono/factory'
-import { verifyJwt, safeJson } from 'deepspace/worker'
+import { verifyJwt } from 'deepspace/worker'
 import type { Env } from '../worker'
 
 export const authMiddleware = createMiddleware<Env>(async (c, next) => {
@@ -7,7 +7,7 @@ export const authMiddleware = createMiddleware<Env>(async (c, next) => {
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
 
   if (!token) {
-    return safeJson(c, { error: 'Missing authorization token' }, 401)
+    return c.json({ error: 'Missing authorization token' }, 401)
   }
 
   const { result, error } = await verifyJwt(
@@ -20,7 +20,7 @@ export const authMiddleware = createMiddleware<Env>(async (c, next) => {
 
   if (!result) {
     console.error('JWT verification failed:', error)
-    return safeJson(c, { error: 'Invalid or expired token' }, 401)
+    return c.json({ error: 'Invalid or expired token' }, 401)
   }
 
   c.set('userId', result.userId)

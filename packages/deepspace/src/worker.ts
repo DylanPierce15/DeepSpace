@@ -8,7 +8,6 @@
 export * from './server/rooms'
 export * from './server/schemas'
 export * from './shared/protocol'
-export * from './shared/safe-response'
 export * from './server/utils'
 export * from './server/auth'
 export { SYSTEM_COLLECTIONS, LEGACY_STORAGE_COLLECTION, LEGACY_STORAGE_FIELD } from './server/handlers/yjs'

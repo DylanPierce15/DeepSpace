@@ -7,7 +7,6 @@
  */
 
 import { Hono } from 'hono'
-import { safeJson } from 'deepspace/worker'
 import type { Env } from '../worker'
 import { authMiddleware } from '../middleware/auth'
 import { deployToWfP, deleteFromWfP, sha256Hex32, type AssetEntry } from '../lib/cloudflare-deploy'
@@ -24,7 +23,7 @@ deploy.post('/:appName', authMiddleware, async (c) => {
   const userId = c.get('userId')
 
   if (!appName || appName.length < 2 || appName.length > 63) {
-    return safeJson(c, { error: 'App name must be 2-63 characters, lowercase alphanumeric with hyphens' }, 400)
+    return c.json({ error: 'App name must be 2-63 characters, lowercase alphanumeric with hyphens' }, 400)
   }
 
   // Check ownership: either new app or user owns it
@@ -33,7 +32,7 @@ deploy.post('/:appName', authMiddleware, async (c) => {
   if (existing) {
     const meta = (await existing.json()) as { ownerUserId?: string }
     if (meta.ownerUserId && meta.ownerUserId !== userId) {
-      return safeJson(c, { error: 'App name is owned by another user' }, 403)
+      return c.json({ error: 'App name is owned by another user' }, 403)
     }
   }
 
@@ -45,10 +44,10 @@ deploy.post('/:appName', authMiddleware, async (c) => {
   const doManifestJson = formData.get('doManifest') as string | null
 
   if (!workerFile) {
-    return safeJson(c, { error: 'Missing "worker" field (bundled worker.js)' }, 400)
+    return c.json({ error: 'Missing "worker" field (bundled worker.js)' }, 400)
   }
   if (!assetsJson) {
-    return safeJson(c, { error: 'Missing "assets" field (JSON array of asset entries)' }, 400)
+    return c.json({ error: 'Missing "assets" field (JSON array of asset entries)' }, 400)
   }
 
   const workerJs = await workerFile.text()
@@ -58,7 +57,7 @@ deploy.post('/:appName', authMiddleware, async (c) => {
   try {
     rawAssets = JSON.parse(assetsJson)
   } catch {
-    return safeJson(c, { error: 'Invalid assets JSON' }, 400)
+    return c.json({ error: 'Invalid assets JSON' }, 400)
   }
 
   // Parse and validate optional cron config
@@ -68,11 +67,11 @@ deploy.post('/:appName', authMiddleware, async (c) => {
     try {
       rawCron = JSON.parse(cronConfigJson)
     } catch {
-      return safeJson(c, { error: 'Invalid cronConfig JSON' }, 400)
+      return c.json({ error: 'Invalid cronConfig JSON' }, 400)
     }
     parsedCronConfig = validateCronConfig(rawCron)
     if (!parsedCronConfig.success) {
-      return safeJson(c, { error: `Invalid cron config: ${parsedCronConfig.error}` }, 400)
+      return c.json({ error: `Invalid cron config: ${parsedCronConfig.error}` }, 400)
     }
   }
 
@@ -82,7 +81,7 @@ deploy.post('/:appName', authMiddleware, async (c) => {
     try {
       doManifest = JSON.parse(doManifestJson)
     } catch {
-      return safeJson(c, { error: 'Invalid doManifest JSON' }, 400)
+      return c.json({ error: 'Invalid doManifest JSON' }, 400)
     }
   }
 
@@ -121,7 +120,7 @@ deploy.post('/:appName', authMiddleware, async (c) => {
   )
 
   if (!result.success) {
-    return safeJson(c, { error: result.error ?? 'Deploy failed' }, 500)
+    return c.json({ error: result.error ?? 'Deploy failed' }, 500)
   }
 
   // Register cron tasks in dispatch worker's KV (or clean up if no tasks)
@@ -147,7 +146,7 @@ deploy.post('/:appName', authMiddleware, async (c) => {
     { httpMetadata: { contentType: 'application/json' } },
   )
 
-  return safeJson(c, {
+  return c.json({
     success: true,
     url: `https://${appName}.app.space`,
     versionId: result.versionId,
@@ -166,12 +165,12 @@ deploy.delete('/:appName', authMiddleware, async (c) => {
   const registryKey = `app-registry/${appName}.json`
   const existing = await c.env.APP_REGISTRY.get(registryKey)
   if (!existing) {
-    return safeJson(c, { error: 'App not found' }, 404)
+    return c.json({ error: 'App not found' }, 404)
   }
 
   const meta = (await existing.json()) as { ownerUserId?: string }
   if (meta.ownerUserId && meta.ownerUserId !== userId) {
-    return safeJson(c, { error: 'Not authorized to delete this app' }, 403)
+    return c.json({ error: 'Not authorized to delete this app' }, 403)
   }
 
   const result = await deleteFromWfP(
@@ -183,14 +182,14 @@ deploy.delete('/:appName', authMiddleware, async (c) => {
   )
 
   if (!result.success) {
-    return safeJson(c, { error: result.error ?? 'Delete failed' }, 500)
+    return c.json({ error: result.error ?? 'Delete failed' }, 500)
   }
 
   // Remove cron tasks and app registry entry
   await c.env.CRON_TASKS.delete(`cron:${appName}`)
   await c.env.APP_REGISTRY.delete(registryKey)
 
-  return safeJson(c, { success: true })
+  return c.json({ success: true })
 })
 
 // ============================================================================
@@ -203,11 +202,11 @@ deploy.get('/:appName', authMiddleware, async (c) => {
   const obj = await c.env.APP_REGISTRY.get(registryKey)
 
   if (!obj) {
-    return safeJson(c, { deployed: false })
+    return c.json({ deployed: false })
   }
 
   const meta = (await obj.json()) as Record<string, unknown>
-  return safeJson(c, { deployed: true, ...meta })
+  return c.json({ deployed: true, ...meta })
 })
 
 export default deploy

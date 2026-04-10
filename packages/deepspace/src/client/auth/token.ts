@@ -10,8 +10,6 @@
 // Token is fetched via same-origin /api/auth/token — the app's worker (or Vite proxy)
 // routes this to the auth-worker. No cross-origin requests needed.
 
-import { parseSafeResponse } from '../../shared/safe-response'
-
 let cachedToken: string | null = null
 let tokenExpiry = 0
 
@@ -48,12 +46,14 @@ export async function getAuthToken(): Promise<string | null> {
       headers: { 'Content-Type': 'application/json' },
     })
 
-    // Workers use the safeJson convention: always HTTP 200, real status in
-    // body.status. Required to avoid a @cloudflare/vite-plugin bug that
-    // crashes dev on non-2xx POST responses.
-    const { data, ok } = await parseSafeResponse<{ token?: string | null }>(res)
+    if (!res.ok) {
+      cachedToken = null
+      tokenExpiry = 0
+      return null
+    }
 
-    if (!ok || !data.token) {
+    const data = (await res.json()) as { token?: string | null }
+    if (!data.token) {
       cachedToken = null
       tokenExpiry = 0
       return null

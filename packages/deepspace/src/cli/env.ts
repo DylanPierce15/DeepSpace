@@ -6,7 +6,6 @@
 
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { parseSafeResponse } from '../shared/safe-response'
 
 export const ENVS = {
   dev: {
@@ -28,9 +27,12 @@ export type EnvName = keyof typeof ENVS
  */
 export async function fetchPublicKey(authUrl: string): Promise<string> {
   const res = await fetch(`${authUrl}/api/auth/jwks`)
-  const { data, ok, status } = await parseSafeResponse<{ publicKey?: string }>(res)
-  if (!ok || !data.publicKey) {
-    throw new Error(`Failed to fetch JWT public key (${status})`)
+  if (!res.ok) {
+    throw new Error(`Failed to fetch JWT public key (${res.status})`)
+  }
+  const data = (await res.json()) as { publicKey?: string }
+  if (!data.publicKey) {
+    throw new Error('JWKS response missing publicKey')
   }
   return data.publicKey
 }

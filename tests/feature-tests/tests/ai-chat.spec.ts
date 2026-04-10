@@ -4,9 +4,6 @@
  * Assumes the deployed app has `npx deepspace add ai-chat` installed and
  * the app worker's /api/ai/chat route is wired up (baked into the starter
  * template's worker.ts).
- *
- * /api/ai/chat uses real HTTP status codes (not safeJson) because the AI
- * SDK client parses the response as a data stream and can't handle safeJson.
  */
 
 import { test, expect, getAppBase } from '../fixtures'

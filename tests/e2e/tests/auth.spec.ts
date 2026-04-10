@@ -41,8 +41,8 @@ test.describe('Public email/password signup disabled', () => {
         name: 'Should Not Exist',
       },
     })
+    expect(res.status()).toBe(403)
     const body = await res.json()
-    expect(body.status).toBe(403)
     expect(body.error).toContain('signup disabled')
   })
 
@@ -54,8 +54,7 @@ test.describe('Public email/password signup disabled', () => {
         name: 'Blocked',
       },
     })
-    const body = await res.json()
-    expect(body.status).toBe(403)
+    expect(res.status()).toBe(403)
   })
 })
 
@@ -113,8 +112,7 @@ test.describe('JWT token endpoint', () => {
 
   test('returns 401 without session', async ({ request }) => {
     const res = await request.post(`${AUTH_URL}/api/auth/token`)
-    const body = await res.json()
-    expect(body.status).toBe(401)
+    expect(res.status()).toBe(401)
   })
 })
 
@@ -226,8 +224,7 @@ test.describe('Test account management', () => {
     const res = await request.delete(`${AUTH_URL}/api/auth/test-accounts/non-existent`, {
       headers: { Cookie: `${SESSION_COOKIE_NAME}=${auth.sessionToken}` },
     })
-    const body = await res.json()
-    expect(body.status).toBe(404)
+    expect(res.status()).toBe(404)
   })
 })
 
@@ -241,8 +238,8 @@ test.describe('Test account validation', () => {
       headers: { Cookie: `${SESSION_COOKIE_NAME}=${auth.sessionToken}` },
       data: { email: 'bad@example.com', password: 'TestBad123!', name: 'Bad' },
     })
+    expect(res.status()).toBe(400)
     const body = await res.json()
-    expect(body.status).toBe(400)
     expect(body.error).toContain('@deepspace.test')
   })
 
@@ -251,8 +248,8 @@ test.describe('Test account validation', () => {
       headers: { Cookie: `${SESSION_COOKIE_NAME}=${auth.sessionToken}` },
       data: { email: `short-${Date.now()}@deepspace.test`, password: 'short', name: 'Short' },
     })
+    expect(res.status()).toBe(400)
     const body = await res.json()
-    expect(body.status).toBe(400)
     expect(body.error).toContain('8 characters')
   })
 
@@ -260,13 +257,13 @@ test.describe('Test account validation', () => {
     const create = await request.post(`${AUTH_URL}/api/auth/test-accounts`, {
       data: { email: 'x@deepspace.test', password: 'Unauth123!' },
     })
-    expect((await create.json()).status).toBe(401)
+    expect(create.status()).toBe(401)
 
     const list = await request.get(`${AUTH_URL}/api/auth/test-accounts`)
-    expect((await list.json()).status).toBe(401)
+    expect(list.status()).toBe(401)
 
     const del = await request.delete(`${AUTH_URL}/api/auth/test-accounts/x`)
-    expect((await del.json()).status).toBe(401)
+    expect(del.status()).toBe(401)
   })
 })
 

@@ -6,7 +6,6 @@
 
 import { Hono } from 'hono'
 import { eq, and, gte, desc, sql } from 'drizzle-orm'
-import { safeJson } from 'deepspace/worker'
 import type { Env } from '../worker'
 import { authMiddleware } from '../middleware/auth'
 import { integrationUsage, userProfiles } from '../db/schema'
@@ -74,7 +73,7 @@ usage.get('/summary', authMiddleware, async (c) => {
     .orderBy(desc(integrationUsage.createdAt))
     .limit(50)
 
-  return safeJson(c, { credits, usageByIntegration, recentUsage })
+  return c.json({ credits, usageByIntegration, recentUsage })
 })
 
 export default usage

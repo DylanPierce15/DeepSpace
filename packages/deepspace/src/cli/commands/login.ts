@@ -17,7 +17,6 @@ import { platform } from 'node:os'
 import * as p from '@clack/prompts'
 
 import { ENVS } from '../env'
-import { parseSafeResponse } from '../../shared/safe-response'
 
 const SESSION_COOKIE = '__Secure-better-auth.session_token'
 
@@ -57,14 +56,19 @@ export default defineCommand({
 
     // 1. Create a CLI session
     const sessionRes = await fetch(`${AUTH_URL}/api/auth/cli/session`, { method: 'POST' })
-    const sessionBody = await parseSafeResponse<{ sessionId?: string; loginUrl?: string }>(sessionRes)
-    if (!sessionBody.ok || !sessionBody.data.sessionId || !sessionBody.data.loginUrl) {
+    if (!sessionRes.ok) {
+      s.stop('Failed')
+      p.cancel('Could not create login session')
+      process.exit(1)
+    }
+    const sessionData = (await sessionRes.json()) as { sessionId?: string; loginUrl?: string }
+    if (!sessionData.sessionId || !sessionData.loginUrl) {
       s.stop('Failed')
       p.cancel('Could not create login session')
       process.exit(1)
     }
 
-    const { sessionId, loginUrl } = sessionBody.data as { sessionId: string; loginUrl: string }
+    const { sessionId, loginUrl } = sessionData as { sessionId: string; loginUrl: string }
 
     s.stop('Opening browser...')
     p.log.info(`If the browser doesn't open, visit:\n  ${loginUrl}`)
@@ -106,15 +110,17 @@ async function pollForCompletion(sessionId: string): Promise<LoginResult | null>
 
     try {
       const res = await fetch(`${AUTH_URL}/api/auth/cli/status/${sessionId}`)
-      const { data, status } = await parseSafeResponse<{
+
+      if (res.status === 410 || res.status === 404) return null // expired / not found
+      if (!res.ok) continue
+
+      const data = (await res.json()) as {
         state?: string
         sessionToken?: string
         jwt?: string
         email?: string
         name?: string
-      }>(res)
-
-      if (status === 410 || status === 404) return null // expired / not found
+      }
 
       if (data.state === 'complete' && data.sessionToken && data.jwt) {
         return {
@@ -164,9 +170,9 @@ async function exchangeSession(authUrl: string, sessionToken: string): Promise<s
       Origin: authUrl,
     },
   })
-  const { data, ok } = await parseSafeResponse<{ token?: string | null }>(res)
-  if (!ok || !data.token) return null
-  return data.token
+  if (!res.ok) return null
+  const data = (await res.json()) as { token?: string | null }
+  return data.token ?? null
 }
 
 // ── Email/password login (for test accounts and CI) ────────────────

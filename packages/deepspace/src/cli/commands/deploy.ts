@@ -17,7 +17,6 @@ import { join, resolve, dirname } from 'node:path'
 import * as p from '@clack/prompts'
 import { ensureToken } from '../auth'
 import { ENVS } from '../env'
-import { parseSafeResponse } from '../../shared/safe-response'
 
 const DEPLOY_URL = process.env.DEEPSPACE_DEPLOY_URL ?? ENVS.prod.deploy
 
@@ -149,15 +148,15 @@ export default defineCommand({
       body: form,
     })
 
-    const { data: body, ok, status } = await parseSafeResponse<{
+    const body = (await res.json().catch(() => ({}))) as {
       success?: boolean
       url?: string
       error?: string
-    }>(res)
+    }
 
-    if (!ok || !body.success) {
+    if (!res.ok || !body.success) {
       s.stop('Deploy failed')
-      p.cancel(body.error ?? `Deployment error (${status})`)
+      p.cancel(body.error ?? `Deployment error (${res.status})`)
       process.exit(1)
     }
 

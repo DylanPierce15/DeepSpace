@@ -21,8 +21,6 @@ import {
   verifyInternalSignature,
   buildInternalPayload,
   createDeepSpaceAIFromBinding,
-  safeJson,
-  parseSafeResponse,
 } from 'deepspace/worker'
 import type { JwtVerifierConfig, VerifyResult } from 'deepspace/worker'
 import {
@@ -117,7 +115,7 @@ async function resolveAuth(req: Request, env: Env): Promise<VerifyResult | null>
 
 app.get('/api/auth/social-redirect', (c) => {
   const provider = c.req.query('provider')
-  if (!provider) return safeJson(c, { error: 'Missing provider' }, 400)
+  if (!provider) return c.json({ error: 'Missing provider' }, 400)
 
   const appOrigin = new URL(c.req.url).origin
   const authOrigin = new URL(c.env.AUTH_WORKER_URL).origin
@@ -139,8 +137,9 @@ app.get('/api/auth/oauth-complete', async (c) => {
     body: JSON.stringify({ code }),
   })
 
-  const { data, ok } = await parseSafeResponse<{ sessionToken?: string }>(res)
-  if (!ok || !data.sessionToken) return c.redirect(appOrigin)
+  if (!res.ok) return c.redirect(appOrigin)
+  const data = (await res.json()) as { sessionToken?: string }
+  if (!data.sessionToken) return c.redirect(appOrigin)
   const sessionToken = data.sessionToken
 
   return new Response(null, {
@@ -181,7 +180,7 @@ app.get('/api/integrations', async (c) => {
     const res = await c.env.API_WORKER.fetch('https://api-worker/api/integrations')
     return new Response(res.body, { status: res.status, headers: res.headers })
   } catch {
-    return safeJson(c, { error: 'Failed to fetch integration catalog' }, 502)
+    return c.json({ error: 'Failed to fetch integration catalog' }, 502)
   }
 })
 
@@ -191,7 +190,7 @@ app.all('/api/integrations/:name/:endpoint', async (c) => {
 
   const auth = await resolveAuth(c.req.raw, c.env)
   if (!auth && billingMode === 'user') {
-    return safeJson(c, { error: 'Sign in required for this integration' }, 401)
+    return c.json({ error: 'Sign in required for this integration' }, 401)
   }
 
   const target = `/api/integrations/${integrationName}/${c.req.param('endpoint')}`
@@ -220,7 +219,7 @@ app.all('/api/integrations/:name/:endpoint', async (c) => {
     })
     return new Response(res.body, { status: res.status, headers: res.headers })
   } catch {
-    return safeJson(c, { error: 'Integration proxy failed' }, 502)
+    return c.json({ error: 'Integration proxy failed' }, 502)
   }
 })
 
@@ -278,14 +277,14 @@ app.get('/ws/presence/:scopeId', wsRoute(
 
 app.post('/api/actions/:name', async (c) => {
   const auth = await resolveAuth(c.req.raw, c.env)
-  if (!auth) return safeJson(c, { error: 'Unauthorized' }, 401)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
   const name = c.req.param('name')
   const action = actions[name]
-  if (!action) return safeJson(c, { error: 'Action not found' }, 404)
+  if (!action) return c.json({ error: 'Action not found' }, 404)
   const params = await c.req.json<Record<string, unknown>>()
   const tools = createActionTools(c.env, auth.userId)
   const result = await action({ userId: auth.userId, params, tools })
-  return safeJson(c, result as unknown as Record<string, unknown>)
+  return c.json(result as unknown as Record<string, unknown>)
 })
 
 // ---------------------------------------------------------------------------
@@ -293,8 +292,6 @@ app.post('/api/actions/:name', async (c) => {
 // ---------------------------------------------------------------------------
 
 app.post('/api/ai/chat', async (c) => {
-  // Use real HTTP status codes here (not safeJson) — the AI SDK client
-  // parses this response as a data stream and chokes on JSON error bodies.
   const auth = await resolveAuth(c.req.raw, c.env)
   if (!auth) return c.json({ error: 'Unauthorized' }, 401)
 
@@ -390,7 +387,7 @@ app.all('/api/files/*', async (c) => {
         if (typeof f.url === 'string') f.url = rewriteUrl(f.url)
       }
     }
-    return safeJson(c, body, resp.status)
+    return c.json(body, resp.status as any)
   }
 
   return new Response(resp.body, { status: resp.status, headers: resp.headers })
@@ -408,9 +405,9 @@ app.post('/internal/cron', async (c) => {
     signature: c.req.header('x-internal-signature') ?? '',
     timestamp: c.req.header('x-internal-timestamp') ?? '',
   })
-  if (!valid) return safeJson(c, { error: 'Forbidden' }, 403)
+  if (!valid) return c.json({ error: 'Forbidden' }, 403)
   await handleCron(JSON.parse(body))
-  return safeJson(c, { ok: true })
+  return c.json({ ok: true })
 })
 
 // ---------------------------------------------------------------------------

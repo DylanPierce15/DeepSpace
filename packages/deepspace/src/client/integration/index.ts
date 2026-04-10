@@ -11,7 +11,6 @@
  */
 
 import { getAuthToken } from '../auth/token'
-import { parseSafeResponse } from '../../shared/safe-response'
 
 const ENDPOINT_PREFIX = '/api/integrations'
 const DEFAULT_TIMEOUT_MS = 120_000
@@ -72,12 +71,17 @@ async function request<T>(
       signal: controller.signal,
     })
 
-    const { data: payload, status, ok } = await parseSafeResponse<Record<string, unknown>>(res)
+    let payload: Record<string, unknown>
+    try {
+      payload = (await res.json()) as Record<string, unknown>
+    } catch {
+      return { success: false, error: `Request failed (${res.status})` }
+    }
 
-    if (!ok || payload.success === false) {
+    if (!res.ok || payload.success === false) {
       return {
         success: false,
-        error: (payload.error as string) ?? (payload.message as string) ?? `Request failed (${status})`,
+        error: (payload.error as string) ?? (payload.message as string) ?? `Request failed (${res.status})`,
         ...(payload.issues ? { issues: payload.issues as IntegrationResponse['issues'] } : {}),
       }
     }

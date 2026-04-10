@@ -19,7 +19,6 @@ import { join } from 'node:path'
 import { homedir } from 'node:os'
 import { ensureToken, SESSION_PATH } from '../auth'
 import { ENVS } from '../env'
-import { parseSafeResponse } from '../../shared/safe-response'
 
 const SESSION_COOKIE = '__Secure-better-auth.session_token'
 
@@ -107,16 +106,16 @@ const create = defineCommand({
       }),
     })
 
-    const { data, ok } = await parseSafeResponse<{
+    const data = (await res.json().catch(() => ({}))) as {
       id?: string
       email?: string
       userId?: string
       label?: string | null
       createdAt?: number
       error?: string
-    }>(res)
+    }
 
-    if (!ok || !data.id) {
+    if (!res.ok || !data.id) {
       console.error(`Failed: ${data.error ?? 'Unknown error'}`)
       process.exit(1)
     }
@@ -162,12 +161,12 @@ const list = defineCommand({
       },
     })
 
-    const { data, ok } = await parseSafeResponse<{
+    const data = (await res.json().catch(() => ({}))) as {
       accounts?: Array<{ id: string; email: string; userId: string; label: string | null; createdAt: number }>
       error?: string
-    }>(res)
+    }
 
-    if (!ok || !data.accounts) {
+    if (!res.ok || !data.accounts) {
       console.error(`Failed: ${data.error ?? 'Unknown error'}`)
       process.exit(1)
     }
@@ -221,9 +220,9 @@ const del = defineCommand({
       },
     })
 
-    const { data, ok } = await parseSafeResponse<{ deleted?: boolean; error?: string }>(res)
+    const data = (await res.json().catch(() => ({}))) as { deleted?: boolean; error?: string }
 
-    if (!ok) {
+    if (!res.ok) {
       console.error(`Failed: ${data.error ?? 'Unknown error'}`)
       process.exit(1)
     }
