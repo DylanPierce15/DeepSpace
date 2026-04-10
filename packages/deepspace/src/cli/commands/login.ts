@@ -17,8 +17,8 @@ import { platform } from 'node:os'
 import * as p from '@clack/prompts'
 
 import { ENVS } from '../env'
-import { SESSION_COOKIE } from '../../shared/constants'
-import { exchangeSessionForJwt } from '../../shared/auth-utils'
+
+const SESSION_COOKIE = '__Secure-better-auth.session_token'
 
 const AUTH_URL = process.env.DEEPSPACE_AUTH_URL ?? ENVS.prod.auth
 
@@ -159,6 +159,19 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+async function exchangeSession(authUrl: string, sessionToken: string): Promise<string | null> {
+  const res = await fetch(`${authUrl}/api/auth/token`, {
+    method: 'POST',
+    headers: {
+      Cookie: `${SESSION_COOKIE}=${encodeURIComponent(sessionToken)}`,
+      Origin: authUrl,
+    },
+  })
+  if (!res.ok) return null
+  const { token } = (await res.json()) as { token: string }
+  return token
+}
+
 // ── Email/password login (for test accounts and CI) ────────────────
 
 async function doEmailLogin(email: string, password: string): Promise<void> {
@@ -181,7 +194,7 @@ async function doEmailLogin(email: string, password: string): Promise<void> {
   }
   const sessionToken = decodeURIComponent(cookieMatch[1])
 
-  const jwt = await exchangeSessionForJwt(AUTH_URL, sessionToken)
+  const jwt = await exchangeSession(AUTH_URL, sessionToken)
   if (!jwt) {
     throw new Error('JWT issuance failed')
   }

@@ -19,7 +19,8 @@ import { join } from 'node:path'
 import { homedir } from 'node:os'
 import { ensureToken, SESSION_PATH } from '../auth'
 import { ENVS } from '../env'
-import { SESSION_COOKIE } from '../../shared/constants'
+
+const SESSION_COOKIE = '__Secure-better-auth.session_token'
 
 const AUTH_URL = process.env.DEEPSPACE_AUTH_URL ?? ENVS.prod.auth
 const DIR = join(homedir(), '.deepspace')

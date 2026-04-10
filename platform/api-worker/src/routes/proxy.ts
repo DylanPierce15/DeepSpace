@@ -321,7 +321,6 @@ const proxyAuth = createMiddleware<Env>(async (c, next) => {
   )
 
   if (!result) {
-    console.error('[proxy] JWT verification failed:', error)
     return c.json({ error: 'Invalid or expired token' }, 401)
   }
 
