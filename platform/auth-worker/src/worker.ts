@@ -9,7 +9,7 @@
 import { Hono, type Context } from 'hono'
 import { cors } from 'hono/cors'
 import { SignJWT, importPKCS8 } from 'jose'
-import { createDeepSpaceAuth } from 'deepspace/worker'
+import { createDeepSpaceAuth, safeJson } from 'deepspace/worker'
 
 // ============================================================================
 // Types
@@ -206,12 +206,12 @@ app.get('/api/auth/jwks', (c) => {
 
 app.post('/api/auth/token', async (c) => {
   const { session } = await getSession(c)
-  if (!session?.user) return c.json({ error: 'Unauthorized' }, 401)
+  if (!session?.user) return safeJson(c, { token: null, error: 'Unauthorized' }, 401)
 
   const isTest = await isTestAccountUser(c.env.AUTH_DB, session.user.id)
   const jwt = await issueJwt(c.env, session.user, isTest)
 
-  return c.json({ token: jwt })
+  return safeJson(c, { token: jwt })
 })
 
 // ============================================================================
@@ -254,11 +254,11 @@ app.get('/api/auth/cli/status/:sessionId', async (c) => {
       created_at: number
     }>()
 
-  if (!row) return c.json({ error: 'Session not found' }, 404)
+  if (!row) return safeJson(c, { error: 'Session not found' }, 404)
 
   if (Date.now() - row.created_at > CLI_SESSION_TTL_MS) {
     await c.env.AUTH_DB.prepare('DELETE FROM cli_sessions WHERE id = ?').bind(sessionId).run()
-    return c.json({ error: 'Session expired' }, 410)
+    return safeJson(c, { error: 'Session expired' }, 410)
   }
 
   if (row.status === 'pending') return c.json({ status: 'pending' })
@@ -456,10 +456,10 @@ app.post('/api/auth/exchange-code', async (c) => {
   try {
     body = await c.req.json()
   } catch {
-    return c.json({ error: 'Invalid request body' }, 400)
+    return safeJson(c, { error: 'Invalid request body' }, 400)
   }
 
-  if (!body.code) return c.json({ error: 'Missing code' }, 400)
+  if (!body.code) return safeJson(c, { error: 'Missing code' }, 400)
 
   const row = await c.env.AUTH_DB
     .prepare('SELECT session_token, created_at FROM auth_codes WHERE code = ?')
@@ -467,7 +467,7 @@ app.post('/api/auth/exchange-code', async (c) => {
     .first<{ session_token: string; created_at: number }>()
 
   if (!row || Date.now() - row.created_at > AUTH_CODE_TTL_MS) {
-    return c.json({ error: 'Invalid or expired code' }, 400)
+    return safeJson(c, { error: 'Invalid or expired code' }, 400)
   }
 
   await c.env.AUTH_DB
@@ -643,22 +643,22 @@ function loginCompletePage(): string {
 
 app.post('/api/auth/test-accounts', async (c) => {
   const { auth, session } = await getSession(c)
-  if (!session?.user) return c.json({ error: 'Unauthorized' }, 401)
+  if (!session?.user) return safeJson(c, { error: 'Unauthorized' }, 401)
 
   let body: { email?: string; password?: string; name?: string; label?: string }
   try {
     body = await c.req.json()
   } catch {
-    return c.json({ error: 'Invalid request body' }, 400)
+    return safeJson(c, { error: 'Invalid request body' }, 400)
   }
 
   const { email, password, name, label } = body
 
   if (!email?.endsWith('@deepspace.test')) {
-    return c.json({ error: 'Test account emails must end with @deepspace.test' }, 400)
+    return safeJson(c, { error: 'Test account emails must end with @deepspace.test' }, 400)
   }
   if (!password || password.length < 8) {
-    return c.json({ error: 'Password must be at least 8 characters' }, 400)
+    return safeJson(c, { error: 'Password must be at least 8 characters' }, 400)
   }
 
   await ensureTestAccountsTable(c.env.AUTH_DB)
@@ -670,7 +670,7 @@ app.post('/api/auth/test-accounts', async (c) => {
     .first<{ cnt: number }>()
 
   if (countRow && countRow.cnt >= 10) {
-    return c.json({ error: 'Maximum 10 test accounts per developer' }, 429)
+    return safeJson(c, { error: 'Maximum 10 test accounts per developer' }, 429)
   }
 
   // Create user via Better Auth's internal API
@@ -680,11 +680,11 @@ app.post('/api/auth/test-accounts', async (c) => {
       body: { email, password, name: name ?? email.split('@')[0] },
     })
   } catch (err: any) {
-    return c.json({ error: err.message ?? 'Failed to create test account' }, 400)
+    return safeJson(c, { error: err.message ?? 'Failed to create test account' }, 400)
   }
 
   if (!signUpResult?.user?.id) {
-    return c.json({ error: 'Failed to create user' }, 500)
+    return safeJson(c, { error: 'Failed to create user' }, 500)
   }
 
   // Atomic insert enforcing the limit again to handle races
@@ -707,7 +707,7 @@ app.post('/api/auth/test-accounts', async (c) => {
       c.env.AUTH_DB.prepare('DELETE FROM account WHERE userId = ?').bind(signUpResult.user.id),
       c.env.AUTH_DB.prepare('DELETE FROM user WHERE id = ?').bind(signUpResult.user.id),
     ]).catch(() => {})
-    return c.json({ error: 'Maximum 10 test accounts per developer' }, 429)
+    return safeJson(c, { error: 'Maximum 10 test accounts per developer' }, 429)
   }
 
   return c.json({ id, email, userId: signUpResult.user.id, label: label ?? null, createdAt: now }, 201)
@@ -715,7 +715,7 @@ app.post('/api/auth/test-accounts', async (c) => {
 
 app.get('/api/auth/test-accounts', async (c) => {
   const { session } = await getSession(c)
-  if (!session?.user) return c.json({ error: 'Unauthorized' }, 401)
+  if (!session?.user) return safeJson(c, { error: 'Unauthorized' }, 401)
 
   await ensureTestAccountsTable(c.env.AUTH_DB)
 
@@ -737,7 +737,7 @@ app.get('/api/auth/test-accounts', async (c) => {
 
 app.delete('/api/auth/test-accounts/:id', async (c) => {
   const { session } = await getSession(c)
-  if (!session?.user) return c.json({ error: 'Unauthorized' }, 401)
+  if (!session?.user) return safeJson(c, { error: 'Unauthorized' }, 401)
 
   const { id } = c.req.param()
   await ensureTestAccountsTable(c.env.AUTH_DB)
@@ -747,7 +747,7 @@ app.delete('/api/auth/test-accounts/:id', async (c) => {
     .bind(id, session.user.id)
     .first<{ user_id: string }>()
 
-  if (!row) return c.json({ error: 'Test account not found' }, 404)
+  if (!row) return safeJson(c, { error: 'Test account not found' }, 404)
 
   // Delete test_accounts row + Better Auth user, sessions, accounts
   await c.env.AUTH_DB.batch([
@@ -766,7 +766,7 @@ app.delete('/api/auth/test-accounts/:id', async (c) => {
 
 // Block public email/password sign-up. Sign-in remains enabled.
 app.post('/api/auth/sign-up/email', (c) => {
-  return c.json({ error: 'Public signup disabled. Use OAuth or create a test account.' }, 403)
+  return safeJson(c, { error: 'Public signup disabled. Use OAuth or create a test account.' }, 403)
 })
 
 app.on(['GET', 'POST'], '/api/auth/*', async (c) => {
@@ -784,10 +784,10 @@ app.post('/_migrate', async (c) => {
   try {
     const hostname = new URL(c.env.AUTH_BASE_URL).hostname
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      return c.json({ error: 'Migrations disabled in production' }, 403)
+      return safeJson(c, { error: 'Migrations disabled in production' }, 403)
     }
   } catch {
-    return c.json({ error: 'Invalid AUTH_BASE_URL' }, 500)
+    return safeJson(c, { error: 'Invalid AUTH_BASE_URL' }, 500)
   }
 
   const { getMigrations } = await import('better-auth/db/migration')

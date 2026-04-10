@@ -5,12 +5,11 @@
   "description": "Read-only AI assistant that can inspect app data via tools",
   "details": "Adds a chat page backed by the app worker's /api/ai/chat route. The assistant uses Vercel AI SDK with Claude via the DeepSpace proxy, and can query records and schemas through read-only tools.",
   "files": [
-    { "src": "src/AiChatPage.tsx", "dest": "src/features/ai-chat/AiChatPage.tsx" }
+    { "src": "src/AiChatPage.tsx", "dest": "src/pages/assistant.tsx" }
   ],
   "route": {
     "path": "/assistant",
     "component": "AssistantPage",
-    "importPath": "./features/ai-chat/AiChatPage",
     "protected": false
   },
   "requires": [],

@@ -47,7 +47,9 @@ export function createDeepSpaceAIFromBinding(
     return apiWorker.fetch(url, { ...init, headers } as RequestInit)
   }
 
-  const baseURL = `https://api-worker.internal/api/proxy/${provider}`
+  // Anthropic SDK appends "/messages" (not "/v1/messages") — baseURL must include /v1.
+  // OpenAI SDK appends "/chat/completions" — baseURL must include /v1.
+  const baseURL = `https://api-worker.internal/api/proxy/${provider}/v1`
 
   if (provider === 'anthropic') {
     return createAnthropic({ baseURL, apiKey: 'platform-managed', fetch: proxyFetch })

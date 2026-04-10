@@ -21,6 +21,7 @@ import {
   verifyInternalSignature,
   buildInternalPayload,
   createDeepSpaceAIFromBinding,
+  safeJson,
 } from 'deepspace/worker'
 import type { JwtVerifierConfig, VerifyResult } from 'deepspace/worker'
 import {
@@ -115,7 +116,7 @@ async function resolveAuth(req: Request, env: Env): Promise<VerifyResult | null>
 
 app.get('/api/auth/social-redirect', (c) => {
   const provider = c.req.query('provider')
-  if (!provider) return c.json({ error: 'Missing provider' }, 400)
+  if (!provider) return safeJson(c, { error: 'Missing provider' }, 400)
 
   const appOrigin = new URL(c.req.url).origin
   const authOrigin = new URL(c.env.AUTH_WORKER_URL).origin
@@ -179,7 +180,7 @@ app.get('/api/integrations', async (c) => {
     const res = await c.env.API_WORKER.fetch('https://api-worker/api/integrations')
     return new Response(res.body, { status: res.status, headers: res.headers })
   } catch {
-    return c.json({ error: 'Failed to fetch integration catalog' }, 502)
+    return safeJson(c, { error: 'Failed to fetch integration catalog' }, 502)
   }
 })
 
@@ -189,7 +190,7 @@ app.all('/api/integrations/:name/:endpoint', async (c) => {
 
   const auth = await resolveAuth(c.req.raw, c.env)
   if (!auth && billingMode === 'user') {
-    return c.json({ error: 'Sign in required for this integration' }, 401)
+    return safeJson(c, { error: 'Sign in required for this integration' }, 401)
   }
 
   const target = `/api/integrations/${integrationName}/${c.req.param('endpoint')}`
@@ -218,7 +219,7 @@ app.all('/api/integrations/:name/:endpoint', async (c) => {
     })
     return new Response(res.body, { status: res.status, headers: res.headers })
   } catch {
-    return c.json({ error: 'Integration proxy failed' }, 502)
+    return safeJson(c, { error: 'Integration proxy failed' }, 502)
   }
 })
 
@@ -276,10 +277,10 @@ app.get('/ws/presence/:scopeId', wsRoute(
 
 app.post('/api/actions/:name', async (c) => {
   const auth = await resolveAuth(c.req.raw, c.env)
-  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
+  if (!auth) return safeJson(c, { error: 'Unauthorized' }, 401)
   const name = c.req.param('name')
   const action = actions[name]
-  if (!action) return c.json({ error: 'Action not found' }, 404)
+  if (!action) return safeJson(c, { error: 'Action not found' }, 404)
   const params = await c.req.json<Record<string, unknown>>()
   const tools = createActionTools(c.env, auth.userId)
   const result = await action({ userId: auth.userId, params, tools })
@@ -291,6 +292,8 @@ app.post('/api/actions/:name', async (c) => {
 // ---------------------------------------------------------------------------
 
 app.post('/api/ai/chat', async (c) => {
+  // Use real HTTP status codes here (not safeJson) — the AI SDK client
+  // parses this response as a data stream and chokes on JSON error bodies.
   const auth = await resolveAuth(c.req.raw, c.env)
   if (!auth) return c.json({ error: 'Unauthorized' }, 401)
 
@@ -322,9 +325,17 @@ app.post('/api/ai/chat', async (c) => {
     messages,
     tools,
     maxSteps: 5,
+    onError: ({ error }) => {
+      console.error('[ai-chat] streamText error:', error)
+    },
   })
 
-  return result.toDataStreamResponse()
+  return result.toDataStreamResponse({
+    getErrorMessage: (error) => {
+      console.error('[ai-chat] response error:', error)
+      return error instanceof Error ? error.message : String(error)
+    },
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -396,7 +407,7 @@ app.post('/internal/cron', async (c) => {
     signature: c.req.header('x-internal-signature') ?? '',
     timestamp: c.req.header('x-internal-timestamp') ?? '',
   })
-  if (!valid) return c.json({ error: 'Forbidden' }, 403)
+  if (!valid) return safeJson(c, { error: 'Forbidden' }, 403)
   await handleCron(JSON.parse(body))
   return c.json({ ok: true })
 })

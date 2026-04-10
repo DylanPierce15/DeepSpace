@@ -2,6 +2,7 @@
  * Shared test helpers for integration tests.
  */
 
+/// <reference types="@cloudflare/vitest-pool-workers/types" />
 import { env } from 'cloudflare:test'
 
 /** Stub context — none of the current integrations use db. */

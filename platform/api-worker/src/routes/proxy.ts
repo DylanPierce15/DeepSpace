@@ -8,9 +8,12 @@
 
 import { Hono } from 'hono'
 import { createMiddleware } from 'hono/factory'
-import { verifyJwt } from 'deepspace/worker'
+import { eq } from 'drizzle-orm'
+import { verifyJwt, safeJson } from 'deepspace/worker'
 import type { Env } from '../worker'
 import { getDb } from '../worker'
+import { userProfiles } from '../db/schema'
+import { subscriptionTierToCredits } from '../billing/service'
 import {
   recordUsage,
   creditsAvailableForUser,
@@ -152,7 +155,7 @@ function createProxyHandler(providerName: string) {
   return async (c: any) => {
     const apiKey = c.env[provider.apiKeyEnvVar]
     if (!apiKey) {
-      return c.json({ error: `${providerName} API key not configured` }, 500)
+      return safeJson(c, { error: `${providerName} API key not configured` }, 500)
     }
 
     const userId: string = c.get('userId')
@@ -162,7 +165,7 @@ function createProxyHandler(providerName: string) {
     // Gate: user must have > 0 credits
     const { credits } = await creditsAvailableForUser(db, billingUserId)
     if (credits <= 0) {
-      return c.json({ error: 'Insufficient credits' }, 402)
+      return safeJson(c, { error: 'Insufficient credits' }, 402)
     }
 
     // Build target URL — strip the /api/proxy/<provider> prefix
@@ -312,7 +315,7 @@ const proxyAuth = createMiddleware<Env>(async (c, next) => {
   const jwt = token ?? altToken ?? null
 
   if (!jwt) {
-    return c.json({ error: 'Missing authorization token' }, 401)
+    return safeJson(c, { error: 'Missing authorization token' }, 401)
   }
 
   const { result, error } = await verifyJwt(
@@ -321,11 +324,33 @@ const proxyAuth = createMiddleware<Env>(async (c, next) => {
   )
 
   if (!result) {
-    return c.json({ error: 'Invalid or expired token' }, 401)
+    return safeJson(c, { error: 'Invalid or expired token' }, 401)
   }
 
   c.set('userId', result.userId)
   c.set('claims', result.claims)
+
+  // Ensure billing profile exists (same logic as authMiddleware)
+  const db = getDb(c.env)
+  const [existing] = await db
+    .select({ id: userProfiles.id })
+    .from(userProfiles)
+    .where(eq(userProfiles.id, result.userId))
+    .limit(1)
+
+  if (!existing) {
+    const isTest = !!result.claims.isTestAccount
+    const tier = isTest ? 'test' : 'free'
+    const now = new Date()
+    await db.insert(userProfiles).values({
+      id: result.userId,
+      subscriptionTier: tier,
+      subscriptionCredits: subscriptionTierToCredits(tier),
+      createdAt: now,
+      updatedAt: now,
+    })
+  }
+
   await next()
 })
 

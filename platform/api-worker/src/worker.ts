@@ -6,6 +6,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { drizzle, DrizzleD1Database } from 'drizzle-orm/d1'
+import { safeJson } from 'deepspace/worker'
 import type { JwtClaims } from 'deepspace/worker'
 import stripeRoutes from './routes/stripe'
 import usersRoutes from './routes/users'
@@ -93,7 +94,7 @@ app.use(
 // Error handler — show actual error instead of "Internal server error"
 app.onError((err, c) => {
   console.error('[api-worker] Unhandled error:', err.message, err.stack)
-  return c.json({ error: err.message }, 500)
+  return safeJson(c, { error: err.message }, 500)
 })
 
 // Health check
@@ -123,12 +124,12 @@ app.post('/_migrate', async (c) => {
 })
 
 // 404 fallback
-app.notFound((c) => c.json({ error: 'Not found' }, 404))
+app.notFound((c) => safeJson(c, { error: 'Not found' }, 404))
 
 // Global error handler
 app.onError((err, c) => {
   console.error('Unhandled error:', err)
-  return c.json({ error: 'Internal server error' }, 500)
+  return safeJson(c, { error: 'Internal server error' }, 500)
 })
 
 // Export for Hono RPC

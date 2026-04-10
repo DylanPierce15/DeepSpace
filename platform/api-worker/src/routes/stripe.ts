@@ -5,6 +5,7 @@
 import { Hono } from 'hono'
 import Stripe from 'stripe'
 import { eq, sql } from 'drizzle-orm'
+import { safeJson } from 'deepspace/worker'
 import type { Env } from '../worker'
 import { authMiddleware } from '../middleware/auth'
 import { userProfiles, stripeInvoices } from '../db/schema'
@@ -94,7 +95,7 @@ stripe.post('/create-checkout-session', authMiddleware, async (c) => {
   const priceIds = getStripePriceIds(c.env)
   const validPriceIds = [priceIds.starter_monthly, priceIds.premium_monthly]
   if (!priceId || !validPriceIds.includes(priceId)) {
-    return c.json({ error: 'Invalid price ID' }, 400)
+    return safeJson(c, { error: 'Invalid price ID' }, 400)
   }
 
   const customer = await getOrCreateStripeCustomer(stripeClient, db, userId)
@@ -127,7 +128,7 @@ stripe.post('/upgrade', authMiddleware, async (c) => {
   const priceToTier = buildPriceToTierMap(c.env)
 
   if (!targetPriceId || !priceToTier[targetPriceId]) {
-    return c.json({ error: 'Invalid target price ID' }, 400)
+    return safeJson(c, { error: 'Invalid target price ID' }, 400)
   }
 
   const [profile] = await db
@@ -137,7 +138,7 @@ stripe.post('/upgrade', authMiddleware, async (c) => {
     .limit(1)
 
   if (!profile?.stripeSubscriptionId || !profile?.stripeCustomerId) {
-    return c.json({ error: 'No active subscription to upgrade. Please subscribe first.' }, 400)
+    return safeJson(c, { error: 'No active subscription to upgrade. Please subscribe first.' }, 400)
   }
 
   const subscription = await stripeClient.subscriptions.retrieve(
@@ -145,7 +146,7 @@ stripe.post('/upgrade', authMiddleware, async (c) => {
     { expand: ['default_payment_method'] },
   )
   if (subscription.status !== 'active') {
-    return c.json({ error: 'Subscription is not active' }, 400)
+    return safeJson(c, { error: 'Subscription is not active' }, 400)
   }
 
   const currentPriceId = subscription.items.data[0]?.price?.id
@@ -155,7 +156,7 @@ stripe.post('/upgrade', authMiddleware, async (c) => {
   const currentCents = TIER_PRICE_CENTS[currentTier]
   const targetCents = TIER_PRICE_CENTS[targetTier]
   if (targetCents <= currentCents) {
-    return c.json({ error: 'Can only upgrade to a higher tier. Use the customer portal for downgrades.' }, 400)
+    return safeJson(c, { error: 'Can only upgrade to a higher tier. Use the customer portal for downgrades.' }, 400)
   }
 
   // Resolve payment method
@@ -174,7 +175,7 @@ stripe.post('/upgrade', authMiddleware, async (c) => {
     }
   }
   if (!paymentMethodId) {
-    return c.json({ error: 'No payment method found. Please update your payment method and try again.' }, 400)
+    return safeJson(c, { error: 'No payment method found. Please update your payment method and try again.' }, 400)
   }
 
   const priceDiffCents = targetCents - currentCents
@@ -208,7 +209,7 @@ stripe.post('/upgrade', authMiddleware, async (c) => {
   } catch (payError) {
     await stripeClient.invoices.voidInvoice(invoice.id)
     console.error(`Upgrade payment failed for user ${userId}:`, payError)
-    return c.json({ error: 'Payment failed. Please check your payment method and try again.' }, 400)
+    return safeJson(c, { error: 'Payment failed. Please check your payment method and try again.' }, 400)
   }
 
   // Update Stripe subscription item to new price
@@ -255,7 +256,7 @@ stripe.post('/create-credit-checkout', authMiddleware, async (c) => {
 
   const priceIds = getStripePriceIds(c.env)
   if (!priceIds.pay_per_credit) {
-    return c.json({ error: 'Pay-per-credit is not configured' }, 503)
+    return safeJson(c, { error: 'Pay-per-credit is not configured' }, 503)
   }
 
   const resolvedQuantity = quantity && quantity > 0 ? quantity : 1
@@ -400,8 +401,8 @@ stripe.get('/subscription-status', authMiddleware, async (c) => {
       hasActiveSubscription: subscription.status === 'active',
       pendingTier,
       pendingEffectiveDate,
-      currentPeriodEnd: subscription.current_period_end
-        ? new Date(subscription.current_period_end * 1000).toISOString()
+      currentPeriodEnd: subscription.items.data[0]?.current_period_end
+        ? new Date(subscription.items.data[0].current_period_end * 1000).toISOString()
         : null,
     })
   } catch (err) {
@@ -423,7 +424,7 @@ stripe.get('/subscription-status', authMiddleware, async (c) => {
 
 stripe.post('/webhook', async (c) => {
   if (!c.env.STRIPE_SECRET_KEY || !c.env.STRIPE_WEBHOOK_SECRET) {
-    return c.json({ error: 'Stripe is not configured' }, 503)
+    return safeJson(c, { error: 'Stripe is not configured' }, 503)
   }
 
   const stripeClient = getStripe(c.env)
@@ -475,7 +476,7 @@ stripe.post('/webhook', async (c) => {
     return c.json({ received: true })
   } catch (error) {
     console.error('Error processing webhook:', error)
-    return c.json({ error: 'Webhook processing failed' }, 500)
+    return safeJson(c, { error: 'Webhook processing failed' }, 500)
   }
 })
 
@@ -532,24 +533,18 @@ async function getOrCreateStripeCustomer(
 
 /** Extract subscription ID from an invoice via multiple strategies. */
 function getSubscriptionIdFromInvoice(invoice: Stripe.Invoice): string | null {
-  // Direct subscription field
-  if (invoice.subscription) {
-    return typeof invoice.subscription === 'string'
-      ? invoice.subscription
-      : (invoice.subscription as any).id
+  // Primary path: invoice.parent.subscription_details.subscription
+  // The legacy top-level `invoice.subscription` field was removed in Stripe
+  // API version 2024-09-30.acacia.
+  const parentSub = invoice.parent?.subscription_details?.subscription
+  if (parentSub) {
+    return typeof parentSub === 'string' ? parentSub : parentSub.id
   }
 
-  // Check parent.subscription_details (newer API versions)
-  const parentSub = (invoice as any).parent?.subscription_details?.subscription
-  if (parentSub) return parentSub
-
-  // Check line items
-  for (const line of invoice.lines?.data || []) {
-    if ((line as any).subscription) {
-      return (line as any).subscription
-    }
-    const nestedSub = (line as any).parent?.subscription_item_details?.subscription
-    if (nestedSub) return nestedSub
+  // Fallback: derive from line items
+  for (const line of invoice.lines?.data ?? []) {
+    const lineSub = line.parent?.subscription_item_details?.subscription
+    if (lineSub) return lineSub
   }
 
   return null

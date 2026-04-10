@@ -9,7 +9,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { useAuth, AuthOverlay, getAuthToken } from 'deepspace'
 
-export function AssistantPage() {
+export default function AssistantPage() {
   const { isLoaded, isSignedIn } = useAuth()
   const [showAuth, setShowAuth] = useState(false)
 
@@ -51,9 +51,13 @@ function Chat() {
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
     api: '/api/ai/chat',
-    headers: async () => {
+    // Inject a fresh auth token on every request — useChat's `headers` option
+    // only accepts a plain object, not a function, so we use `fetch` instead.
+    fetch: async (url, init) => {
       const token = await getAuthToken()
-      return token ? { Authorization: `Bearer ${token}` } : {}
+      const headers = new Headers(init?.headers)
+      if (token) headers.set('Authorization', `Bearer ${token}`)
+      return fetch(url as string, { ...init, headers })
     },
   })
 

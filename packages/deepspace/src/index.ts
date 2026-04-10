@@ -8,6 +8,7 @@
 export type { CollectionSchema } from './shared/types'
 export * from './shared/env'
 export * from './shared/roles'
+export * from './shared/safe-response'
 export * from './client/auth'
 export * from './client/storage'
 export * from './client/messaging'

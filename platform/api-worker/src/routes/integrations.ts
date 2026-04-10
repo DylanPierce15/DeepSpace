@@ -5,6 +5,7 @@
 
 import { Hono } from 'hono'
 import { z } from 'zod'
+import { safeJson } from 'deepspace/worker'
 import type { Env } from '../worker'
 import { authMiddleware } from '../middleware/auth'
 import { getDb } from '../worker'
@@ -79,13 +80,13 @@ integrations.post('/:name/:endpoint', authMiddleware, async (c) => {
   const handlerKey = `${integrationName}/${endpoint}`
   const handler = HANDLER_REGISTRY.get(handlerKey)
   if (!handler) {
-    return c.json({ error: `Unknown integration: ${handlerKey}` }, 404)
+    return safeJson(c, { error: `Unknown integration: ${handlerKey}` }, 404)
   }
 
   // Validate billing config exists and is active
   const config = getIntegrationConfig(integrationName, endpoint)
   if (!config || !config.isActive) {
-    return c.json({ error: `Integration not active: ${handlerKey}` }, 404)
+    return safeJson(c, { error: `Integration not active: ${handlerKey}` }, 404)
   }
 
   const rawBody = await c.req.json()
@@ -130,7 +131,7 @@ integrations.post('/:name/:endpoint', authMiddleware, async (c) => {
     await updateUsageStatus(db, usageId, 'failed')
     console.error(`Integration ${handlerKey} failed:`, error)
     const message = error instanceof Error ? error.message : 'Integration call failed'
-    return c.json({ success: false, error: message }, 502)
+    return safeJson(c, { success: false, error: message }, 502)
   }
 })
 
