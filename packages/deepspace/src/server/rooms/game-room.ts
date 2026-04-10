@@ -97,11 +97,14 @@ export abstract class GameRoom extends BaseRoom {
         updated_at TEXT NOT NULL
       )
     `)
-    // Load persisted state
+    // Load persisted state and give the subclass a chance to migrate it.
+    // Subclasses with evolving schemas should override `onHydrateState`
+    // to merge new fields, upgrade shapes, or discard stale blobs.
     const rows = this.sql.exec('SELECT state, tick FROM game_state WHERE id = 1').toArray()
     if (rows.length > 0) {
       try {
-        this.gameState = JSON.parse(rows[0].state as string)
+        const parsed = JSON.parse(rows[0].state as string) as Record<string, unknown>
+        this.gameState = this.onHydrateState(parsed)
         this.currentTick = rows[0].tick as number
       } catch { /* fresh state */ }
     }
@@ -339,4 +342,27 @@ export abstract class GameRoom extends BaseRoom {
 
   /** Called when the game ends */
   protected onGameEnd(finalState: Record<string, unknown>): void {}
+
+  /**
+   * Called once when the DO first hydrates persisted state from storage.
+   * Receives the parsed state blob as it was written by a previous build.
+   * Return the state object to install as `gameState`.
+   *
+   * Subclasses with evolving schemas should override this hook to:
+   *   - merge new fields onto a default template,
+   *   - upgrade shapes across versioned states,
+   *   - or discard stale blobs entirely by returning a fresh object.
+   *
+   * The default implementation is a pass-through, preserving the legacy
+   * "stored blob is gospel" behavior for subclasses that don't care.
+   *
+   * If JSON parsing of the stored blob fails this hook is NOT called — the
+   * DO starts with an empty state and the subclass's `onGameStart` (or
+   * first `onTick`) is responsible for initializing.
+   */
+  protected onHydrateState(
+    stored: Record<string, unknown>,
+  ): Record<string, unknown> {
+    return stored
+  }
 }
