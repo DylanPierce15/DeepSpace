@@ -3,6 +3,8 @@
  * via service bindings. Handles OAuth flow with code exchange pattern (same as user apps).
  */
 
+import { parseSafeResponse } from 'deepspace/worker'
+
 interface Env {
   ASSETS: Fetcher
   AUTH_WORKER: Fetcher
@@ -46,11 +48,11 @@ export default {
         }),
       )
 
-      if (!exchangeRes.ok) {
+      const { data, ok } = await parseSafeResponse<{ sessionToken?: string }>(exchangeRes)
+      if (!ok || !data.sessionToken) {
         return Response.redirect(url.origin, 302)
       }
-
-      const { sessionToken } = (await exchangeRes.json()) as { sessionToken: string }
+      const sessionToken = data.sessionToken
 
       return new Response(null, {
         status: 302,

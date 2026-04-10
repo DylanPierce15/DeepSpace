@@ -15,7 +15,6 @@ export { useUser } from './hooks/useUser'
 export { useQuery } from './hooks/useQuery'
 export { useMutations } from './hooks/useMutations'
 export { useUsers } from './hooks/useUsers'
-export { useTeams, type AddMemberOptions } from './hooks/useTeams'
 export { useYjsField, useYjsText, type UseYjsFieldResult, type UseYjsTextResult } from './hooks/useYjs'
 
 // User lookup + presence
@@ -53,10 +52,6 @@ export type {
   UserCredits,
   UserKarma,
   RoomUser,
-  Team,
-  TeamMember,
-  TeamMemberIdentifier,
-  AddMemberResult,
   RecordProviderProps,
   FetchUserProfile,
 } from './types'

@@ -6,11 +6,12 @@
 
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { parseSafeResponse } from '../shared/safe-response'
 
 export const ENVS = {
   dev: {
     auth: 'https://deepspace-auth.eudaimonicincorporated.workers.dev',
-    api: 'https://deepspace-api.eudaimonicincorporated.workers.dev',  // always prod — real API calls, billed to developer
+    api: 'https://deepspace-api.eudaimonicincorporated.workers.dev',
     deploy: 'https://deepspace-deploy.eudaimonicincorporated.workers.dev',
   },
   prod: {
@@ -27,8 +28,10 @@ export type EnvName = keyof typeof ENVS
  */
 export async function fetchPublicKey(authUrl: string): Promise<string> {
   const res = await fetch(`${authUrl}/api/auth/jwks`)
-  if (!res.ok) throw new Error(`Failed to fetch JWT public key (${res.status})`)
-  const data = (await res.json()) as { publicKey: string }
+  const { data, ok, status } = await parseSafeResponse<{ publicKey?: string }>(res)
+  if (!ok || !data.publicKey) {
+    throw new Error(`Failed to fetch JWT public key (${status})`)
+  }
   return data.publicKey
 }
 
@@ -39,7 +42,6 @@ export async function writeDevVars(
   appDir: string,
   env: EnvName,
   ownerId: string,
-  ownerSession?: string,
 ): Promise<void> {
   const urls = ENVS[env]
   const publicKey = await fetchPublicKey(urls.auth)
@@ -48,14 +50,8 @@ export async function writeDevVars(
     `AUTH_JWT_PUBLIC_KEY=${publicKey}`,
     `AUTH_JWT_ISSUER=${urls.auth}/api/auth`,
     `AUTH_WORKER_URL=${urls.auth}`,
-    `API_WORKER_URL=${urls.api}`,
     `OWNER_USER_ID=${ownerId}`,
     `INTERNAL_STORAGE_HMAC_SECRET=dev-${Date.now()}`,
-    // Owner's prod session token — used by the integration proxy to get
-    // a fresh JWT for developer-billed API calls.
-    ...(ownerSession ? [`OWNER_SESSION_TOKEN=${ownerSession}`] : []),
-    // Prod auth URL for token refresh (always prod, even in dev mode)
-    `OWNER_AUTH_URL=${ENVS.prod.auth}`,
   ].join('\n')
 
   writeFileSync(join(appDir, '.dev.vars'), devVars + '\n')

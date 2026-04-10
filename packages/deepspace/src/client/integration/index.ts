@@ -11,6 +11,7 @@
  */
 
 import { getAuthToken } from '../auth/token'
+import { parseSafeResponse } from '../../shared/safe-response'
 
 const ENDPOINT_PREFIX = '/api/integrations'
 const DEFAULT_TIMEOUT_MS = 120_000
@@ -71,25 +72,21 @@ async function request<T>(
       signal: controller.signal,
     })
 
-    const json = await res.json() as Record<string, unknown>
+    const { data: payload, status, ok } = await parseSafeResponse<Record<string, unknown>>(res)
 
-    // The integration proxy always returns HTTP 200 (Cloudflare Vite plugin
-    // crashes on non-2xx in dev). The real status is in the response body.
-    const status = (json.status as number) ?? res.status
-
-    if (status >= 400 || json.success === false) {
+    if (!ok || payload.success === false) {
       return {
         success: false,
-        error: (json.error as string) ?? (json.message as string) ?? `Request failed (${status})`,
-        ...(json.issues ? { issues: json.issues } : {}),
-      } as IntegrationResponse<T>
+        error: (payload.error as string) ?? (payload.message as string) ?? `Request failed (${status})`,
+        ...(payload.issues ? { issues: payload.issues as IntegrationResponse['issues'] } : {}),
+      }
     }
 
     // Normalize response — handle both { success, data } and { success, ...rest }
-    if ('data' in json) {
-      return { success: true, data: json.data as T }
+    if ('data' in payload) {
+      return { success: true, data: payload.data as T }
     }
-    const { success, status: _, ...rest } = json
+    const { success: _success, ...rest } = payload
     return { success: true, data: rest as T }
   } catch (err: unknown) {
     if (err instanceof DOMException && err.name === 'AbortError') {

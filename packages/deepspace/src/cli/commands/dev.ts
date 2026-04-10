@@ -11,10 +11,10 @@
  */
 
 import { defineCommand } from 'citty'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
-import { ensureToken, SESSION_PATH } from '../auth'
+import { ensureToken } from '../auth'
 import { writeDevVars } from '../env'
 
 export default defineCommand({
@@ -61,9 +61,7 @@ export default defineCommand({
     console.log(`Logged in as ${payload.name ?? payload.email}`)
     console.log(`Environment: ${env}`)
 
-    const ownerSession = existsSync(SESSION_PATH) ? readFileSync(SESSION_PATH, 'utf-8').trim() : undefined
-
-    await writeDevVars(appDir, env, payload.sub, ownerSession)
+    await writeDevVars(appDir, env, payload.sub)
     console.log('Starting dev server...\n')
 
     const vite = spawn('npx', ['vite'], { cwd: appDir, stdio: 'inherit' })

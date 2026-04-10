@@ -74,7 +74,7 @@ const stripe = new Hono<Env>()
 
 stripe.get('/config', (c) => {
   const priceIds = getStripePriceIds(c.env)
-  return c.json({
+  return safeJson(c, {
     enabled: !!c.env.STRIPE_SECRET_KEY,
     publishableKey: c.env.STRIPE_PUBLISHABLE_KEY ?? '',
     priceIds,
@@ -112,7 +112,7 @@ stripe.post('/create-checkout-session', authMiddleware, async (c) => {
     subscription_data: { metadata: { userId } },
   })
 
-  return c.json({ sessionId: session.id, url: session.url })
+  return safeJson(c, { sessionId: session.id, url: session.url ?? '' })
 })
 
 // ============================================================================
@@ -234,7 +234,7 @@ stripe.post('/upgrade', authMiddleware, async (c) => {
 
   console.log(`Upgraded user ${userId}: ${currentTier} -> ${targetTier}, charged $${(priceDiffCents / 100).toFixed(2)}`)
 
-  return c.json({
+  return safeJson(c, {
     success: true,
     message: `Upgraded to ${targetTier}. Charged $${(priceDiffCents / 100).toFixed(2)}.`,
     previousTier: currentTier,
@@ -279,7 +279,7 @@ stripe.post('/create-credit-checkout', authMiddleware, async (c) => {
     },
   })
 
-  return c.json({ sessionId: session.id, url: session.url })
+  return safeJson(c, { sessionId: session.id, url: session.url ?? '' })
 })
 
 // ============================================================================
@@ -299,7 +299,7 @@ stripe.post('/create-portal-session', authMiddleware, async (c) => {
     return_url: returnUrl || 'https://deep.space/',
   })
 
-  return c.json({ url: session.url })
+  return safeJson(c, { url: session.url })
 })
 
 // ============================================================================
@@ -312,10 +312,10 @@ stripe.get('/credits-available', authMiddleware, async (c) => {
 
   try {
     const result = await creditsAvailableForUser(db, userId)
-    return c.json({ success: true, credits: result.credits })
+    return safeJson(c, { success: true, credits: result.credits })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to get credits'
-    return c.json({ success: false, credits: null, error: message })
+    return safeJson(c, { success: false, credits: null, error: message }, 500)
   }
 })
 
@@ -336,9 +336,8 @@ stripe.get('/subscription-status', authMiddleware, async (c) => {
     .limit(1)
 
   if (!profile) {
-    return c.json({
+    return safeJson(c, {
       currentTier: 'free',
-      status: 'free',
       hasActiveSubscription: false,
       pendingTier: null,
       pendingEffectiveDate: null,
@@ -347,9 +346,8 @@ stripe.get('/subscription-status', authMiddleware, async (c) => {
   }
 
   if (!profile.stripeSubscriptionId) {
-    return c.json({
+    return safeJson(c, {
       currentTier: profile.subscriptionTier ?? 'free',
-      status: profile.subscriptionStatus ?? 'free',
       hasActiveSubscription: false,
       pendingTier: null,
       pendingEffectiveDate: null,
@@ -395,9 +393,8 @@ stripe.get('/subscription-status', authMiddleware, async (c) => {
         : null
     }
 
-    return c.json({
+    return safeJson(c, {
       currentTier: profile.subscriptionTier ?? 'free',
-      status: subscription.status,
       hasActiveSubscription: subscription.status === 'active',
       pendingTier,
       pendingEffectiveDate,
@@ -407,9 +404,8 @@ stripe.get('/subscription-status', authMiddleware, async (c) => {
     })
   } catch (err) {
     console.warn('Failed to fetch subscription from Stripe:', err)
-    return c.json({
+    return safeJson(c, {
       currentTier: profile.subscriptionTier ?? 'free',
-      status: profile.subscriptionStatus ?? 'free',
       hasActiveSubscription: profile.subscriptionStatus === 'active',
       pendingTier: null,
       pendingEffectiveDate: null,
@@ -473,7 +469,7 @@ stripe.post('/webhook', async (c) => {
         console.log(`Unhandled event type: ${event.type}`)
     }
 
-    return c.json({ received: true })
+    return safeJson(c, { received: true })
   } catch (error) {
     console.error('Error processing webhook:', error)
     return safeJson(c, { error: 'Webhook processing failed' }, 500)

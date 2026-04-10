@@ -99,7 +99,7 @@ app.onError((err, c) => {
 
 // Health check
 app.get('/api/health', (c) =>
-  c.json({ status: 'ok', service: 'deepspace-api', timestamp: new Date().toISOString() }),
+  safeJson(c, { service: 'deepspace-api', timestamp: new Date().toISOString() }),
 )
 
 // Mount routes
@@ -120,7 +120,7 @@ app.post('/_migrate', async (c) => {
   for (const sql of migrations) {
     await db.exec(sql)
   }
-  return c.json({ ok: true })
+  return safeJson(c, { ok: true })
 })
 
 // 404 fallback

@@ -199,7 +199,7 @@ app.use(
 // ============================================================================
 
 app.get('/api/auth/jwks', (c) => {
-  return c.json({ publicKey: c.env.AUTH_JWT_PUBLIC_KEY }, 200, {
+  return safeJson(c, { publicKey: c.env.AUTH_JWT_PUBLIC_KEY }, 200, {
     'Cache-Control': 'public, max-age=86400',
   })
 })
@@ -235,7 +235,7 @@ app.post('/api/auth/cli/session', async (c) => {
     .run()
 
   const origin = new URL(c.env.AUTH_BASE_URL).origin
-  return c.json({ sessionId, loginUrl: `${origin}/login/cli/${sessionId}` })
+  return safeJson(c, { sessionId, loginUrl: `${origin}/login/cli/${sessionId}` })
 })
 
 app.get('/api/auth/cli/status/:sessionId', async (c) => {
@@ -261,12 +261,12 @@ app.get('/api/auth/cli/status/:sessionId', async (c) => {
     return safeJson(c, { error: 'Session expired' }, 410)
   }
 
-  if (row.status === 'pending') return c.json({ status: 'pending' })
+  if (row.status === 'pending') return safeJson(c, { state: 'pending' })
 
   await c.env.AUTH_DB.prepare('DELETE FROM cli_sessions WHERE id = ?').bind(sessionId).run()
 
-  return c.json({
-    status: 'complete',
+  return safeJson(c, {
+    state: 'complete',
     sessionToken: row.session_token,
     jwt: row.jwt,
     email: row.user_email,
@@ -475,7 +475,7 @@ app.post('/api/auth/exchange-code', async (c) => {
     .bind(body.code)
     .run()
 
-  return c.json({ sessionToken: row.session_token })
+  return safeJson(c, { sessionToken: row.session_token })
 })
 
 // ============================================================================
@@ -710,7 +710,7 @@ app.post('/api/auth/test-accounts', async (c) => {
     return safeJson(c, { error: 'Maximum 10 test accounts per developer' }, 429)
   }
 
-  return c.json({ id, email, userId: signUpResult.user.id, label: label ?? null, createdAt: now }, 201)
+  return safeJson(c, { id, email, userId: signUpResult.user.id, label: label ?? null, createdAt: now }, 201)
 })
 
 app.get('/api/auth/test-accounts', async (c) => {
@@ -724,7 +724,7 @@ app.get('/api/auth/test-accounts', async (c) => {
     .bind(session.user.id)
     .all<{ id: string; user_id: string; email: string; label: string | null; created_at: number }>()
 
-  return c.json({
+  return safeJson(c, {
     accounts: (results ?? []).map((r) => ({
       id: r.id,
       userId: r.user_id,
@@ -757,7 +757,7 @@ app.delete('/api/auth/test-accounts/:id', async (c) => {
     c.env.AUTH_DB.prepare('DELETE FROM user WHERE id = ?').bind(row.user_id),
   ])
 
-  return c.json({ deleted: true })
+  return safeJson(c, { deleted: true })
 })
 
 // ============================================================================
@@ -778,7 +778,7 @@ app.on(['GET', 'POST'], '/api/auth/*', async (c) => {
 // Health Check + DB Migration
 // ============================================================================
 
-app.get('/health', (c) => c.json({ status: 'ok', service: 'deepspace-auth' }))
+app.get('/health', (c) => safeJson(c, { service: 'deepspace-auth' }))
 
 app.post('/_migrate', async (c) => {
   try {
@@ -802,7 +802,7 @@ app.post('/_migrate', async (c) => {
     ],
   })
   await runMigrations()
-  return c.json({ ok: true })
+  return safeJson(c, { ok: true })
 })
 
 // ============================================================================

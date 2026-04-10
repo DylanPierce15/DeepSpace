@@ -51,13 +51,13 @@ function Chat() {
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
     api: '/api/ai/chat',
-    // Inject a fresh auth token on every request — useChat's `headers` option
-    // only accepts a plain object, not a function, so we use `fetch` instead.
+    // Inject a fresh auth token on every request. useChat's `headers` option
+    // only accepts a static object, so we wrap fetch instead.
     fetch: async (url, init) => {
       const token = await getAuthToken()
       const headers = new Headers(init?.headers)
       if (token) headers.set('Authorization', `Bearer ${token}`)
-      return fetch(url as string, { ...init, headers })
+      return fetch(url, { ...init, headers })
     },
   })
 

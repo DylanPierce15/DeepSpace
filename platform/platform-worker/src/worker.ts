@@ -19,6 +19,7 @@ import {
   createScopedR2Handler,
   computeHmacHex,
   timingSafeEqualHex,
+  safeJson,
 } from 'deepspace/worker'
 import type { JwtVerifierConfig, VerifiedAuth, ScopedR2Handler } from 'deepspace/worker'
 
@@ -103,14 +104,14 @@ app.use('*', cors())
 // ── Health ──────────────────────────────────────────────────────────────────
 
 app.get('/api/health', (c) =>
-  c.json({ status: 'ok', service: 'deepspace-platform', timestamp: Date.now() }),
+  safeJson(c, { service: 'deepspace-platform', timestamp: Date.now() }),
 )
 
 // ── App Registry (R2-backed metadata) ───────────────────────────────────────
 
 app.put('/api/app-registry/:appId', async (c) => {
   const auth = await authenticate(c.req.raw, c.env)
-  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
+  if (!auth) return safeJson(c, { error: 'Unauthorized' }, 401)
   const appId = c.req.param('appId')
   const meta = (await c.req.json()) as Record<string, unknown>
   await c.env.SCHEMA_REGISTRY.put(
@@ -118,26 +119,26 @@ app.put('/api/app-registry/:appId', async (c) => {
     JSON.stringify({ ...meta, appId, updatedAt: new Date().toISOString() }),
     { httpMetadata: { contentType: 'application/json' } },
   )
-  return c.json({ success: true })
+  return safeJson(c, { success: true })
 })
 
 app.get('/api/app-registry/:appId', async (c) => {
   const appId = c.req.param('appId')
   const obj = await c.env.SCHEMA_REGISTRY.get(`app-registry/${appId}.json`)
-  if (!obj) return c.json({ error: 'Not found' }, 404)
+  if (!obj) return safeJson(c, { error: 'Not found' }, 404)
   return new Response(obj.body, { headers: { 'Content-Type': 'application/json' } })
 })
 
 app.get('/api/app-registry', async (c) => {
   const list = await c.env.SCHEMA_REGISTRY.list({ prefix: 'app-registry/' })
-  return c.json({ apps: list.objects.map((o) => o.key.replace('app-registry/', '').replace('.json', '')) })
+  return safeJson(c, { apps: list.objects.map((o) => o.key.replace('app-registry/', '').replace('.json', '')) })
 })
 
 // ── Internal Tools (HMAC service-to-service auth) ───────────────────────────
 
 app.all('/internal/tools/:scopeId/:action{.+}', async (c) => {
   if (!c.env.INTERNAL_STORAGE_HMAC_SECRET) {
-    return c.json({ error: 'Internal auth not configured' }, 500)
+    return safeJson(c, { error: 'Internal auth not configured' }, 500)
   }
   const bodyText = await c.req.text()
   const verified = await verifyInternalSignature({
@@ -146,7 +147,7 @@ app.all('/internal/tools/:scopeId/:action{.+}', async (c) => {
     signature: c.req.header('x-internal-signature'),
     payload: bodyText,
   })
-  if (!verified) return c.json({ error: 'Unauthorized: invalid HMAC signature' }, 401)
+  if (!verified) return safeJson(c, { error: 'Unauthorized: invalid HMAC signature' }, 401)
 
   const scopeId = decodeURIComponent(c.req.param('scopeId'))
   const action = c.req.param('action')
@@ -183,13 +184,13 @@ app.all('/internal/files/*', async (c) => {
   const appName = c.req.header('x-app-name')
 
   if (!identityToken || !appName) {
-    return c.json({ error: 'Missing app identity' }, 401)
+    return safeJson(c, { error: 'Missing app identity' }, 401)
   }
 
   const expected = await computeHmacHex(c.env.PLATFORM_IDENTITY_SECRET, appName)
   const valid = await timingSafeEqualHex(identityToken, expected)
   if (!valid) {
-    return c.json({ error: 'Invalid app identity token' }, 403)
+    return safeJson(c, { error: 'Invalid app identity token' }, 403)
   }
 
   const userId = c.req.header('x-user-id') || null
@@ -214,7 +215,7 @@ app.get('/ws/:scopeId', async (c) => {
 
 app.all('/api/*', async (c) => {
   const scopeId = c.req.query('scopeId')
-  if (!scopeId) return c.json({ error: 'scopeId query parameter required' }, 400)
+  if (!scopeId) return safeJson(c, { error: 'scopeId query parameter required' }, 400)
   const auth = await authenticate(c.req.raw, c.env)
   return routeToRecordRoom(c.req.raw, c.env, auth, scopeId)
 })

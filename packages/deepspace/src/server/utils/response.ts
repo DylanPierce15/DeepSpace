@@ -33,8 +33,9 @@ export function safeJson<T extends Record<string, unknown>>(
   c: Context,
   data: T,
   status: number = 200,
+  headers?: Record<string, string>,
 ): Response {
-  return c.json({ ...data, status }, 200)
+  return c.json({ ...data, status }, 200, headers)
 }
 
 /**

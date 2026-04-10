@@ -6,6 +6,7 @@
  */
 
 import { Hono } from 'hono'
+import { safeJson } from 'deepspace/worker'
 import type { Env } from '../worker'
 import { authMiddleware } from '../middleware/auth'
 
@@ -56,7 +57,7 @@ apps.get('/', authMiddleware, async (c) => {
     cursor = listed.truncated ? listed.cursor : undefined
   } while (cursor)
 
-  return c.json({ apps: userApps })
+  return safeJson(c, { apps: userApps })
 })
 
 // ============================================================================
@@ -99,19 +100,19 @@ apps.get('/:appName/analytics', authMiddleware, async (c) => {
   const period = (c.req.query('period') || '24h') as Period
 
   if (!['1h', '6h', '24h', '7d', '30d'].includes(period)) {
-    return c.json({ error: 'Invalid period. Use: 1h, 6h, 24h, 7d, 30d' }, 400)
+    return safeJson(c, { error: 'Invalid period. Use: 1h, 6h, 24h, 7d, 30d' }, 400)
   }
 
   // Verify ownership
   const registryKey = `app-registry/${appName}.json`
   const existing = await c.env.APP_REGISTRY.get(registryKey)
   if (!existing) {
-    return c.json({ error: 'App not found' }, 404)
+    return safeJson(c, { error: 'App not found' }, 404)
   }
 
   const meta = (await existing.json()) as AppRegistryEntry
   if (meta.ownerUserId !== userId) {
-    return c.json({ error: 'Not authorized' }, 403)
+    return safeJson(c, { error: 'Not authorized' }, 403)
   }
 
   const { start, end } = periodToDateRange(period)
@@ -168,7 +169,7 @@ apps.get('/:appName/analytics', authMiddleware, async (c) => {
   if (!graphqlRes.ok) {
     const err = await graphqlRes.text()
     console.error('[analytics] GraphQL error:', err)
-    return c.json({ error: 'Failed to fetch analytics' }, 502)
+    return safeJson(c, { error: 'Failed to fetch analytics' }, 502)
   }
 
   const graphqlData = (await graphqlRes.json()) as {
@@ -188,7 +189,7 @@ apps.get('/:appName/analytics', authMiddleware, async (c) => {
 
   if (graphqlData.errors?.length) {
     console.error('[analytics] GraphQL errors:', graphqlData.errors)
-    return c.json({ error: 'Analytics query failed' }, 502)
+    return safeJson(c, { error: 'Analytics query failed' }, 502)
   }
 
   const rows =
@@ -216,7 +217,7 @@ apps.get('/:appName/analytics', authMiddleware, async (c) => {
   // Sort timeseries chronologically
   timeseries.sort((a, b) => a.datetime.localeCompare(b.datetime))
 
-  return c.json({
+  return safeJson(c, {
     totals,
     cpuTime: { p50: cpuTimeP50, p99: cpuTimeP99 },
     timeseries,

@@ -62,7 +62,7 @@ integrations.get('/', (c) => {
     })
   }
 
-  return c.json({ integrations: catalog })
+  return safeJson(c, { integrations: catalog })
 })
 
 // POST /:name/:endpoint — authenticated, billed integration call
@@ -99,7 +99,7 @@ integrations.post('/:name/:endpoint', authMiddleware, async (c) => {
       body = schema.parse(rawBody) as Record<string, unknown>
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return c.json({
+        return safeJson(c, {
           success: false,
           error: 'Validation failed',
           issues: error.issues,
@@ -126,7 +126,7 @@ integrations.post('/:name/:endpoint', authMiddleware, async (c) => {
     // Mark completed
     await updateUsageStatus(db, usageId, 'completed')
 
-    return c.json({ success: true, data: result })
+    return safeJson(c, { success: true, data: result as Record<string, unknown> })
   } catch (error) {
     await updateUsageStatus(db, usageId, 'failed')
     console.error(`Integration ${handlerKey} failed:`, error)

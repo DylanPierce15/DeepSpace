@@ -10,6 +10,7 @@ import { join } from 'node:path'
 import { homedir } from 'node:os'
 
 import { ENVS } from './env'
+import { parseSafeResponse } from '../shared/safe-response'
 
 const AUTH_URL = process.env.DEEPSPACE_AUTH_URL ?? ENVS.prod.auth
 
@@ -58,9 +59,9 @@ async function exchangeSession(authUrl: string, sessionToken: string): Promise<s
       Origin: authUrl,
     },
   })
-  if (!res.ok) return null
-  const { token } = (await res.json()) as { token: string }
-  return token
+  const { data, ok } = await parseSafeResponse<{ token?: string | null }>(res)
+  if (!ok || !data.token) return null
+  return data.token
 }
 
 /** Check if a JWT has at least 30 seconds of validity remaining. */

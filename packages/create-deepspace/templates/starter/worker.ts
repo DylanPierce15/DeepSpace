@@ -22,6 +22,7 @@ import {
   buildInternalPayload,
   createDeepSpaceAIFromBinding,
   safeJson,
+  parseSafeResponse,
 } from 'deepspace/worker'
 import type { JwtVerifierConfig, VerifyResult } from 'deepspace/worker'
 import {
@@ -138,9 +139,9 @@ app.get('/api/auth/oauth-complete', async (c) => {
     body: JSON.stringify({ code }),
   })
 
-  if (!res.ok) return c.redirect(appOrigin)
-
-  const { sessionToken } = (await res.json()) as { sessionToken: string }
+  const { data, ok } = await parseSafeResponse<{ sessionToken?: string }>(res)
+  if (!ok || !data.sessionToken) return c.redirect(appOrigin)
+  const sessionToken = data.sessionToken
 
   return new Response(null, {
     status: 302,
@@ -284,7 +285,7 @@ app.post('/api/actions/:name', async (c) => {
   const params = await c.req.json<Record<string, unknown>>()
   const tools = createActionTools(c.env, auth.userId)
   const result = await action({ userId: auth.userId, params, tools })
-  return c.json(result)
+  return safeJson(c, result as unknown as Record<string, unknown>)
 })
 
 // ---------------------------------------------------------------------------
@@ -389,7 +390,7 @@ app.all('/api/files/*', async (c) => {
         if (typeof f.url === 'string') f.url = rewriteUrl(f.url)
       }
     }
-    return c.json(body, resp.status as any)
+    return safeJson(c, body, resp.status)
   }
 
   return new Response(resp.body, { status: resp.status, headers: resp.headers })
@@ -409,7 +410,7 @@ app.post('/internal/cron', async (c) => {
   })
   if (!valid) return safeJson(c, { error: 'Forbidden' }, 403)
   await handleCron(JSON.parse(body))
-  return c.json({ ok: true })
+  return safeJson(c, { ok: true })
 })
 
 // ---------------------------------------------------------------------------

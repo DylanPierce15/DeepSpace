@@ -7,6 +7,7 @@
 
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { safeJson } from 'deepspace/worker'
 import deployRoutes from './routes/deploy'
 import appsRoutes from './routes/apps'
 
@@ -41,7 +42,7 @@ app.use(
 )
 
 app.get('/api/health', (c) =>
-  c.json({ status: 'ok', service: 'deepspace-deploy', timestamp: new Date().toISOString() }),
+  safeJson(c, { service: 'deepspace-deploy', timestamp: new Date().toISOString() }),
 )
 
 app.route('/api/deploy', deployRoutes)
@@ -57,7 +58,7 @@ app.post('/_test/seed-app', async (c) => {
     versionId?: string
   }
   if (!body.appId || !body.ownerUserId) {
-    return c.json({ error: 'appId and ownerUserId required' }, 400)
+    return safeJson(c, { error: 'appId and ownerUserId required' }, 400)
   }
   const entry = {
     appId: body.appId,
@@ -70,13 +71,13 @@ app.post('/_test/seed-app', async (c) => {
     JSON.stringify(entry),
     { httpMetadata: { contentType: 'application/json' } },
   )
-  return c.json({ success: true, entry })
+  return safeJson(c, { success: true, entry })
 })
 
-app.notFound((c) => c.json({ error: 'Not found' }, 404))
+app.notFound((c) => safeJson(c, { error: 'Not found' }, 404))
 app.onError((err, c) => {
   console.error('Unhandled error:', err)
-  return c.json({ error: 'Internal server error' }, 500)
+  return safeJson(c, { error: 'Internal server error' }, 500)
 })
 
 export default app

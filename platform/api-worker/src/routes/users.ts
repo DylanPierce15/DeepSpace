@@ -8,6 +8,7 @@
 
 import { Hono } from 'hono'
 import { eq } from 'drizzle-orm'
+import { safeJson } from 'deepspace/worker'
 import type { Env } from '../worker'
 import { authMiddleware } from '../middleware/auth'
 import { userProfiles } from '../db/schema'
@@ -32,7 +33,7 @@ users.get('/me', authMiddleware, async (c) => {
     .where(eq(userProfiles.id, userId))
     .limit(1)
 
-  return c.json({
+  return safeJson(c, {
     id: userId,
     name: claims.name ?? null,
     email: claims.email ?? null,
