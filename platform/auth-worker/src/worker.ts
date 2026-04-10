@@ -270,10 +270,13 @@ app.post('/api/auth/mint-app-token', async (c) => {
   const bearer = c.req.header('Authorization')
   if (bearer?.startsWith('Bearer ')) {
     const token = bearer.slice(7)
+    // AUTH_BASE_URL already ends in /api/auth (Doppler convention); don't
+    // re-append. issueJwt uses .setIssuer(env.AUTH_BASE_URL) so the issuer
+    // claim on the token is exactly AUTH_BASE_URL.
     const { result } = await verifyJwt(
       {
         publicKey: c.env.AUTH_JWT_PUBLIC_KEY,
-        issuer: `${c.env.AUTH_BASE_URL}/api/auth`,
+        issuer: c.env.AUTH_BASE_URL,
       },
       token,
     )
