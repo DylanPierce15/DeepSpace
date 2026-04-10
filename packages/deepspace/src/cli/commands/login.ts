@@ -17,8 +17,7 @@ import { platform } from 'node:os'
 import * as p from '@clack/prompts'
 
 import { ENVS } from '../env'
-
-const SESSION_COOKIE = '__Secure-better-auth.session_token'
+import { exchangeSession, SESSION_COOKIE } from '../session'
 
 const AUTH_URL = process.env.DEEPSPACE_AUTH_URL ?? ENVS.prod.auth
 
@@ -160,19 +159,6 @@ function openBrowser(url: string) {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-async function exchangeSession(authUrl: string, sessionToken: string): Promise<string | null> {
-  const res = await fetch(`${authUrl}/api/auth/token`, {
-    method: 'POST',
-    headers: {
-      Cookie: `${SESSION_COOKIE}=${encodeURIComponent(sessionToken)}`,
-      Origin: authUrl,
-    },
-  })
-  if (!res.ok) return null
-  const data = (await res.json()) as { token?: string | null }
-  return data.token ?? null
 }
 
 // ── Email/password login (for test accounts and CI) ────────────────

@@ -109,14 +109,26 @@ async function main() {
     if (error) { p.cancel(error); process.exit(1) }
   }
 
-  // If appName is "." or matches current directory name, and it's a near-empty git repo, scaffold in-place
+  // Two ways to scaffold in-place into an existing near-empty git repo:
+  //   1. cwd is the target — `cd my-repo && create-deepspace my-repo` (or `.`)
+  //   2. a sibling dir is the target — `create-deepspace my-repo` from the parent
+  // Both must be near-empty and contain .git. In case 1 the scaffold target
+  // is `cwd` itself, NOT `cwd/my-repo`.
   const cwd = process.cwd()
   const cwdName = basename(cwd)
   if (appName === '.') appName = cwdName
-  const appDir = resolve(appName)
-  const isInPlace =
-    ((appName === cwdName) && existsSync(join(cwd, '.git')) && isNearEmpty(cwd)) ||
-    (existsSync(appDir) && existsSync(join(appDir, '.git')) && isNearEmpty(appDir))
+
+  const subdirPath = resolve(appName)
+  const cwdInPlace =
+    appName === cwdName && existsSync(join(cwd, '.git')) && isNearEmpty(cwd)
+  const subdirInPlace =
+    !cwdInPlace &&
+    existsSync(subdirPath) &&
+    existsSync(join(subdirPath, '.git')) &&
+    isNearEmpty(subdirPath)
+
+  const isInPlace = cwdInPlace || subdirInPlace
+  const appDir = cwdInPlace ? cwd : subdirPath
 
   if (!isInPlace && existsSync(appDir)) {
     p.cancel(`Directory ${appName} already exists`)

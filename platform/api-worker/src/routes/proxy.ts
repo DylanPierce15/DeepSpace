@@ -19,104 +19,18 @@ import {
   COST_MARKUP_MULTIPLIER,
 } from '../billing/service'
 import type { BillingCalculation } from '../billing/service'
+import {
+  type UsageData,
+  calculateTokenCost,
+  totalUsageTokens,
+  estimateMaxCost,
+  extractAnthropicUsage,
+  extractAnthropicStreamingUsage,
+  extractOpenAIUsage,
+  extractOpenAIStreamingUsage,
+} from './proxy-pricing'
 
 const proxy = new Hono<Env>()
-
-// ============================================================================
-// Token pricing per model (cost per token in USD)
-// ============================================================================
-
-const TOKEN_PRICING: Record<string, { input: number; output: number }> = {
-  // Anthropic
-  'claude-sonnet-4-20250514': { input: 0.000003, output: 0.000015 },
-  'claude-haiku-4-5-20251001': { input: 0.000001, output: 0.000005 },
-  'claude-opus-4-6-20250626': { input: 0.000015, output: 0.000075 },
-  // OpenAI
-  'gpt-4o': { input: 0.0000025, output: 0.00001 },
-  'gpt-4o-mini': { input: 0.00000015, output: 0.0000006 },
-  'gpt-4.1': { input: 0.000002, output: 0.000008 },
-  'gpt-4.1-mini': { input: 0.0000004, output: 0.0000016 },
-  'gpt-4.1-nano': { input: 0.0000001, output: 0.0000004 },
-  // Cerebras (public pricing as of late 2025 — very fast, very cheap)
-  'llama3.1-8b': { input: 0.0000001, output: 0.0000001 },
-  'llama-3.3-70b': { input: 0.00000085, output: 0.0000012 },
-  'gpt-oss-120b': { input: 0.00000025, output: 0.00000069 },
-  'qwen-3-32b': { input: 0.0000004, output: 0.0000008 },
-  'qwen-3-235b-a22b-instruct-2507': { input: 0.0000006, output: 0.0000012 },
-}
-
-// Fallback pricing when model is not in the map. We bias toward the most
-// expensive listed model so a typo or new model name over-bills (and the
-// pre-flight credit gate over-rejects) rather than under-bills.
-const DEFAULT_PRICING = { input: 0.000015, output: 0.000075 }
-
-// Default max output tokens when the request body doesn't specify one. Used
-// only by the pre-flight credit estimate. 4096 is a safe upper bound for the
-// common Anthropic / OpenAI chat default.
-const DEFAULT_MAX_OUTPUT_TOKENS = 4096
-
-interface UsageData {
-  inputTokens: number
-  outputTokens: number
-  model: string
-}
-
-function calculateTokenCost(usage: UsageData): number {
-  const pricing = TOKEN_PRICING[usage.model] ?? DEFAULT_PRICING
-  return (usage.inputTokens * pricing.input) + (usage.outputTokens * pricing.output)
-}
-
-// ============================================================================
-// Pre-flight cost estimation
-// ============================================================================
-
-/**
- * Rough character → token approximation. The real tokenizer would be more
- * accurate but is too heavy to ship in a Worker. 4 chars/token is the
- * commonly-cited average for English text across GPT and Claude tokenizers.
- */
-function estimateInputTokens(body: Record<string, unknown> | null): number {
-  if (!body) return 0
-  let chars = 0
-  const messages = body.messages
-  if (Array.isArray(messages)) {
-    for (const m of messages) {
-      const content = (m as Record<string, unknown>)?.content
-      if (typeof content === 'string') chars += content.length
-      else if (Array.isArray(content)) {
-        for (const part of content) {
-          const text = (part as Record<string, unknown>)?.text
-          if (typeof text === 'string') chars += text.length
-        }
-      }
-    }
-  }
-  if (typeof body.system === 'string') chars += body.system.length
-  if (typeof body.prompt === 'string') chars += body.prompt.length
-  return Math.ceil(chars / 4)
-}
-
-function readMaxOutputTokens(body: Record<string, unknown> | null): number {
-  if (!body) return DEFAULT_MAX_OUTPUT_TOKENS
-  const fromBody =
-    (typeof body.max_tokens === 'number' && body.max_tokens) ||
-    (typeof body.max_completion_tokens === 'number' && body.max_completion_tokens) ||
-    (typeof body.max_output_tokens === 'number' && body.max_output_tokens)
-  return fromBody || DEFAULT_MAX_OUTPUT_TOKENS
-}
-
-/**
- * Worst-case dollar cost for a request, used for the pre-flight credit gate.
- * Assumes the model will return its full max_tokens output and that the
- * input is roughly chars/4 tokens.
- */
-function estimateMaxCost(body: Record<string, unknown> | null): number {
-  const model = typeof body?.model === 'string' ? (body.model as string) : 'unknown'
-  const pricing = TOKEN_PRICING[model] ?? DEFAULT_PRICING
-  const inputTokens = estimateInputTokens(body)
-  const outputTokens = readMaxOutputTokens(body)
-  return inputTokens * pricing.input + outputTokens * pricing.output
-}
 
 // ============================================================================
 // Response header sanitization
@@ -161,71 +75,6 @@ interface ProviderConfig {
   setAuthHeader: (headers: Headers, apiKey: string) => void
   extractUsage: (body: unknown) => UsageData
   extractStreamingUsage: (accumulated: string) => UsageData
-}
-
-// Anthropic Messages API: usage on the response root.
-function extractAnthropicUsage(body: unknown): UsageData {
-  const b = body as Record<string, any> | null
-  return {
-    inputTokens: b?.usage?.input_tokens ?? 0,
-    outputTokens: b?.usage?.output_tokens ?? 0,
-    model: b?.model ?? 'unknown',
-  }
-}
-
-// Anthropic SSE stream: input_tokens on `message_start`, output_tokens
-// updated on each `message_delta`.
-function extractAnthropicStreamingUsage(accumulated: string): UsageData {
-  let inputTokens = 0
-  let outputTokens = 0
-  let model = 'unknown'
-  for (const line of accumulated.split('\n')) {
-    if (!line.startsWith('data: ')) continue
-    try {
-      const data = JSON.parse(line.slice(6))
-      if (data.type === 'message_start' && data.message) {
-        if (data.message.model) model = data.message.model
-        if (data.message.usage?.input_tokens) {
-          inputTokens = data.message.usage.input_tokens
-        }
-      }
-      if (data.type === 'message_delta' && data.usage) {
-        outputTokens = data.usage.output_tokens ?? outputTokens
-      }
-    } catch { /* skip non-JSON lines */ }
-  }
-  return { inputTokens, outputTokens, model }
-}
-
-// OpenAI chat-completions shape, also used by every OpenAI-compatible
-// provider (Cerebras, etc).
-function extractOpenAIUsage(body: unknown): UsageData {
-  const b = body as Record<string, any> | null
-  return {
-    inputTokens: b?.usage?.prompt_tokens ?? 0,
-    outputTokens: b?.usage?.completion_tokens ?? 0,
-    model: b?.model ?? 'unknown',
-  }
-}
-
-// OpenAI-compatible SSE stream: emits `data: {...}` chunks ending with
-// `data: [DONE]`. Final chunks may include a `usage` block.
-function extractOpenAIStreamingUsage(accumulated: string): UsageData {
-  let inputTokens = 0
-  let outputTokens = 0
-  let model = 'unknown'
-  for (const line of accumulated.split('\n')) {
-    if (!line.startsWith('data: ') || line === 'data: [DONE]') continue
-    try {
-      const data = JSON.parse(line.slice(6))
-      if (data.model) model = data.model
-      if (data.usage) {
-        inputTokens = data.usage.prompt_tokens ?? inputTokens
-        outputTokens = data.usage.completion_tokens ?? outputTokens
-      }
-    } catch { /* skip non-JSON lines */ }
-  }
-  return { inputTokens, outputTokens, model }
 }
 
 const setBearerAuth = (headers: Headers, apiKey: string) => {
@@ -382,7 +231,7 @@ async function handleNonStreaming(
   try {
     const json = JSON.parse(body)
     const usage = provider.extractUsage(json)
-    if (usage.inputTokens > 0 || usage.outputTokens > 0) {
+    if (totalUsageTokens(usage) > 0) {
       const calculation = buildBillingCalculation(usage, providerName)
       await recordUsage(db, userId, providerName, 'proxy', calculation, undefined, true)
     }
@@ -440,7 +289,7 @@ function handleStreaming(
         try { await writer.close() } catch { /* client gone */ }
 
         const usage = provider.extractStreamingUsage(accumulated)
-        if (usage.inputTokens > 0 || usage.outputTokens > 0) {
+        if (totalUsageTokens(usage) > 0) {
           try {
             const calculation = buildBillingCalculation(usage, providerName)
             await recordUsage(db, userId, providerName, 'proxy', calculation, undefined, true)
@@ -460,7 +309,7 @@ function handleStreaming(
 
 function buildBillingCalculation(usage: UsageData, providerName: string): BillingCalculation {
   const totalCost = calculateTokenCost(usage)
-  const totalTokens = usage.inputTokens + usage.outputTokens
+  const totalTokens = totalUsageTokens(usage)
   return {
     billingUnits: totalTokens,
     unitCost: totalCost / totalTokens,
@@ -469,6 +318,8 @@ function buildBillingCalculation(usage: UsageData, providerName: string): Billin
       provider: providerName,
       model: usage.model,
       inputTokens: usage.inputTokens,
+      cacheReadTokens: usage.cacheReadTokens,
+      cacheWriteTokens: usage.cacheWriteTokens,
       outputTokens: usage.outputTokens,
     },
   }

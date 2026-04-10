@@ -106,8 +106,14 @@ export async function writeDevVars(
   const appName = readAppName(appDir)
   const appOwnerJwt = await mintAppOwnerJwt(urls.auth, callerJwt, appName)
 
+  // Wrangler's .dev.vars parser is dotenv-style: bare multi-line values are
+  // truncated to the first line. The PEM public key spans multiple lines, so
+  // it MUST be wrapped in double quotes (dotenv multi-line value syntax).
+  // Without this, AUTH_JWT_PUBLIC_KEY ends up as just "-----BEGIN PUBLIC KEY-----"
+  // and `importSPKI` throws `DataError: Invalid SPKI input`, which silently
+  // breaks JWT verification on every WS connection (anonymous fallback).
   const devVars = [
-    `AUTH_JWT_PUBLIC_KEY=${publicKey}`,
+    `AUTH_JWT_PUBLIC_KEY="${publicKey}"`,
     `AUTH_JWT_ISSUER=${urls.auth}/api/auth`,
     `AUTH_WORKER_URL=${urls.auth}`,
     `API_WORKER_URL=${urls.api}`,

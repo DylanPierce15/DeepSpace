@@ -21,7 +21,7 @@ users.get('/me', authMiddleware, async (c) => {
   const userId = c.get('userId')
   const claims = c.get('claims')
 
-  // Profile is guaranteed to exist — auth middleware ensures it
+  // Profile is guaranteed to exist — authMiddleware calls ensureBillingProfile.
   const [billing] = await db
     .select({
       subscriptionStatus: userProfiles.subscriptionStatus,
@@ -37,9 +37,9 @@ users.get('/me', authMiddleware, async (c) => {
     name: claims.name ?? null,
     email: claims.email ?? null,
     image: claims.image ?? null,
-    subscriptionStatus: billing?.subscriptionStatus ?? 'free',
-    subscriptionTier: billing?.subscriptionTier ?? 'free',
-    createdAt: billing?.createdAt ?? null,
+    subscriptionStatus: billing.subscriptionStatus,
+    subscriptionTier: billing.subscriptionTier,
+    createdAt: billing.createdAt,
   })
 })
 

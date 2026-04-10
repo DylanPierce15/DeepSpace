@@ -10,6 +10,7 @@ import { join } from 'node:path'
 import { homedir } from 'node:os'
 
 import { ENVS } from './env'
+import { exchangeSession } from './session'
 
 const AUTH_URL = process.env.DEEPSPACE_AUTH_URL ?? ENVS.prod.auth
 
@@ -46,21 +47,6 @@ export async function ensureToken(): Promise<string> {
   writeFileSync(TOKEN_PATH, token, { mode: 0o600 })
 
   return token
-}
-
-const SESSION_COOKIE = '__Secure-better-auth.session_token'
-
-async function exchangeSession(authUrl: string, sessionToken: string): Promise<string | null> {
-  const res = await fetch(`${authUrl}/api/auth/token`, {
-    method: 'POST',
-    headers: {
-      Cookie: `${SESSION_COOKIE}=${encodeURIComponent(sessionToken)}`,
-      Origin: authUrl,
-    },
-  })
-  if (!res.ok) return null
-  const data = (await res.json()) as { token?: string | null }
-  return data.token ?? null
 }
 
 /** Check if a JWT has at least 30 seconds of validity remaining. */

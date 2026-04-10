@@ -23,14 +23,24 @@ const READ_ONLY_TOOL_NAMES = [
 // System prompt
 // ============================================================================
 
+type Interpretation = CollectionSchema['columns'][number]['interpretation']
+
+/**
+ * Interpretation is `string | Record<string, unknown>`. When it's an object
+ * the convention across the SDK's built-in schemas is `{ kind: string, ... }`
+ * (see `server/schemas/directory.ts`). Narrow safely to a human-readable name.
+ */
+function interpretationLabel(interpretation: Interpretation): string {
+  if (typeof interpretation === 'string') return interpretation
+  const kind = interpretation.kind
+  return typeof kind === 'string' ? kind : 'object'
+}
+
 export function buildSystemPrompt(appName: string, schemas: CollectionSchema[]): string {
   const schemaSummary = schemas
     .map((s) => {
       const cols = (s.columns ?? [])
-        .map((c) => {
-          const type = typeof c.interpretation === 'string' ? c.interpretation : (c.interpretation as any).kind
-          return `${c.name}:${type}${c.required ? '!' : ''}`
-        })
+        .map((c) => `${c.name}:${interpretationLabel(c.interpretation)}${c.required ? '!' : ''}`)
         .join(', ')
       return `- ${s.name}${cols ? ` (${cols})` : ''}`
     })

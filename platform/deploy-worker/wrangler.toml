@@ -16,6 +16,14 @@ bucket_name = "deepspace-schema-registry"
 binding = "CRON_TASKS"
 id = "a13702840633449ab9a5e5371491ac18"
 
+# Service binding to the auth worker. Required for minting APP_OWNER_JWT
+# at deploy time — Cloudflare blocks Worker→Worker subrequests via the
+# public *.workers.dev URL (CF error 1042), so we must call the auth
+# worker via a service binding.
+[[services]]
+binding = "AUTH_WORKER"
+service = "deepspace-auth"
+
 [dev]
 port = 8796
 inspector_port = 9237
