@@ -38,6 +38,9 @@
     "zustand": "^5.0.0"
   },
   "peerDependencies": {
+    "ai": ">=4.0.0",
+    "@ai-sdk/anthropic": ">=1.0.0",
+    "@ai-sdk/openai": ">=1.0.0",
     "class-variance-authority": ">=0.7.0",
     "clsx": ">=2.0.0",
     "lucide-react": ">=0.400.0",
@@ -46,6 +49,15 @@
     "tailwind-merge": ">=2.0.0"
   },
   "peerDependenciesMeta": {
+    "ai": {
+      "optional": true
+    },
+    "@ai-sdk/anthropic": {
+      "optional": true
+    },
+    "@ai-sdk/openai": {
+      "optional": true
+    },
     "react": {
       "optional": true
     },

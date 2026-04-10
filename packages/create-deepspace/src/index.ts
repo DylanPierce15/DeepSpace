@@ -53,7 +53,7 @@ const BOILERPLATE_FILES = new Set([
 
 function isNearEmpty(dir: string): boolean {
   const entries = readdirSync(dir).filter(
-    (name) => !BOILERPLATE_FILES.has(name.toLowerCase()),
+    (name) => !BOILERPLATE_FILES.has(name.toLowerCase()) && extname(name).toLowerCase() !== '.md',
   )
   return entries.length === 0
 }

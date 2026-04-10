@@ -31,6 +31,7 @@ export default defineConfig([
     external: [
       'better-auth', 'better-auth/plugins',
       'jose', 'yjs', 'hono',
+      'ai', '@ai-sdk/anthropic', '@ai-sdk/openai',
       /^cloudflare:.*/, /^node:.*/,
     ],
     esbuildOptions(options) {

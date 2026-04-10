@@ -11,6 +11,7 @@ import stripeRoutes from './routes/stripe'
 import usersRoutes from './routes/users'
 import integrationsRoutes from './routes/integrations'
 import usageRoutes from './routes/usage'
+import proxyRoutes from './routes/proxy'
 
 // ============================================================================
 // Env type — Cloudflare bindings + Hono variables
@@ -105,6 +106,7 @@ app.route('/api/stripe', stripeRoutes)
 app.route('/api/users', usersRoutes)
 app.route('/api/integrations', integrationsRoutes)
 app.route('/api/usage', usageRoutes)
+app.route('/api/proxy', proxyRoutes)
 
 // D1 migration (dev only)
 app.post('/_migrate', async (c) => {
