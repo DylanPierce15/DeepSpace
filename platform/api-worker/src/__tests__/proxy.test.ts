@@ -62,6 +62,49 @@ describe('AI proxy routes', () => {
   })
 
   // ========================================================================
+  // X-Auth-Token alternative auth (for AI SDK calls)
+  // ========================================================================
+
+  describe('X-Auth-Token auth', () => {
+    it('accepts JWT via X-Auth-Token header instead of Authorization', async () => {
+      await insertProfile()
+      const token = await signTestJwt('proxy-test-user')
+
+      // Send JWT as X-Auth-Token (no Authorization header)
+      // With fake API key this will get an upstream error, but NOT a 401 from our proxy
+      const res = await SELF.fetch('https://fake-host/api/proxy/anthropic/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Auth-Token': token,
+          'x-api-key': 'platform-managed',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 10,
+          messages: [{ role: 'user', content: 'hi' }],
+        }),
+      })
+
+      // Should NOT be 401 (our proxy accepted the auth).
+      // It will be 402 (no credits) or an upstream error depending on credit state.
+      expect(res.status).not.toBe(401)
+    })
+
+    it('returns 401 when X-Auth-Token contains an invalid JWT', async () => {
+      const res = await SELF.fetch('https://fake-host/api/proxy/anthropic/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Auth-Token': 'invalid-token',
+        },
+        body: JSON.stringify({ messages: [] }),
+      })
+      expect(res.status).toBe(401)
+    })
+  })
+
+  // ========================================================================
   // Credit gating
   // ========================================================================
 

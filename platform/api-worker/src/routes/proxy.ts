@@ -7,8 +7,9 @@
  */
 
 import { Hono } from 'hono'
+import { createMiddleware } from 'hono/factory'
+import { verifyJwt } from 'deepspace/worker'
 import type { Env } from '../worker'
-import { authMiddleware } from '../middleware/auth'
 import { getDb } from '../worker'
 import {
   recordUsage,
@@ -172,9 +173,11 @@ function createProxyHandler(providerName: string) {
     )
     const targetUrl = `${provider.baseUrl}${upstreamPath}${url.search}`
 
-    // Clone headers, swap auth
+    // Clone headers, swap auth, strip internal headers
     const fwdHeaders = new Headers(c.req.raw.headers)
     fwdHeaders.delete('host')
+    fwdHeaders.delete('x-auth-token')
+    fwdHeaders.delete('x-billing-user-id')
     provider.setAuthHeaders(fwdHeaders, c.env)
 
     // Forward request
@@ -295,10 +298,43 @@ function handleStreaming(
 }
 
 // ============================================================================
+// Auth — accepts Authorization: Bearer <jwt> OR X-Auth-Token: <jwt>
+//
+// AI SDK providers set their own auth headers (x-api-key for Anthropic,
+// Authorization for OpenAI). X-Auth-Token avoids conflicts so the proxy
+// can authenticate the calling user independently of the provider auth.
+// ============================================================================
+
+const proxyAuth = createMiddleware<Env>(async (c, next) => {
+  const authHeader = c.req.header('Authorization')
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+  const altToken = c.req.header('X-Auth-Token')
+  const jwt = token ?? altToken ?? null
+
+  if (!jwt) {
+    return c.json({ error: 'Missing authorization token' }, 401)
+  }
+
+  const { result, error } = await verifyJwt(
+    { publicKey: c.env.AUTH_JWT_PUBLIC_KEY, issuer: c.env.AUTH_JWT_ISSUER },
+    jwt,
+  )
+
+  if (!result) {
+    console.error('[proxy] JWT verification failed:', error)
+    return c.json({ error: 'Invalid or expired token' }, 401)
+  }
+
+  c.set('userId', result.userId)
+  c.set('claims', result.claims)
+  await next()
+})
+
+// ============================================================================
 // Routes
 // ============================================================================
 
-proxy.all('/anthropic/*', authMiddleware, createProxyHandler('anthropic'))
-proxy.all('/openai/*', authMiddleware, createProxyHandler('openai'))
+proxy.all('/anthropic/*', proxyAuth, createProxyHandler('anthropic'))
+proxy.all('/openai/*', proxyAuth, createProxyHandler('openai'))
 
 export default proxy

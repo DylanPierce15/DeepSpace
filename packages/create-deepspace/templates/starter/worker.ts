@@ -19,6 +19,8 @@ import {
   verifyInternalSignature,
   buildInternalPayload,
   getOwnerJwt,
+  createDeepSpaceAIFromBinding,
+  createDeepSpaceAI,
 } from 'deepspace/worker'
 import type { JwtVerifierConfig, VerifyResult } from 'deepspace/worker'
 import {
@@ -31,10 +33,12 @@ import {
   type ScopedR2Handler,
 } from 'deepspace/worker'
 import type { ActionTools, ActionResult, DOManifest, DOBindings } from 'deepspace/worker'
+import { streamText } from 'ai'
 import { actions } from './src/actions/index.js'
 import { handleCron } from './src/cron.js'
 import { schemas } from './src/schemas.js'
 import { integrations } from './src/integrations.js'
+import { buildSystemPrompt, buildReadOnlyTools } from './src/ai/tools.js'
 
 // =============================================================================
 // DO Manifest — declares all Durable Objects for dynamic deploy bindings
@@ -316,6 +320,51 @@ app.post('/api/actions/:name', async (c) => {
   const tools = createActionTools(c.env, auth.userId)
   const result = await action({ userId: auth.userId, params, tools })
   return c.json(result)
+})
+
+// ---------------------------------------------------------------------------
+// AI chat — multi-turn tool-use via Vercel AI SDK + DeepSpace proxy
+// ---------------------------------------------------------------------------
+
+app.post('/api/ai/chat', async (c) => {
+  const auth = await resolveAuth(c.req.raw, c.env)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
+
+  const { messages } = await c.req.json<{ messages: Array<{ role: string; content: string }> }>()
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return c.json({ error: 'messages array is required' }, 400)
+  }
+
+  const jwt = c.req.header('Authorization')?.slice(7)
+  if (!jwt) return c.json({ error: 'Missing token' }, 401)
+
+  // Create provider — service binding in production, URL fallback in dev
+  const provider = c.env.API_WORKER
+    ? createDeepSpaceAIFromBinding(c.env.API_WORKER, 'anthropic', { authToken: jwt })
+    : createDeepSpaceAI(c.env.API_WORKER_URL, 'anthropic', { authToken: jwt })
+
+  // Build read-only tools that execute against the app's RecordRoom DO
+  const scopeId = `app:${c.env.APP_NAME}`
+  const tools = buildReadOnlyTools(async (toolName, params) => {
+    const doId = c.env.RECORD_ROOMS.idFromName(scopeId)
+    const stub = c.env.RECORD_ROOMS.get(doId)
+    const res = await stub.fetch(new Request('https://internal/api/tools/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-user-id': auth.userId },
+      body: JSON.stringify({ tool: toolName, params }),
+    }))
+    return res.json()
+  })
+
+  const result = streamText({
+    model: provider('claude-sonnet-4-20250514'),
+    system: buildSystemPrompt(c.env.APP_NAME, schemas),
+    messages,
+    tools,
+    maxSteps: 5,
+  })
+
+  return result.toDataStreamResponse()
 })
 
 // ---------------------------------------------------------------------------
