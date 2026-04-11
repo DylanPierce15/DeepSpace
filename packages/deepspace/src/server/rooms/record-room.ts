@@ -32,21 +32,8 @@ import type {
   YjsJoinPayload,
   YjsLeavePayload,
 } from '../../shared/types'
-import {
-  MSG_SUBSCRIBE,
-  MSG_UNSUBSCRIBE,
-  MSG_PUT,
-  MSG_DELETE,
-  MSG_ERROR,
-  MSG_USER_INFO,
-  MSG_USER_LIST,
-  MSG_USER_UPDATE,
-  MSG_SET_ROLE,
-  MSG_YJS_JOIN,
-  MSG_YJS_LEAVE,
-  MSG_LIST_SCHEMAS,
-  ROLE_ANONYMOUS,
-} from '../../shared/protocol/constants'
+import { ROLE_ANONYMOUS, MSG } from '../../shared/protocol/constants'
+import type { ServerMessage } from '../../shared/protocol/messages'
 import {
   type CollectionSchema,
   type PermissionContext,
@@ -411,7 +398,7 @@ export class RecordRoom extends BaseRoom {
         yjsClientId: this.nextYjsClientId++,
       }
 
-      this.send(ws, { type: MSG_USER_INFO, payload: registeredUser })
+      this.send(ws, { type: MSG.USER_INFO, payload: registeredUser })
 
       const totalMs = Date.now() - timing.fetchStart
       console.log(`[DO Perf] cold=${timing.isColdStart} | init: ${timing.initMs}ms reg: ${regMs}ms | total: ${totalMs}ms`)
@@ -426,7 +413,7 @@ export class RecordRoom extends BaseRoom {
         yjsClientId: this.nextYjsClientId++,
       }
 
-      this.send(ws, { type: MSG_USER_INFO, payload: {
+      this.send(ws, { type: MSG.USER_INFO, payload: {
         id: userId,
         name: 'Anonymous',
         email: '',
@@ -446,22 +433,22 @@ export class RecordRoom extends BaseRoom {
   protected async onMessage(
     ws: WebSocket,
     user: UserAttachment,
-    msg: { type: number; [key: string]: unknown }
+    msg: { type: string; [key: string]: unknown }
   ): Promise<void> {
     await this.ensureInitialized()
 
     const attachment = ws.deserializeAttachment() as ConnectionAttachment | null
     if (!attachment) {
-      this.send(ws, { type: MSG_ERROR, payload: { error: 'Connection not found' } })
+      this.send(ws, { type: MSG.ERROR, payload: { error: 'Connection not found' } })
       return
     }
 
     try {
-      await this.handleRecordMessage(ws, attachment, msg as { type: number; payload: unknown })
+      await this.handleRecordMessage(ws, attachment, msg as { type: string; payload: unknown })
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : String(e)
       console.error(`[RecordRoom] Message handler error: ${errMsg}`)
-      this.send(ws, { type: MSG_ERROR, payload: { error: `Invalid message: ${errMsg}` } })
+      this.send(ws, { type: MSG.ERROR, payload: { error: `Invalid message: ${errMsg}` } })
     }
   }
 
@@ -503,7 +490,7 @@ export class RecordRoom extends BaseRoom {
 
     const attachment = ws.deserializeAttachment() as ConnectionAttachment | null
     if (!attachment) {
-      this.send(ws, { type: MSG_ERROR, payload: { error: 'Connection not found' } })
+      this.send(ws, { type: MSG.ERROR, payload: { error: 'Connection not found' } })
       return
     }
 
@@ -530,7 +517,7 @@ export class RecordRoom extends BaseRoom {
       const errMsg = e instanceof Error ? e.message : String(e)
       const msgPreview = typeof message === 'string' ? message.slice(0, 200) : '(non-string)'
       console.error(`[RecordRoom] Message handler error: ${errMsg}`, { message: msgPreview })
-      this.send(ws, { type: MSG_ERROR, payload: { error: `Invalid message: ${errMsg}` } })
+      this.send(ws, { type: MSG.ERROR, payload: { error: `Invalid message: ${errMsg}` } })
     }
   }
 
@@ -555,7 +542,7 @@ export class RecordRoom extends BaseRoom {
   private async handleRecordMessage(
     ws: WebSocket,
     attachment: ConnectionAttachment,
-    msg: { type: number; payload: unknown }
+    msg: { type: string; payload: unknown }
   ): Promise<void> {
     const { type, payload } = msg
     const ctx = this.createHandlerContext()
@@ -564,48 +551,48 @@ export class RecordRoom extends BaseRoom {
     const yjsCtx = this.createYjsContext()
 
     switch (type) {
-      case MSG_SUBSCRIBE:
+      case MSG.SUBSCRIBE:
         handleSubscribe(ctx, ws, attachment, payload as SubscribePayload)
         break
 
-      case MSG_UNSUBSCRIBE:
+      case MSG.UNSUBSCRIBE:
         handleUnsubscribe(ctx, ws, attachment, payload as UnsubscribePayload)
         break
 
-      case MSG_PUT:
+      case MSG.PUT:
         await handlePut(recordCtx, ws, attachment, payload as PutPayload)
         break
 
-      case MSG_DELETE:
+      case MSG.DELETE:
         await handleDelete(recordCtx, ws, attachment, payload as DeletePayload)
         break
 
-      case MSG_USER_LIST:
+      case MSG.USER_LIST:
         handleUserList(userCtx, ws, attachment)
         break
 
-      case MSG_USER_UPDATE:
+      case MSG.USER_UPDATE:
         handleUserUpdate(recordCtx, ws, attachment, payload as { name?: string; email?: string; imageUrl?: string })
         break
 
-      case MSG_SET_ROLE:
+      case MSG.SET_ROLE:
         await handleSetRole(userCtx, ws, attachment, payload as SetRolePayload)
         break
 
-      case MSG_YJS_JOIN:
+      case MSG.YJS_JOIN:
         await handleYjsJoin(yjsCtx, ws, attachment, payload as YjsJoinPayload)
         break
 
-      case MSG_YJS_LEAVE:
+      case MSG.YJS_LEAVE:
         handleYjsLeave(ws, attachment, payload as YjsLeavePayload)
         break
 
-      case MSG_LIST_SCHEMAS:
+      case MSG.LIST_SCHEMAS:
         this.handleListSchemas(ws)
         break
 
       default:
-        this.send(ws, { type: MSG_ERROR, payload: { error: `Unknown message type: ${type}` } })
+        this.send(ws, { type: MSG.ERROR, payload: { error: `Unknown message type: ${type}` } })
     }
   }
 
@@ -616,7 +603,7 @@ export class RecordRoom extends BaseRoom {
   private handleListSchemas(ws: WebSocket): void {
     const schemas = this.schemaRegistry.all()
     this.send(ws, {
-      type: MSG_LIST_SCHEMAS,
+      type: MSG.LIST_SCHEMAS,
       payload: { schemas },
     })
   }
@@ -631,7 +618,7 @@ export class RecordRoom extends BaseRoom {
       state: this.state,
       schemaRegistry: this.schemaRegistry,
       getPermissionContext: () => this.getPermissionContext(),
-      send: (ws: WebSocket, msg: { type: number; payload: unknown }) => this.send(ws, msg),
+      send: (ws: WebSocket, msg: ServerMessage) => this.send(ws, msg),
       sendBinary: (ws: WebSocket, data: Uint8Array) => this.sendBinaryHelper(ws, data),
       yjsDocs: this.yjsDocs,
       ownerUserId: this.ownerUserId ?? undefined,
@@ -650,7 +637,7 @@ export class RecordRoom extends BaseRoom {
       sql: this.sql,
       state: this.state,
       schemaRegistry: this.schemaRegistry,
-      send: (ws: WebSocket, msg: { type: number; payload: unknown }) => this.send(ws, msg),
+      send: (ws: WebSocket, msg: ServerMessage) => this.send(ws, msg),
     }
   }
 
@@ -661,7 +648,7 @@ export class RecordRoom extends BaseRoom {
       yjsDocs: this.yjsDocs,
       schemaRegistry: this.schemaRegistry,
       getPermissionContext: () => this.getPermissionContext(),
-      send: (ws: WebSocket, msg: { type: number; payload: unknown }) => this.send(ws, msg),
+      send: (ws: WebSocket, msg: ServerMessage) => this.send(ws, msg),
       sendBinary: (ws: WebSocket, data: Uint8Array) => this.sendBinaryHelper(ws, data),
     }
   }
@@ -670,7 +657,7 @@ export class RecordRoom extends BaseRoom {
   // Utilities (preserves original API that handlers expect)
   // ============================================================================
 
-  private send(ws: WebSocket, message: { type: number; payload: unknown }): void {
+  private send(ws: WebSocket, message: ServerMessage): void {
     try {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(message))

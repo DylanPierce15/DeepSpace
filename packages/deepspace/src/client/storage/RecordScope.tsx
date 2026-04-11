@@ -39,19 +39,7 @@ import { getAuthToken } from '../auth'
 import { wsLog } from './ws-log'
 import { parseServerError } from './serverErrors'
 import type { RoomUser, RoomConnectionState, RecordData } from './types'
-import {
-  MSG_SUBSCRIBE,
-  MSG_QUERY_RESULT,
-  MSG_RECORD_CHANGE,
-  MSG_ERROR,
-  MSG_USER_INFO,
-  MSG_USER_LIST,
-  MSG_SET_ROLE,
-  MSG_YJS_JOIN,
-  MSG_ACK,
-  MSG_LIST_SCHEMAS,
-  MSG_RESUBSCRIBE,
-} from '@/shared/protocol/constants'
+import { MSG } from '@/shared/protocol/constants'
 
 // ============================================================================
 // Helpers
@@ -183,7 +171,7 @@ function ScopeConnection({
       return
     }
 
-    let msg: { type: number; payload: unknown }
+    let msg: { type: string; payload: unknown }
     try {
       msg = JSON.parse(event.data as string)
     } catch {
@@ -194,24 +182,24 @@ function ScopeConnection({
     const { type, payload } = msg
 
     switch (type) {
-      case MSG_USER_INFO: {
+      case MSG.USER_INFO: {
         const { role } = payload as { role: string }
         setRoomRole(role)
         setReady(true)
         reconnectAttemptRef.current = 0
         const ws = wsRef.current
         if (ws?.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: MSG_USER_LIST, payload: {} }))
+          ws.send(JSON.stringify({ type: MSG.USER_LIST, payload: {} }))
         }
         break
       }
 
-      case MSG_USER_LIST:
+      case MSG.USER_LIST:
         setAllUsers((payload as { users: RoomUser[] }).users)
         setUsersLoaded(true)
         break
 
-      case MSG_QUERY_RESULT: {
+      case MSG.QUERY_RESULT: {
         const { subscriptionId, records } = payload as { subscriptionId: string; records: RecordData[] }
         for (const [subId, queryKey] of subscriptionMapRef.current) {
           if (subId === subscriptionId) {
@@ -222,7 +210,7 @@ function ScopeConnection({
         break
       }
 
-      case MSG_RECORD_CHANGE: {
+      case MSG.RECORD_CHANGE: {
         const { collection, record, changeType } = payload as {
           collection: string; record: RecordData; changeType: 'create' | 'update' | 'delete'
         }
@@ -246,7 +234,7 @@ function ScopeConnection({
         break
       }
 
-      case MSG_ERROR: {
+      case MSG.ERROR: {
         const { subscriptionId, error } = payload as { subscriptionId?: string; error: string }
         if (subscriptionId) {
           for (const [subId, queryKey] of subscriptionMapRef.current) {
@@ -266,7 +254,7 @@ function ScopeConnection({
         break
       }
 
-      case MSG_YJS_JOIN: {
+      case MSG.YJS_JOIN: {
         const { collection, recordId, fieldName, canWrite } = payload as {
           collection: string; recordId: string; fieldName: string; canWrite: boolean
         }
@@ -275,7 +263,7 @@ function ScopeConnection({
         break
       }
 
-      case MSG_ACK: {
+      case MSG.ACK: {
         const { requestId, success, error, ...rest } = payload as {
           requestId: string; success: boolean; error?: string; [key: string]: unknown
         }
@@ -288,19 +276,19 @@ function ScopeConnection({
         break
       }
 
-      case MSG_LIST_SCHEMAS: {
+      case MSG.LIST_SCHEMAS: {
         const { schemas: list } = payload as { schemas: CollectionSchema[] }
         setDiscoveredSchemas(list ?? [])
         break
       }
 
-      case MSG_RESUBSCRIBE: {
+      case MSG.RESUBSCRIBE: {
         const ws = wsRef.current
         if (ws?.readyState === WebSocket.OPEN) {
           for (const [subscriptionId, queryKey] of subscriptionMapRef.current) {
             try {
               const query = JSON.parse(queryKey)
-              ws.send(JSON.stringify({ type: MSG_SUBSCRIBE, payload: { subscriptionId, query } }))
+              ws.send(JSON.stringify({ type: MSG.SUBSCRIBE, payload: { subscriptionId, query } }))
             } catch { /* skip */ }
           }
         }
@@ -355,7 +343,7 @@ function ScopeConnection({
       for (const [subscriptionId, queryKey] of subscriptionMapRef.current) {
         try {
           const query = JSON.parse(queryKey)
-          ws.send(JSON.stringify({ type: MSG_SUBSCRIBE, payload: { subscriptionId, query } }))
+          ws.send(JSON.stringify({ type: MSG.SUBSCRIBE, payload: { subscriptionId, query } }))
         } catch { /* skip */ }
       }
     }
@@ -439,7 +427,7 @@ function ScopeConnection({
 
   // ── Send helpers ─────────────────────────────────────────────────────
 
-  const sendMessage = useCallback((message: { type: number; payload: unknown }) => {
+  const sendMessage = useCallback((message: { type: string; payload: unknown }) => {
     const ws = wsRef.current
     if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message))
   }, [])
@@ -464,7 +452,7 @@ function ScopeConnection({
   }, [])
 
   const sendConfirmed = useCallback((
-    message: { type: number; payload: Record<string, unknown> },
+    message: { type: string; payload: Record<string, unknown> },
     timeoutMs = 10000,
   ): Promise<unknown> => {
     const ws = wsRef.current
@@ -481,11 +469,11 @@ function ScopeConnection({
   }, [])
 
   const setUserRole = useCallback((userId: string, role: string) => {
-    sendMessage({ type: MSG_SET_ROLE, payload: { userId, role } })
+    sendMessage({ type: MSG.SET_ROLE, payload: { userId, role } })
   }, [sendMessage])
 
   const requestUserList = useCallback(() => {
-    sendMessage({ type: MSG_USER_LIST, payload: {} })
+    sendMessage({ type: MSG.USER_LIST, payload: {} })
   }, [sendMessage])
 
   const registerSubscription = useCallback((subscriptionId: string, queryKey: string) => {
@@ -498,7 +486,7 @@ function ScopeConnection({
 
   // Auto-discover schemas
   useEffect(() => {
-    if (ready) sendMessage({ type: MSG_LIST_SCHEMAS, payload: {} })
+    if (ready) sendMessage({ type: MSG.LIST_SCHEMAS, payload: {} })
   }, [ready, sendMessage])
 
   // ── ScopeRegistry ────────────────────────────────────────────────────

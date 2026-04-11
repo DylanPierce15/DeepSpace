@@ -7,7 +7,7 @@
 
 import type { ConnectionAttachment } from '../../shared/protocol/types'
 import type { SetRolePayload } from '../../shared/types'
-import { MSG_USER_LIST, MSG_USER_INFO, MSG_ERROR } from '../../shared/protocol/constants'
+import { MSG } from '../../shared/protocol/constants'
 import {
   type User,
   type CollectionSchema,
@@ -25,7 +25,7 @@ export interface UserContext {
   sql: SqlStorage
   state: DurableObjectState
   schemaRegistry: SchemaRegistry
-  send(ws: WebSocket, message: { type: number; payload: unknown }): void
+  send(ws: WebSocket, message: { type: string; payload: unknown }): void
 }
 
 /**
@@ -287,7 +287,7 @@ export function handleUserList(
     id: r.recordId,
     ...r.data,
   }))
-  ctx.send(ws, { type: MSG_USER_LIST, payload: { users } })
+  ctx.send(ws, { type: MSG.USER_LIST, payload: { users } })
 }
 
 /**
@@ -334,13 +334,13 @@ export async function handleSetRole(
   payload: SetRolePayload
 ): Promise<void> {
   if (attachment.role !== 'admin') {
-    ctx.send(ws, { type: MSG_ERROR, payload: { error: 'Admin access required' } })
+    ctx.send(ws, { type: MSG.ERROR, payload: { error: 'Admin access required' } })
     return
   }
 
   const existing = getUserRecord(ctx.sql, payload.userId, ctx.schemaRegistry)
   if (!existing) {
-    ctx.send(ws, { type: MSG_ERROR, payload: { error: 'User not found' } })
+    ctx.send(ws, { type: MSG.ERROR, payload: { error: 'User not found' } })
     return
   }
 
@@ -376,7 +376,7 @@ export async function handleSetRole(
 
     // Send updated user list to admins
     if (otherAttachment.role === 'admin') {
-      ctx.send(otherWs, { type: MSG_USER_LIST, payload: { users } })
+      ctx.send(otherWs, { type: MSG.USER_LIST, payload: { users } })
     }
   }
 }

@@ -5,21 +5,25 @@
  *
  * @example
  * const { state, sendInput, players, connected } = useGameRoom('my-game')
+ *
+ * Implementation note: this hook uses the typed wire protocol helpers
+ * (`clientBuild` for sends, `dispatch` for receives) from
+ * `shared/protocol/messages`. Hand-rolled `switch (msg.type)` blocks and
+ * raw `JSON.stringify({ type: MSG.X, payload: ... })` sends are a fast
+ * route to the "silent drop" bug class when a payload shape drifts —
+ * prefer the typed helpers instead.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getAuthToken } from '../../auth'
 import { wsLog } from '../ws-log'
+import { MSG } from '@/shared/protocol/constants'
 import {
-  MSG_GAME_STATE,
-  MSG_GAME_INPUT,
-  MSG_GAME_PLAYER_JOIN,
-  MSG_GAME_PLAYER_LEAVE,
-  MSG_GAME_PLAYER_READY,
-  MSG_GAME_START,
-  MSG_GAME_END,
-  MSG_GAME_TICK,
-} from '@/shared/protocol/constants'
+  clientBuild,
+  dispatch,
+  encode,
+  type ServerMessage,
+} from '@/shared/protocol/messages'
 
 export interface GamePlayer {
   userId: string
@@ -82,51 +86,39 @@ export function useGameRoom(roomId: string): UseGameRoomResult {
       }
 
       ws.onmessage = (event) => {
-        if (typeof event.data !== 'string') return
-        try {
-          const msg = JSON.parse(event.data) as { type: number; payload: Record<string, unknown> }
-          switch (msg.type) {
-            case MSG_GAME_STATE: {
-              const p = msg.payload
-              setGameState(p.state as Record<string, unknown>)
-              setTick(p.tick as number)
-              setPlayers(p.players as GamePlayer[])
-              setRunning(p.running as boolean)
-              break
-            }
-            case MSG_GAME_TICK: {
-              setGameState(msg.payload.state as Record<string, unknown>)
-              setTick(msg.payload.tick as number)
-              break
-            }
-            case MSG_GAME_PLAYER_JOIN: {
-              const player = msg.payload.player as GamePlayer
-              setPlayers(prev => [...prev.filter(p => p.userId !== player.userId), player])
-              break
-            }
-            case MSG_GAME_PLAYER_LEAVE: {
-              const userId = msg.payload.userId as string
-              setPlayers(prev => prev.filter(p => p.userId !== userId))
-              break
-            }
-            case MSG_GAME_PLAYER_READY: {
-              const userId = msg.payload.userId as string
-              setPlayers(prev => prev.map(p => p.userId === userId ? { ...p, ready: true } : p))
-              break
-            }
-            case MSG_GAME_START: {
-              setRunning(true)
-              setGameState(msg.payload.state as Record<string, unknown>)
-              setTick(msg.payload.tick as number)
-              break
-            }
-            case MSG_GAME_END: {
-              setRunning(false)
-              setGameState(msg.payload.state as Record<string, unknown>)
-              break
-            }
-          }
-        } catch { /* ignore parse errors */ }
+        dispatch<ServerMessage>(event.data, {
+          [MSG.GAME_STATE]: (p) => {
+            setGameState(p.state as Record<string, unknown>)
+            setTick(p.tick)
+            setPlayers(p.players as GamePlayer[])
+            setRunning(p.running)
+          },
+          [MSG.GAME_TICK]: (p) => {
+            setGameState(p.state as Record<string, unknown>)
+            setTick(p.tick)
+          },
+          [MSG.GAME_PLAYER_JOIN]: (p) => {
+            const player = p.player as GamePlayer
+            setPlayers((prev) => [...prev.filter((x) => x.userId !== player.userId), player])
+          },
+          [MSG.GAME_PLAYER_LEAVE]: (p) => {
+            setPlayers((prev) => prev.filter((x) => x.userId !== p.userId))
+          },
+          [MSG.GAME_PLAYER_READY]: (p) => {
+            setPlayers((prev) =>
+              prev.map((x) => (x.userId === p.userId ? { ...x, ready: true } : x)),
+            )
+          },
+          [MSG.GAME_START]: (p) => {
+            setRunning(true)
+            setGameState(p.state as Record<string, unknown>)
+            setTick(p.tick)
+          },
+          [MSG.GAME_END]: (p) => {
+            setRunning(false)
+            setGameState(p.state as Record<string, unknown>)
+          },
+        })
       }
 
       ws.onclose = () => {
@@ -158,25 +150,25 @@ export function useGameRoom(roomId: string): UseGameRoomResult {
   const sendInput = useCallback((action: string, data: Record<string, unknown> = {}) => {
     const ws = wsRef.current
     if (!ws || ws.readyState !== WebSocket.OPEN) return
-    ws.send(JSON.stringify({ type: MSG_GAME_INPUT, payload: { action, data } }))
+    ws.send(encode(clientBuild.gameInput(action, data)))
   }, [])
 
   const setReady = useCallback(() => {
     const ws = wsRef.current
     if (!ws || ws.readyState !== WebSocket.OPEN) return
-    ws.send(JSON.stringify({ type: MSG_GAME_PLAYER_READY, payload: {} }))
+    ws.send(encode(clientBuild.gamePlayerReady()))
   }, [])
 
   const startGame = useCallback(() => {
     const ws = wsRef.current
     if (!ws || ws.readyState !== WebSocket.OPEN) return
-    ws.send(JSON.stringify({ type: MSG_GAME_START, payload: {} }))
+    ws.send(encode(clientBuild.gameStart()))
   }, [])
 
   const endGame = useCallback(() => {
     const ws = wsRef.current
     if (!ws || ws.readyState !== WebSocket.OPEN) return
-    ws.send(JSON.stringify({ type: MSG_GAME_END, payload: {} }))
+    ws.send(encode(clientBuild.gameEnd()))
   }, [])
 
   return { state: gameState, tick, players, running, connected, sendInput, setReady, startGame, endGame }

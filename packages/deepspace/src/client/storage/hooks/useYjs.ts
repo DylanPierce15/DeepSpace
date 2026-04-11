@@ -7,7 +7,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import * as Y from 'yjs'
 import { useRecordContext } from '../context'
-import { MSG_YJS_JOIN, MSG_YJS_LEAVE, MSG_YJS_SYNC, MSG_YJS_AWARENESS } from '@/shared/protocol/constants'
+import { MSG_YJS_SYNC, MSG_YJS_AWARENESS, MSG } from '@/shared/protocol/constants'
 import {
   MSG_SYNC_STEP1,
   MSG_SYNC_STEP2,
@@ -170,13 +170,13 @@ export function useYjsField(
     }
 
     console.log('[YJS] Joining:', docKey)
-    sendMessage({ type: MSG_YJS_JOIN, payload: { collection, recordId, fieldName } })
+    sendMessage({ type: MSG.YJS_JOIN, payload: { collection, recordId, fieldName } })
 
     return () => {
       // Clear local awareness state before leaving
       awareness.setLocalState(null)
       console.log('[YJS] Leaving:', docKey)
-      sendMessage({ type: MSG_YJS_LEAVE, payload: { collection, recordId, fieldName } })
+      sendMessage({ type: MSG.YJS_LEAVE, payload: { collection, recordId, fieldName } })
     }
   }, [ready, collection, recordId, fieldName, sendMessage, docKey, awareness])
 

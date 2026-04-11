@@ -5,21 +5,13 @@
  * Relays SDP offers/answers and ICE candidates between peers.
  * Tracks room membership (who's in the call).
  *
- * Message types: 80-99 (MSG_MEDIA_*)
+ * Message types: media.*
  */
 
 /// <reference types="@cloudflare/workers-types" />
 
 import { BaseRoom, type UserAttachment } from './base-room'
-import {
-  MSG_MEDIA_JOIN,
-  MSG_MEDIA_LEAVE,
-  MSG_MEDIA_OFFER,
-  MSG_MEDIA_ANSWER,
-  MSG_MEDIA_ICE_CANDIDATE,
-  MSG_MEDIA_PEERS,
-  MSG_ERROR,
-} from '../../shared/protocol/constants'
+import { MSG } from '../../shared/protocol/constants'
 
 // ============================================================================
 // Types
@@ -71,12 +63,12 @@ export class MediaRoom extends BaseRoom {
 
     // Send current peer list to new participant
     this.sendTo(ws, {
-      type: MSG_MEDIA_PEERS,
+      type: MSG.MEDIA_PEERS,
       payload: { peers: Array.from(this.peers.values()) },
     })
 
     // Notify existing peers
-    this.broadcast({ type: MSG_MEDIA_JOIN, payload: { peer } }, ws)
+    this.broadcast({ type: MSG.MEDIA_JOIN, payload: { peer } }, ws)
 
     return attachment
   }
@@ -84,54 +76,54 @@ export class MediaRoom extends BaseRoom {
   protected async onMessage(
     ws: WebSocket,
     user: UserAttachment,
-    message: { type: number; [key: string]: unknown }
+    message: { type: string; [key: string]: unknown }
   ): Promise<void> {
-    const { type, payload } = message as { type: number; payload: Record<string, unknown> }
+    const { type, payload } = message as { type: string; payload: Record<string, unknown> }
 
     switch (type) {
-      case MSG_MEDIA_OFFER: {
+      case MSG.MEDIA_OFFER: {
         const { targetUserId, sdp } = payload as { targetUserId: string; sdp: unknown }
         const targetWs = this.peerSockets.get(targetUserId)
         if (targetWs) {
           this.sendTo(targetWs, {
-            type: MSG_MEDIA_OFFER,
+            type: MSG.MEDIA_OFFER,
             payload: { fromUserId: user.userId, sdp },
           })
         }
         break
       }
 
-      case MSG_MEDIA_ANSWER: {
+      case MSG.MEDIA_ANSWER: {
         const { targetUserId, sdp } = payload as { targetUserId: string; sdp: unknown }
         const targetWs = this.peerSockets.get(targetUserId)
         if (targetWs) {
           this.sendTo(targetWs, {
-            type: MSG_MEDIA_ANSWER,
+            type: MSG.MEDIA_ANSWER,
             payload: { fromUserId: user.userId, sdp },
           })
         }
         break
       }
 
-      case MSG_MEDIA_ICE_CANDIDATE: {
+      case MSG.MEDIA_ICE_CANDIDATE: {
         const { targetUserId, candidate } = payload as { targetUserId: string; candidate: unknown }
         const targetWs = this.peerSockets.get(targetUserId)
         if (targetWs) {
           this.sendTo(targetWs, {
-            type: MSG_MEDIA_ICE_CANDIDATE,
+            type: MSG.MEDIA_ICE_CANDIDATE,
             payload: { fromUserId: user.userId, candidate },
           })
         }
         break
       }
 
-      case MSG_MEDIA_LEAVE: {
+      case MSG.MEDIA_LEAVE: {
         this.removePeer(user.userId, ws)
         break
       }
 
       default:
-        this.sendTo(ws, { type: MSG_ERROR, payload: { error: `Unknown media message type: ${type}` } })
+        this.sendTo(ws, { type: MSG.ERROR, payload: { error: `Unknown media message type: ${type}` } })
     }
   }
 
@@ -146,6 +138,6 @@ export class MediaRoom extends BaseRoom {
   private removePeer(userId: string, ws: WebSocket): void {
     this.peers.delete(userId)
     this.peerSockets.delete(userId)
-    this.broadcast({ type: MSG_MEDIA_LEAVE, payload: { userId } }, ws)
+    this.broadcast({ type: MSG.MEDIA_LEAVE, payload: { userId } }, ws)
   }
 }

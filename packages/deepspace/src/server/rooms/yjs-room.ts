@@ -142,7 +142,7 @@ export class YjsRoom extends BaseRoom {
   protected onMessage(
     ws: WebSocket,
     user: UserAttachment,
-    message: { type: number; [key: string]: unknown }
+    message: { type: string; [key: string]: unknown }
   ): void {
     // YjsRoom only handles binary messages; JSON messages are ignored
     // (ping/pong handled by auto-response)

@@ -13,11 +13,11 @@ export interface ActionResult {
 }
 
 export interface ActionTools {
-  create(scopeId: string, collection: string, data: Record<string, unknown>): Promise<ActionResult>
-  update(scopeId: string, collection: string, recordId: string, data: Record<string, unknown>): Promise<ActionResult>
-  remove(scopeId: string, collection: string, recordId: string): Promise<ActionResult>
-  get(scopeId: string, collection: string, recordId: string): Promise<ActionResult>
-  query(scopeId: string, collection: string, options?: {
+  create(collection: string, data: Record<string, unknown>): Promise<ActionResult>
+  update(collection: string, recordId: string, data: Record<string, unknown>): Promise<ActionResult>
+  remove(collection: string, recordId: string): Promise<ActionResult>
+  get(collection: string, recordId: string): Promise<ActionResult>
+  query(collection: string, options?: {
     where?: Record<string, unknown>
     orderBy?: string
     orderDir?: 'asc' | 'desc'

@@ -24,12 +24,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getAuthToken } from '../../auth'
 import { wsLog } from '../ws-log'
-import {
-  MSG_PRESENCE_SYNC,
-  MSG_PRESENCE_JOIN,
-  MSG_PRESENCE_LEAVE,
-  MSG_PRESENCE_UPDATE,
-} from '@/shared/protocol/constants'
+import { MSG } from '@/shared/protocol/constants'
 
 // ============================================================================
 // Types
@@ -88,23 +83,23 @@ export function usePresenceRoom(scopeId: string): UsePresenceRoomResult {
       ws.onmessage = (event) => {
         if (typeof event.data !== 'string') return
         try {
-          const msg = JSON.parse(event.data) as { type: number; payload: Record<string, unknown> }
+          const msg = JSON.parse(event.data) as { type: string; payload: Record<string, unknown> }
           switch (msg.type) {
-            case MSG_PRESENCE_SYNC: {
+            case MSG.PRESENCE_SYNC: {
               setPeers(msg.payload.peers as PresencePeerClient[])
               break
             }
-            case MSG_PRESENCE_JOIN: {
+            case MSG.PRESENCE_JOIN: {
               const peer = msg.payload.peer as PresencePeerClient
               setPeers(prev => [...prev.filter(p => p.userId !== peer.userId), peer])
               break
             }
-            case MSG_PRESENCE_LEAVE: {
+            case MSG.PRESENCE_LEAVE: {
               const userId = msg.payload.userId as string
               setPeers(prev => prev.filter(p => p.userId !== userId))
               break
             }
-            case MSG_PRESENCE_UPDATE: {
+            case MSG.PRESENCE_UPDATE: {
               const { userId, state } = msg.payload as { userId: string; state: Record<string, unknown> }
               setPeers(prev =>
                 prev.map(p =>
@@ -146,7 +141,7 @@ export function usePresenceRoom(scopeId: string): UsePresenceRoomResult {
   const updateState = useCallback((state: Record<string, unknown>) => {
     const ws = wsRef.current
     if (!ws || ws.readyState !== WebSocket.OPEN) return
-    ws.send(JSON.stringify({ type: MSG_PRESENCE_UPDATE, payload: state }))
+    ws.send(JSON.stringify({ type: MSG.PRESENCE_UPDATE, payload: state }))
   }, [])
 
   return { peers, connected, updateState }

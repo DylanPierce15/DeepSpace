@@ -2,8 +2,19 @@
  * Tools API HTTP handlers for RecordRoom
  *
  * Provides an HTTP interface for agent tool calls (records, schemas, users).
- * Auth: userId in request body is looked up in the users collection to derive role.
- * All operations go through the same RBAC checks as WebSocket handlers.
+ *
+ * Caller identity is supplied via HTTP headers:
+ *
+ *   X-User-Id:    <userId>     — identifies the caller (required for any
+ *                                 tool that touches user-bound data).
+ *   X-App-Action: 'true'       — bypass user RBAC because the app's
+ *                                 server-side code is already the trust
+ *                                 boundary. Used by server actions and
+ *                                 cron jobs; unsafe to pass from clients.
+ *
+ * The userId is looked up in the users collection to derive the caller's
+ * role. All operations go through the same RBAC checks as the WebSocket
+ * path unless flagged as an app action.
  */
 
 import * as Y from 'yjs'
@@ -26,7 +37,7 @@ export interface ToolsApiContext extends SubscriptionContext {
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, X-User-Id, X-App-Action',
   'Content-Type': 'application/json',
 }
 
@@ -70,13 +81,16 @@ export async function handleToolsRequest(
 
 /**
  * POST /tools/execute
- * Body: { tool: string, params: Record<string, unknown>, userId?: string }
+ *
+ * Body:    { tool: string, params: Record<string, unknown> }
+ * Headers: X-User-Id (required for identity-bound tools)
+ *          X-App-Action: 'true' (optional, bypasses user RBAC)
  */
 async function handleToolExecute(
   ctx: ToolsApiContext,
   request: Request
 ): Promise<Response> {
-  let body: { tool: string; params: Record<string, unknown>; userId?: string }
+  let body: { tool: string; params: Record<string, unknown> }
   try {
     body = await request.json() as typeof body
   } catch {
@@ -86,7 +100,7 @@ async function handleToolExecute(
     )
   }
 
-  const { tool, params = {}, userId } = body
+  const { tool, params = {} } = body
 
   if (!tool) {
     return Response.json(
@@ -95,15 +109,14 @@ async function handleToolExecute(
     )
   }
 
-  // Server actions set X-App-Action header — these bypass user RBAC because the
-  // app's server-side code has already been authorized as trusted.
-  const reqUrl = new URL(request.url)
-  const isAppAction = reqUrl.searchParams.get('appAction') === 'true'
+  // Caller identity is an HTTP header. Missing header ⇒ anonymous viewer.
+  const userId = request.headers.get('x-user-id') ?? ''
+  const isAppAction = request.headers.get('x-app-action')?.toLowerCase() === 'true'
 
-  // Look up user role for RBAC
-  // If the caller is the deploy-time owner, grant admin — mirrors the WebSocket path
-  // which calls registerUser() with isOwner=true. The HTTP tools API path (used by cron)
-  // doesn't go through WebSocket, so the owner may not exist in the users table.
+  // Look up user role for RBAC. If the caller is the deploy-time owner, grant
+  // admin — mirrors the WebSocket path which registers the owner explicitly.
+  // The HTTP tools API doesn't go through WebSocket, so the owner may not
+  // exist in the users table yet.
   let userRole = 'viewer'
   if (userId && ctx.ownerUserId && userId === ctx.ownerUserId) {
     userRole = 'admin'
@@ -116,7 +129,7 @@ async function handleToolExecute(
 
   // Yjs tools need async execution — handle before sync dispatch
   if (tool.startsWith('yjs.')) {
-    const result = await executeYjsTool(ctx, tool, params, userId || '', userRole)
+    const result = await executeYjsTool(ctx, tool, params, userId, userRole)
     const status = result.success ? 200 : (result.error?.includes('not found') ? 404 : 400)
     return Response.json(result, { status, headers: CORS_HEADERS })
   }
@@ -129,7 +142,7 @@ async function handleToolExecute(
     send: ctx.send,
   }
 
-  const result = executeTool(recordCtx, tool, params, userId || '', userRole, isAppAction)
+  const result = executeTool(recordCtx, tool, params, userId, userRole, isAppAction)
   const status = result.success ? 200 : (result.error?.includes('not found') ? 404 : 400)
   return Response.json(result, { status, headers: CORS_HEADERS })
 }

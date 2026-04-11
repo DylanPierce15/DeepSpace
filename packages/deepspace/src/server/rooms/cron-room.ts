@@ -5,21 +5,13 @@
  * Uses DO alarm for scheduling, tracks execution history, supports monitoring
  * via admin WebSocket connection.
  *
- * Message types: 120-139 (MSG_CRON_*)
+ * Message types: cron.*
  */
 
 /// <reference types="@cloudflare/workers-types" />
 
 import { BaseRoom, type UserAttachment } from './base-room'
-import {
-  MSG_CRON_TASKS,
-  MSG_CRON_HISTORY,
-  MSG_CRON_TRIGGER,
-  MSG_CRON_PAUSE,
-  MSG_CRON_RESUME,
-  MSG_CRON_STATUS,
-  MSG_ERROR,
-} from '../../shared/protocol/constants'
+import { MSG } from '../../shared/protocol/constants'
 
 // ============================================================================
 // Types
@@ -141,12 +133,12 @@ export abstract class CronRoom extends BaseRoom {
 
     // Send current task list and recent history
     this.sendTo(ws, {
-      type: MSG_CRON_TASKS,
+      type: MSG.CRON_TASKS,
       payload: { tasks: this.getTaskStates() },
     })
 
     this.sendTo(ws, {
-      type: MSG_CRON_HISTORY,
+      type: MSG.CRON_HISTORY,
       payload: { history: this.getRecentHistory(50) },
     })
 
@@ -156,30 +148,30 @@ export abstract class CronRoom extends BaseRoom {
   protected async onMessage(
     ws: WebSocket,
     user: UserAttachment,
-    message: { type: number; [key: string]: unknown }
+    message: { type: string; [key: string]: unknown }
   ): Promise<void> {
     this.ensureInitialized()
-    const { type, payload } = message as { type: number; payload: Record<string, unknown> }
+    const { type, payload } = message as { type: string; payload: Record<string, unknown> }
 
     switch (type) {
-      case MSG_CRON_TRIGGER: {
+      case MSG.CRON_TRIGGER: {
         const taskName = payload.taskName as string
         if (!taskName) {
-          this.sendTo(ws, { type: MSG_ERROR, payload: { error: 'Missing taskName' } })
+          this.sendTo(ws, { type: MSG.ERROR, payload: { error: 'Missing taskName' } })
           return
         }
         await this.executeTask(taskName)
         break
       }
 
-      case MSG_CRON_PAUSE: {
+      case MSG.CRON_PAUSE: {
         const taskName = payload.taskName as string
         this.sql.exec(`UPDATE cron_tasks SET paused = 1 WHERE name = ?`, taskName)
         this.broadcastStatus()
         break
       }
 
-      case MSG_CRON_RESUME: {
+      case MSG.CRON_RESUME: {
         const taskName = payload.taskName as string
         this.sql.exec(`UPDATE cron_tasks SET paused = 0 WHERE name = ?`, taskName)
         this.scheduleNextAlarm()
@@ -187,25 +179,25 @@ export abstract class CronRoom extends BaseRoom {
         break
       }
 
-      case MSG_CRON_TASKS: {
+      case MSG.CRON_TASKS: {
         this.sendTo(ws, {
-          type: MSG_CRON_TASKS,
+          type: MSG.CRON_TASKS,
           payload: { tasks: this.getTaskStates() },
         })
         break
       }
 
-      case MSG_CRON_HISTORY: {
+      case MSG.CRON_HISTORY: {
         const limit = (payload.limit as number) ?? 50
         this.sendTo(ws, {
-          type: MSG_CRON_HISTORY,
+          type: MSG.CRON_HISTORY,
           payload: { history: this.getRecentHistory(limit) },
         })
         break
       }
 
       default:
-        this.sendTo(ws, { type: MSG_ERROR, payload: { error: `Unknown cron message type: ${type}` } })
+        this.sendTo(ws, { type: MSG.ERROR, payload: { error: `Unknown cron message type: ${type}` } })
     }
   }
 
@@ -345,7 +337,7 @@ export abstract class CronRoom extends BaseRoom {
 
   private broadcastStatus(): void {
     this.broadcast({
-      type: MSG_CRON_STATUS,
+      type: MSG.CRON_STATUS,
       payload: {
         tasks: this.getTaskStates(),
         recentHistory: this.getRecentHistory(10),

@@ -9,14 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getAuthToken } from '../../auth'
-import {
-  MSG_CRON_TASKS,
-  MSG_CRON_HISTORY,
-  MSG_CRON_TRIGGER,
-  MSG_CRON_PAUSE,
-  MSG_CRON_RESUME,
-  MSG_CRON_STATUS,
-} from '@/shared/protocol/constants'
+import { MSG } from '@/shared/protocol/constants'
 
 export interface CronTaskState {
   name: string
@@ -80,15 +73,15 @@ export function useCronMonitor(roomId: string): UseCronMonitorResult {
       ws.onmessage = (event) => {
         if (typeof event.data !== 'string') return
         try {
-          const msg = JSON.parse(event.data) as { type: number; payload: Record<string, unknown> }
+          const msg = JSON.parse(event.data) as { type: string; payload: Record<string, unknown> }
           switch (msg.type) {
-            case MSG_CRON_TASKS:
+            case MSG.CRON_TASKS:
               setTasks(msg.payload.tasks as CronTaskState[])
               break
-            case MSG_CRON_HISTORY:
+            case MSG.CRON_HISTORY:
               setHistory(msg.payload.history as CronHistoryEntry[])
               break
-            case MSG_CRON_STATUS:
+            case MSG.CRON_STATUS:
               setTasks(msg.payload.tasks as CronTaskState[])
               if (msg.payload.recentHistory) {
                 setHistory(msg.payload.recentHistory as CronHistoryEntry[])
@@ -120,19 +113,19 @@ export function useCronMonitor(roomId: string): UseCronMonitorResult {
   const trigger = useCallback((taskName: string) => {
     const ws = wsRef.current
     if (!ws || ws.readyState !== WebSocket.OPEN) return
-    ws.send(JSON.stringify({ type: MSG_CRON_TRIGGER, payload: { taskName } }))
+    ws.send(JSON.stringify({ type: MSG.CRON_TRIGGER, payload: { taskName } }))
   }, [])
 
   const pause = useCallback((taskName: string) => {
     const ws = wsRef.current
     if (!ws || ws.readyState !== WebSocket.OPEN) return
-    ws.send(JSON.stringify({ type: MSG_CRON_PAUSE, payload: { taskName } }))
+    ws.send(JSON.stringify({ type: MSG.CRON_PAUSE, payload: { taskName } }))
   }, [])
 
   const resume = useCallback((taskName: string) => {
     const ws = wsRef.current
     if (!ws || ws.readyState !== WebSocket.OPEN) return
-    ws.send(JSON.stringify({ type: MSG_CRON_RESUME, payload: { taskName } }))
+    ws.send(JSON.stringify({ type: MSG.CRON_RESUME, payload: { taskName } }))
   }, [])
 
   return { tasks, history, connected, trigger, pause, resume }

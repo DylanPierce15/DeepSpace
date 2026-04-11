@@ -313,14 +313,17 @@ app.post('/api/ai/chat', async (c) => {
 
   const anthropic = createDeepSpaceAI(c.env, 'anthropic', { authToken: jwt })
 
-  // Read-only tools that execute against the app's RecordRoom DO
-  const scopeId = `app:${c.env.APP_NAME}`
+  // Read-only tools that execute against the app's RecordRoom DO. This is a
+  // user-facing read path (no X-App-Action) so the AI only sees records the
+  // real caller is allowed to see.
+  const stub = c.env.RECORD_ROOMS.get(c.env.RECORD_ROOMS.idFromName(`app:${c.env.APP_NAME}`))
   const tools = buildReadOnlyTools(async (toolName, params) => {
-    const doId = c.env.RECORD_ROOMS.idFromName(scopeId)
-    const stub = c.env.RECORD_ROOMS.get(doId)
     const res = await stub.fetch(new Request('https://internal/api/tools/execute', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-user-id': auth.userId },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-Id': auth.userId,
+      },
       body: JSON.stringify({ tool: toolName, params }),
     }))
     return res.json()
@@ -423,17 +426,15 @@ app.get('*', async (c) => {
 // =============================================================================
 
 function createActionTools(env: Env, userId: string, callerJwt: string): ActionTools {
-  const scopeId = `app:${env.APP_NAME}`
+  const stub = env.RECORD_ROOMS.get(env.RECORD_ROOMS.idFromName(`app:${env.APP_NAME}`))
 
   async function execTool(tool: string, params: Record<string, unknown>): Promise<ActionResult> {
-    const doId = env.RECORD_ROOMS.idFromName(scopeId)
-    const stub = env.RECORD_ROOMS.get(doId)
     const res = await stub.fetch(new Request('https://internal/api/tools/execute', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-user-id': userId,
-        'x-app-action': 'true',
+        'X-User-Id': userId,
+        'X-App-Action': 'true',
       },
       body: JSON.stringify({ tool, params }),
     }))
@@ -460,11 +461,11 @@ function createActionTools(env: Env, userId: string, callerJwt: string): ActionT
   }
 
   return {
-    create: (sid, collection, data) => execTool('records.create', { scopeId: sid, collection, data }),
-    update: (sid, collection, recordId, data) => execTool('records.update', { scopeId: sid, collection, recordId, data }),
-    remove: (sid, collection, recordId) => execTool('records.delete', { scopeId: sid, collection, recordId }),
-    get: (sid, collection, recordId) => execTool('records.get', { scopeId: sid, collection, recordId }),
-    query: (sid, collection, options) => execTool('records.query', { scopeId: sid, collection, ...options }),
+    create: (collection, data) => execTool('records.create', { collection, data }),
+    update: (collection, recordId, data) => execTool('records.update', { collection, recordId, data }),
+    remove: (collection, recordId) => execTool('records.delete', { collection, recordId }),
+    get: (collection, recordId) => execTool('records.get', { collection, recordId }),
+    query: (collection, options) => execTool('records.query', { collection, ...options }),
     integration: callIntegration,
   }
 }

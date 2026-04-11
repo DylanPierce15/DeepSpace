@@ -10,17 +10,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getAuthToken } from '../../auth'
 import { wsLog } from '../ws-log'
+import { MSG } from '@/shared/protocol/constants'
 import {
-  MSG_CANVAS_SHAPES,
-  MSG_CANVAS_ADD,
-  MSG_CANVAS_MOVE,
-  MSG_CANVAS_RESIZE,
-  MSG_CANVAS_DELETE,
-  MSG_CANVAS_UPDATE,
-  MSG_CANVAS_VIEWPORT,
-  MSG_CANVAS_UNDO,
-  MSG_CANVAS_REDO,
-} from '@/shared/protocol/constants'
+  clientBuild,
+  dispatch,
+  encode,
+  type ServerMessage,
+} from '@/shared/protocol/messages'
 
 export interface CanvasShapeClient {
   id: string
@@ -100,63 +96,62 @@ export function useCanvas(roomId: string): UseCanvasResult {
       }
 
       ws.onmessage = (event) => {
-        if (typeof event.data !== 'string') return
-        try {
-          const msg = JSON.parse(event.data) as { type: number; payload: Record<string, unknown> }
-          switch (msg.type) {
-            case MSG_CANVAS_SHAPES:
-              setShapes(msg.payload.shapes as CanvasShapeClient[])
-              if (msg.payload.viewports) {
-                setViewports(msg.payload.viewports as ViewportClient[])
-              }
-              break
-            case MSG_CANVAS_ADD: {
-              const shape = msg.payload.shape as CanvasShapeClient
-              setShapes(prev => [...prev.filter(s => s.id !== shape.id), shape])
-              break
-            }
-            case MSG_CANVAS_MOVE: {
-              const { shapeId, x, y } = msg.payload as { shapeId: string; x: number; y: number }
-              setShapes(prev => prev.map(s => s.id === shapeId ? { ...s, x, y } : s))
-              break
-            }
-            case MSG_CANVAS_RESIZE: {
-              const p = msg.payload as { shapeId: string; width: number; height: number; x?: number; y?: number }
-              setShapes(prev => prev.map(s => {
+        // Typed dispatch — handler payloads are narrowed by the SDK's
+        // discriminated `ServerMessage` union. Shape/viewport objects
+        // on the wire are typed as `unknown` (the protocol layer
+        // doesn't know the app's domain types), so we cast to the
+        // local `CanvasShapeClient` / `ViewportClient` where we use
+        // them.
+        dispatch<ServerMessage>(event.data, {
+          [MSG.CANVAS_SHAPES]: (p) => {
+            setShapes(p.shapes as CanvasShapeClient[])
+            setViewports(p.viewports as ViewportClient[])
+          },
+          [MSG.CANVAS_ADD]: (p) => {
+            const shape = p.shape as CanvasShapeClient
+            setShapes((prev) => [...prev.filter((s) => s.id !== shape.id), shape])
+          },
+          [MSG.CANVAS_MOVE]: (p) => {
+            setShapes((prev) =>
+              prev.map((s) => (s.id === p.shapeId ? { ...s, x: p.x, y: p.y } : s)),
+            )
+          },
+          [MSG.CANVAS_RESIZE]: (p) => {
+            setShapes((prev) =>
+              prev.map((s) => {
                 if (s.id !== p.shapeId) return s
                 const updated = { ...s, width: p.width, height: p.height }
                 if (p.x !== undefined) updated.x = p.x
                 if (p.y !== undefined) updated.y = p.y
                 return updated
-              }))
-              break
+              }),
+            )
+          },
+          [MSG.CANVAS_DELETE]: (p) => {
+            setShapes((prev) => prev.filter((s) => s.id !== p.shapeId))
+          },
+          [MSG.CANVAS_UPDATE]: (p) => {
+            setShapes((prev) =>
+              prev.map((s) =>
+                s.id === p.shapeId ? { ...s, props: { ...s.props, ...p.props } } : s,
+              ),
+            )
+          },
+          [MSG.CANVAS_VIEWPORT]: (p) => {
+            // The payload is a union of `{ viewport }` and
+            // `{ userId, removed: true }` — narrow by presence.
+            if ('removed' in p) {
+              const removed = p
+              setViewports((prev) => prev.filter((v) => v.userId !== removed.userId))
+            } else {
+              const viewport = p.viewport as ViewportClient
+              setViewports((prev) => [
+                ...prev.filter((v) => v.userId !== viewport.userId),
+                viewport,
+              ])
             }
-            case MSG_CANVAS_DELETE: {
-              const { shapeId } = msg.payload as { shapeId: string }
-              setShapes(prev => prev.filter(s => s.id !== shapeId))
-              break
-            }
-            case MSG_CANVAS_UPDATE: {
-              const { shapeId, props } = msg.payload as { shapeId: string; props: Record<string, unknown> }
-              setShapes(prev => prev.map(s =>
-                s.id === shapeId ? { ...s, props: { ...s.props, ...props } } : s
-              ))
-              break
-            }
-            case MSG_CANVAS_VIEWPORT: {
-              const vp = msg.payload as { viewport?: ViewportClient; userId?: string; removed?: boolean }
-              if (vp.removed && vp.userId) {
-                setViewports(prev => prev.filter(v => v.userId !== vp.userId))
-              } else if (vp.viewport) {
-                setViewports(prev => [
-                  ...prev.filter(v => v.userId !== vp.viewport!.userId),
-                  vp.viewport!,
-                ])
-              }
-              break
-            }
-          }
-        } catch { /* ignore */ }
+          },
+        })
       }
 
       ws.onclose = () => {
@@ -185,43 +180,54 @@ export function useCanvas(roomId: string): UseCanvasResult {
     }
   }, [roomId])
 
-  const send = useCallback((type: number, payload: Record<string, unknown>) => {
-    const ws = wsRef.current
-    if (!ws || ws.readyState !== WebSocket.OPEN) return
-    ws.send(JSON.stringify({ type, payload }))
-  }, [])
+  // Typed builders — `clientBuild.canvasX` returns a validated
+  // `ClientMessage` that `encode` stringifies. No hand-rolled
+  // `JSON.stringify({ type, payload })` calls here.
+  const sendBuilt = useCallback(
+    <M extends { type: string; payload: unknown }>(message: M) => {
+      const ws = wsRef.current
+      if (!ws || ws.readyState !== WebSocket.OPEN) return
+      ws.send(encode(message))
+    },
+    [],
+  )
 
-  const addShape = useCallback((shape: Partial<CanvasShapeClient>) => {
-    send(MSG_CANVAS_ADD, shape as Record<string, unknown>)
-  }, [send])
+  const addShape = useCallback(
+    (shape: Partial<CanvasShapeClient>) => sendBuilt(clientBuild.canvasAdd(shape)),
+    [sendBuilt],
+  )
 
-  const moveShape = useCallback((shapeId: string, x: number, y: number) => {
-    send(MSG_CANVAS_MOVE, { shapeId, x, y })
-  }, [send])
+  const moveShape = useCallback(
+    (shapeId: string, x: number, y: number) =>
+      sendBuilt(clientBuild.canvasMove(shapeId, x, y)),
+    [sendBuilt],
+  )
 
-  const resizeShape = useCallback((shapeId: string, width: number, height: number, x?: number, y?: number) => {
-    send(MSG_CANVAS_RESIZE, { shapeId, width, height, x, y })
-  }, [send])
+  const resizeShape = useCallback(
+    (shapeId: string, width: number, height: number, x?: number, y?: number) =>
+      sendBuilt(clientBuild.canvasResize(shapeId, width, height, x, y)),
+    [sendBuilt],
+  )
 
-  const deleteShape = useCallback((shapeId: string) => {
-    send(MSG_CANVAS_DELETE, { shapeId })
-  }, [send])
+  const deleteShape = useCallback(
+    (shapeId: string) => sendBuilt(clientBuild.canvasDelete(shapeId)),
+    [sendBuilt],
+  )
 
-  const updateShape = useCallback((shapeId: string, props: Record<string, unknown>) => {
-    send(MSG_CANVAS_UPDATE, { shapeId, props })
-  }, [send])
+  const updateShape = useCallback(
+    (shapeId: string, props: Record<string, unknown>) =>
+      sendBuilt(clientBuild.canvasUpdate(shapeId, props)),
+    [sendBuilt],
+  )
 
-  const setViewport = useCallback((viewport: Omit<ViewportClient, 'userId'>) => {
-    send(MSG_CANVAS_VIEWPORT, viewport as Record<string, unknown>)
-  }, [send])
+  const setViewport = useCallback(
+    (viewport: Omit<ViewportClient, 'userId'>) =>
+      sendBuilt(clientBuild.canvasViewport(viewport)),
+    [sendBuilt],
+  )
 
-  const undo = useCallback(() => {
-    send(MSG_CANVAS_UNDO, {})
-  }, [send])
-
-  const redo = useCallback(() => {
-    send(MSG_CANVAS_REDO, {})
-  }, [send])
+  const undo = useCallback(() => sendBuilt(clientBuild.canvasUndo()), [sendBuilt])
+  const redo = useCallback(() => sendBuilt(clientBuild.canvasRedo()), [sendBuilt])
 
   return { shapes, viewports, connected, addShape, moveShape, resizeShape, deleteShape, updateShape, setViewport, undo, redo }
 }

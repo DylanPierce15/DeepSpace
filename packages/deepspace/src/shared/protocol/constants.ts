@@ -1,91 +1,126 @@
 /**
- * Message type constants for RecordRoom protocol
+ * Wire protocol constants.
+ *
+ * The JSON WebSocket protocol uses dotted string identifiers (e.g.
+ * `"game.input"`) as the `type` discriminator. All message types are
+ * grouped under a single `MSG` object so imports stay tidy:
+ *
+ *     import { MSG, dispatch, clientBuild } from 'deepspace'
+ *
+ *     dispatch<ServerMessage>(raw, {
+ *       [MSG.GAME_STATE]: (p) => { ... },
+ *       [MSG.GAME_TICK]:  (p) => { ... },
+ *     })
+ *
+ * Each key's value is the on-wire string — grep-friendly, self-
+ * documenting, and infinite per namespace. Adding a new message is one
+ * line here plus one arm in the discriminated union in `./messages.ts`.
+ *
+ * Yjs binary protocol constants (`MSG_YJS_SYNC`, `MSG_YJS_AWARENESS`) are
+ * intentionally kept numeric and separate from `MSG` — they ride a
+ * binary WebSocket frame format and aren't part of the JSON dispatcher.
  */
 
-// Core CRUD operations
-export const MSG_SUBSCRIBE = 1
-export const MSG_UNSUBSCRIBE = 2
-export const MSG_QUERY_RESULT = 3
-export const MSG_RECORD_CHANGE = 4
-export const MSG_PUT = 5
-export const MSG_DELETE = 6
-export const MSG_ERROR = 7
+export const MSG = {
+  // ---- Records / CRUD --------------------------------------------------
+  SUBSCRIBE: 'core.subscribe',
+  UNSUBSCRIBE: 'core.unsubscribe',
+  QUERY_RESULT: 'core.query_result',
+  RECORD_CHANGE: 'core.record_change',
+  PUT: 'core.put',
+  DELETE: 'core.delete',
+  ERROR: 'core.error',
 
-// User management
-export const MSG_USER_INFO = 8
-export const MSG_USER_LIST = 9
-export const MSG_SET_ROLE = 10
-export const MSG_USER_UPDATE = 11
+  // ---- Users -----------------------------------------------------------
+  USER_INFO: 'user.info',
+  USER_LIST: 'user.list',
+  SET_ROLE: 'user.set_role',
+  USER_UPDATE: 'user.update',
 
-// Yjs collaborative editing
-export const MSG_YJS_JOIN = 20
-export const MSG_YJS_LEAVE = 21
+  // ---- Yjs JSON control frames (binary sync lives in ./yjs.ts) ---------
+  YJS_JOIN: 'yjs.join',
+  YJS_LEAVE: 'yjs.leave',
+
+  // ---- Records room misc -----------------------------------------------
+  ACK: 'records.ack',
+  LIST_SCHEMAS: 'records.list_schemas',
+  RESUBSCRIBE: 'records.resubscribe',
+
+  // ---- GameRoom --------------------------------------------------------
+  GAME_STATE: 'game.state',
+  GAME_INPUT: 'game.input',
+  GAME_PLAYER_JOIN: 'game.player_join',
+  GAME_PLAYER_LEAVE: 'game.player_leave',
+  GAME_PLAYER_READY: 'game.player_ready',
+  GAME_START: 'game.start',
+  GAME_END: 'game.end',
+  GAME_TICK: 'game.tick',
+
+  // ---- CanvasRoom ------------------------------------------------------
+  CANVAS_SHAPES: 'canvas.shapes',
+  CANVAS_ADD: 'canvas.add',
+  CANVAS_MOVE: 'canvas.move',
+  CANVAS_RESIZE: 'canvas.resize',
+  CANVAS_DELETE: 'canvas.delete',
+  CANVAS_UPDATE: 'canvas.update',
+  CANVAS_VIEWPORT: 'canvas.viewport',
+  CANVAS_UNDO: 'canvas.undo',
+  CANVAS_REDO: 'canvas.redo',
+
+  // ---- MediaRoom -------------------------------------------------------
+  MEDIA_JOIN: 'media.join',
+  MEDIA_LEAVE: 'media.leave',
+  MEDIA_OFFER: 'media.offer',
+  MEDIA_ANSWER: 'media.answer',
+  MEDIA_ICE_CANDIDATE: 'media.ice_candidate',
+  MEDIA_PEERS: 'media.peers',
+
+  // ---- CronRoom --------------------------------------------------------
+  CRON_TASKS: 'cron.tasks',
+  CRON_HISTORY: 'cron.history',
+  CRON_TRIGGER: 'cron.trigger',
+  CRON_PAUSE: 'cron.pause',
+  CRON_RESUME: 'cron.resume',
+  CRON_STATUS: 'cron.status',
+
+  // ---- PresenceRoom ----------------------------------------------------
+  PRESENCE_SYNC: 'presence.sync',
+  PRESENCE_JOIN: 'presence.join',
+  PRESENCE_LEAVE: 'presence.leave',
+  PRESENCE_UPDATE: 'presence.update',
+
+  // ---- Gateway multiplexing --------------------------------------------
+  GW_SCOPE_CONNECT: 'gateway.scope_connect',
+  GW_SCOPE_DISCONNECT: 'gateway.scope_disconnect',
+  GW_SCOPE_ERROR: 'gateway.scope_error',
+  GW_TOKEN_REFRESH: 'gateway.token_refresh',
+  GW_USER_UPDATE: 'gateway.user_update',
+} as const
+
+/**
+ * Type of any message type constant — the union of every string literal
+ * stored in `MSG`. Useful when declaring functions that accept "any known
+ * message type" without enumerating all 54 strings by hand.
+ */
+export type MsgType = (typeof MSG)[keyof typeof MSG]
+
+// ---------------------------------------------------------------------------
+// Yjs binary protocol (NOT part of MSG — see header comment)
+// ---------------------------------------------------------------------------
+
+/** Outer envelope id for binary-framed yjs sync messages. Varuint-encoded. */
 export const MSG_YJS_SYNC = 22
+/** Outer envelope id for binary-framed yjs awareness messages. Varuint-encoded. */
 export const MSG_YJS_AWARENESS = 23
 
-// Mutation acknowledgement
-export const MSG_ACK = 31
+// ---------------------------------------------------------------------------
+// Role names — not wire messages, just the string values the auth layer uses
+// as role identifiers.
+// ---------------------------------------------------------------------------
 
-// Schema discovery
-export const MSG_LIST_SCHEMAS = 32
-
-// Team membership change — tells client to re-subscribe all active queries
-export const MSG_RESUBSCRIBE = 33
-
-// Built-in role names
 /** Role assigned to unauthenticated WebSocket connections */
 export const ROLE_ANONYMOUS = 'viewer'
 /** Default role for newly registered authenticated users */
 export const ROLE_DEFAULT = 'member'
 /** Admin role */
 export const ROLE_ADMIN = 'admin'
-
-// GameRoom messages (40-59)
-export const MSG_GAME_STATE = 40
-export const MSG_GAME_INPUT = 41
-export const MSG_GAME_PLAYER_JOIN = 42
-export const MSG_GAME_PLAYER_LEAVE = 43
-export const MSG_GAME_PLAYER_READY = 44
-export const MSG_GAME_START = 45
-export const MSG_GAME_END = 46
-export const MSG_GAME_TICK = 47
-
-// CanvasRoom messages (60-79)
-export const MSG_CANVAS_SHAPES = 60
-export const MSG_CANVAS_ADD = 61
-export const MSG_CANVAS_MOVE = 62
-export const MSG_CANVAS_RESIZE = 63
-export const MSG_CANVAS_DELETE = 64
-export const MSG_CANVAS_UPDATE = 65
-export const MSG_CANVAS_VIEWPORT = 66
-export const MSG_CANVAS_UNDO = 67
-export const MSG_CANVAS_REDO = 68
-
-// MediaRoom messages (80-99)
-export const MSG_MEDIA_JOIN = 80
-export const MSG_MEDIA_LEAVE = 81
-export const MSG_MEDIA_OFFER = 82
-export const MSG_MEDIA_ANSWER = 83
-export const MSG_MEDIA_ICE_CANDIDATE = 84
-export const MSG_MEDIA_PEERS = 85
-
-// CronRoom messages (100-119) — distinct from gateway (MSG_GW_*)
-export const MSG_CRON_TASKS = 120
-export const MSG_CRON_HISTORY = 121
-export const MSG_CRON_TRIGGER = 122
-export const MSG_CRON_PAUSE = 123
-export const MSG_CRON_RESUME = 124
-export const MSG_CRON_STATUS = 125
-
-// PresenceRoom messages (130-139)
-export const MSG_PRESENCE_SYNC = 130
-export const MSG_PRESENCE_JOIN = 131
-export const MSG_PRESENCE_LEAVE = 132
-export const MSG_PRESENCE_UPDATE = 133
-
-// Gateway multiplexing (single-WS architecture)
-export const MSG_GW_SCOPE_CONNECT = 100
-export const MSG_GW_SCOPE_DISCONNECT = 101
-export const MSG_GW_SCOPE_ERROR = 103
-export const MSG_GW_TOKEN_REFRESH = 104
-export const MSG_GW_USER_UPDATE = 105

@@ -9,25 +9,14 @@
  * - Viewport awareness (each user's visible region)
  * - Per-user undo/redo stacks
  *
- * Message types: 60-79 (MSG_CANVAS_*)
+ * Message types: canvas.*
  */
 
 /// <reference types="@cloudflare/workers-types" />
 
 import * as Y from 'yjs'
 import { BaseRoom, type UserAttachment } from './base-room'
-import {
-  MSG_CANVAS_SHAPES,
-  MSG_CANVAS_ADD,
-  MSG_CANVAS_MOVE,
-  MSG_CANVAS_RESIZE,
-  MSG_CANVAS_DELETE,
-  MSG_CANVAS_UPDATE,
-  MSG_CANVAS_VIEWPORT,
-  MSG_CANVAS_UNDO,
-  MSG_CANVAS_REDO,
-  MSG_ERROR,
-} from '../../shared/protocol/constants'
+import { MSG } from '../../shared/protocol/constants'
 
 // ============================================================================
 // Types
@@ -148,7 +137,7 @@ export class CanvasRoom extends BaseRoom {
     // Send current shapes
     const shapes = this.getAllShapes()
     this.sendTo(ws, {
-      type: MSG_CANVAS_SHAPES,
+      type: MSG.CANVAS_SHAPES,
       payload: {
         shapes,
         viewports: Array.from(this.viewports.values()),
@@ -161,13 +150,13 @@ export class CanvasRoom extends BaseRoom {
   protected async onMessage(
     ws: WebSocket,
     user: UserAttachment,
-    message: { type: number; [key: string]: unknown }
+    message: { type: string; [key: string]: unknown }
   ): Promise<void> {
     this.ensureInitialized()
-    const { type, payload } = message as { type: number; payload: Record<string, unknown> }
+    const { type, payload } = message as { type: string; payload: Record<string, unknown> }
 
     switch (type) {
-      case MSG_CANVAS_ADD: {
+      case MSG.CANVAS_ADD: {
         const shape = payload as unknown as Partial<CanvasShape>
         const id = shape.id ?? crypto.randomUUID()
         const now = new Date().toISOString()
@@ -191,11 +180,11 @@ export class CanvasRoom extends BaseRoom {
         this.pushUndo(user.userId, { type: 'add', shapeId: id, after: newShape as unknown as Record<string, unknown> })
         this.clearRedo(user.userId)
 
-        this.broadcast({ type: MSG_CANVAS_ADD, payload: { shape: newShape } })
+        this.broadcast({ type: MSG.CANVAS_ADD, payload: { shape: newShape } })
         break
       }
 
-      case MSG_CANVAS_MOVE: {
+      case MSG.CANVAS_MOVE: {
         const { shapeId, x, y } = payload as { shapeId: string; x: number; y: number }
         const shapesMap = this.getShapesMap()
         const existing = shapesMap.get(shapeId)
@@ -208,11 +197,11 @@ export class CanvasRoom extends BaseRoom {
         this.pushUndo(user.userId, { type: 'update', shapeId, before, after: updated })
         this.clearRedo(user.userId)
 
-        this.broadcast({ type: MSG_CANVAS_MOVE, payload: { shapeId, x, y } }, ws)
+        this.broadcast({ type: MSG.CANVAS_MOVE, payload: { shapeId, x, y } }, ws)
         break
       }
 
-      case MSG_CANVAS_RESIZE: {
+      case MSG.CANVAS_RESIZE: {
         const { shapeId, width, height, x, y } = payload as { shapeId: string; width: number; height: number; x?: number; y?: number }
         const shapesMap = this.getShapesMap()
         const existing = shapesMap.get(shapeId)
@@ -227,11 +216,11 @@ export class CanvasRoom extends BaseRoom {
         this.pushUndo(user.userId, { type: 'update', shapeId, before, after: updated })
         this.clearRedo(user.userId)
 
-        this.broadcast({ type: MSG_CANVAS_RESIZE, payload: { shapeId, width, height, x, y } }, ws)
+        this.broadcast({ type: MSG.CANVAS_RESIZE, payload: { shapeId, width, height, x, y } }, ws)
         break
       }
 
-      case MSG_CANVAS_DELETE: {
+      case MSG.CANVAS_DELETE: {
         const { shapeId } = payload as { shapeId: string }
         const shapesMap = this.getShapesMap()
         const existing = shapesMap.get(shapeId)
@@ -242,11 +231,11 @@ export class CanvasRoom extends BaseRoom {
         this.pushUndo(user.userId, { type: 'delete', shapeId, before: existing })
         this.clearRedo(user.userId)
 
-        this.broadcast({ type: MSG_CANVAS_DELETE, payload: { shapeId } })
+        this.broadcast({ type: MSG.CANVAS_DELETE, payload: { shapeId } })
         break
       }
 
-      case MSG_CANVAS_UPDATE: {
+      case MSG.CANVAS_UPDATE: {
         const { shapeId, props } = payload as { shapeId: string; props: Record<string, unknown> }
         const shapesMap = this.getShapesMap()
         const existing = shapesMap.get(shapeId)
@@ -263,30 +252,30 @@ export class CanvasRoom extends BaseRoom {
         this.pushUndo(user.userId, { type: 'update', shapeId, before, after: updated })
         this.clearRedo(user.userId)
 
-        this.broadcast({ type: MSG_CANVAS_UPDATE, payload: { shapeId, props } }, ws)
+        this.broadcast({ type: MSG.CANVAS_UPDATE, payload: { shapeId, props } }, ws)
         break
       }
 
-      case MSG_CANVAS_VIEWPORT: {
+      case MSG.CANVAS_VIEWPORT: {
         const viewport = payload as unknown as Viewport
         viewport.userId = user.userId
         this.viewports.set(user.userId, viewport)
-        this.broadcast({ type: MSG_CANVAS_VIEWPORT, payload: { viewport } }, ws)
+        this.broadcast({ type: MSG.CANVAS_VIEWPORT, payload: { viewport } }, ws)
         break
       }
 
-      case MSG_CANVAS_UNDO: {
+      case MSG.CANVAS_UNDO: {
         this.handleUndo(user.userId)
         break
       }
 
-      case MSG_CANVAS_REDO: {
+      case MSG.CANVAS_REDO: {
         this.handleRedo(user.userId)
         break
       }
 
       default:
-        this.sendTo(ws, { type: MSG_ERROR, payload: { error: `Unknown canvas message type: ${type}` } })
+        this.sendTo(ws, { type: MSG.ERROR, payload: { error: `Unknown canvas message type: ${type}` } })
     }
   }
 
@@ -294,7 +283,7 @@ export class CanvasRoom extends BaseRoom {
     this.viewports.delete(user.userId)
     this.undoStacks.delete(user.userId)
     this.redoStacks.delete(user.userId)
-    this.broadcast({ type: MSG_CANVAS_VIEWPORT, payload: { userId: user.userId, removed: true } })
+    this.broadcast({ type: MSG.CANVAS_VIEWPORT, payload: { userId: user.userId, removed: true } })
   }
 
   // --------------------------------------------------------------------------
@@ -325,18 +314,24 @@ export class CanvasRoom extends BaseRoom {
     switch (entry.type) {
       case 'add':
         shapesMap.delete(entry.shapeId)
-        this.broadcast({ type: MSG_CANVAS_DELETE, payload: { shapeId: entry.shapeId } })
+        this.broadcast({ type: MSG.CANVAS_DELETE, payload: { shapeId: entry.shapeId } })
         break
       case 'delete':
         if (entry.before) {
           shapesMap.set(entry.shapeId, entry.before)
-          this.broadcast({ type: MSG_CANVAS_ADD, payload: { shape: entry.before } })
+          this.broadcast({ type: MSG.CANVAS_ADD, payload: { shape: entry.before } })
         }
         break
       case 'update':
         if (entry.before) {
           shapesMap.set(entry.shapeId, entry.before)
-          this.broadcast({ type: MSG_CANVAS_SHAPES, payload: { shapes: this.getAllShapes() } })
+          this.broadcast({
+            type: MSG.CANVAS_SHAPES,
+            payload: {
+              shapes: this.getAllShapes(),
+              viewports: Array.from(this.viewports.values()),
+            },
+          })
         }
         break
     }
@@ -356,17 +351,23 @@ export class CanvasRoom extends BaseRoom {
       case 'add':
         if (entry.after) {
           shapesMap.set(entry.shapeId, entry.after)
-          this.broadcast({ type: MSG_CANVAS_ADD, payload: { shape: entry.after } })
+          this.broadcast({ type: MSG.CANVAS_ADD, payload: { shape: entry.after } })
         }
         break
       case 'delete':
         shapesMap.delete(entry.shapeId)
-        this.broadcast({ type: MSG_CANVAS_DELETE, payload: { shapeId: entry.shapeId } })
+        this.broadcast({ type: MSG.CANVAS_DELETE, payload: { shapeId: entry.shapeId } })
         break
       case 'update':
         if (entry.after) {
           shapesMap.set(entry.shapeId, entry.after)
-          this.broadcast({ type: MSG_CANVAS_SHAPES, payload: { shapes: this.getAllShapes() } })
+          this.broadcast({
+            type: MSG.CANVAS_SHAPES,
+            payload: {
+              shapes: this.getAllShapes(),
+              viewports: Array.from(this.viewports.values()),
+            },
+          })
         }
         break
     }
