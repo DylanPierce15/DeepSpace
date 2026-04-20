@@ -6,7 +6,8 @@
 
 import type { ConnectionAttachment } from '../../shared/protocol/types'
 import type { Query, RecordResult, SubscribePayload, UnsubscribePayload } from '../../shared/types'
-import { MSG_QUERY_RESULT, MSG_RECORD_CHANGE } from '../../shared/protocol/constants'
+import { MSG } from '../../shared/protocol/constants'
+import type { ServerMessage } from '../../shared/protocol/messages'
 import {
   type CollectionSchema,
   type PermissionContext,
@@ -24,9 +25,11 @@ import { SYSTEM_COLLECTIONS } from './yjs'
 export interface SubscriptionContext {
   sql: SqlStorage
   schemaRegistry: SchemaRegistry
-  state: DurableObjectState  // Needed to get all connected WebSockets
+  state: DurableObjectState // Needed to get all connected WebSockets
   getPermissionContext(): PermissionContext
-  send(ws: WebSocket, message: { type: number; payload: unknown }): void
+  /** Typed against `ServerMessage` so outbound broadcasts are
+   *  compile-checked against the wire contract. */
+  send(ws: WebSocket, message: ServerMessage): void
 }
 
 /**
@@ -45,7 +48,7 @@ export function handleSubscribe(
 
   // Execute query and send initial results
   const records = executeQuery(ctx, query, attachment.userId, attachment.role)
-  ctx.send(ws, { type: MSG_QUERY_RESULT, payload: { subscriptionId, records } })
+  ctx.send(ws, { type: MSG.QUERY_RESULT, payload: { subscriptionId, records } })
 }
 
 /**
@@ -297,7 +300,7 @@ export function broadcastChange(
     )
 
     if (canBroadcast) {
-      ctx.send(ws, { type: MSG_RECORD_CHANGE, payload: { collection, record, changeType } })
+      ctx.send(ws, { type: MSG.RECORD_CHANGE, payload: { collection, record, changeType } })
     }
   }
 }

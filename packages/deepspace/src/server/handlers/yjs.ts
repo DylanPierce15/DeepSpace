@@ -5,7 +5,7 @@
 import * as Y from 'yjs'
 import type { ConnectionAttachment } from '../../shared/protocol/types'
 import type { YjsDocKey, YjsJoinPayload, YjsLeavePayload } from '../../shared/types'
-import { MSG_ERROR, MSG_YJS_JOIN, MSG_YJS_SYNC, MSG_YJS_AWARENESS } from '../../shared/protocol/constants'
+import { MSG_YJS_SYNC, MSG_YJS_AWARENESS, MSG } from '../../shared/protocol/constants'
 import {
   MSG_SYNC_STEP1,
   MSG_SYNC_STEP2,
@@ -85,7 +85,7 @@ export interface YjsContext {
   yjsDocs: Map<YjsDocKey, Y.Doc>
   schemaRegistry: SchemaRegistry
   getPermissionContext(): PermissionContext
-  send(ws: WebSocket, message: { type: number; payload: unknown }): void
+  send(ws: WebSocket, message: { type: string; payload: unknown }): void
   sendBinary(ws: WebSocket, data: Uint8Array): void
 }
 
@@ -181,17 +181,17 @@ export async function handleYjsJoin(
   } else {
     // Regular collections: require schema and record
     if (!schema) {
-      ctx.send(ws, { type: MSG_ERROR, payload: { error: `Schema not registered for collection: ${collection}` } })
+      ctx.send(ws, { type: MSG.ERROR, payload: { error: `Schema not registered for collection: ${collection}` } })
       return
     }
     if (!record) {
-      ctx.send(ws, { type: MSG_ERROR, payload: { error: 'Record not found' } })
+      ctx.send(ws, { type: MSG.ERROR, payload: { error: 'Record not found' } })
       return
     }
     const permCtx = ctx.getPermissionContext()
     const recordWithId = { ...record, recordId }
     if (!canRead(schema, attachment.role, recordWithId, attachment.userId, permCtx)) {
-      ctx.send(ws, { type: MSG_ERROR, payload: { error: 'Permission denied' } })
+      ctx.send(ws, { type: MSG.ERROR, payload: { error: 'Permission denied' } })
       return
     }
     hasWriteAccess = canUpdate(schema, attachment.role, recordWithId, attachment.userId, permCtx)
@@ -227,7 +227,7 @@ export async function handleYjsJoin(
     ctx.sendBinary(ws, toUint8Array(encoder2))
   }
 
-  ctx.send(ws, { type: MSG_YJS_JOIN, payload: { collection, recordId, fieldName, canWrite: hasWriteAccess } })
+  ctx.send(ws, { type: MSG.YJS_JOIN, payload: { collection, recordId, fieldName, canWrite: hasWriteAccess } })
 }
 
 /**

@@ -11,14 +11,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getAuthToken } from '../../auth'
 import { wsLog } from '../ws-log'
+import { MSG } from '@/shared/protocol/constants'
 import {
-  MSG_MEDIA_JOIN,
-  MSG_MEDIA_LEAVE,
-  MSG_MEDIA_OFFER,
-  MSG_MEDIA_ANSWER,
-  MSG_MEDIA_ICE_CANDIDATE,
-  MSG_MEDIA_PEERS,
-} from '@/shared/protocol/constants'
+  clientBuild,
+  dispatch,
+  encode,
+  type ServerMessage,
+} from '@/shared/protocol/messages'
 
 export interface MediaPeerClient {
   userId: string
@@ -85,40 +84,27 @@ export function useMediaRoom(roomId: string): UseMediaRoomResult {
       }
 
       ws.onmessage = (event) => {
-        if (typeof event.data !== 'string') return
-        try {
-          const msg = JSON.parse(event.data) as { type: number; payload: Record<string, unknown> }
-          switch (msg.type) {
-            case MSG_MEDIA_PEERS:
-              setPeers(msg.payload.peers as MediaPeerClient[])
-              break
-            case MSG_MEDIA_JOIN: {
-              const peer = msg.payload.peer as MediaPeerClient
-              setPeers(prev => [...prev.filter(p => p.userId !== peer.userId), peer])
-              break
-            }
-            case MSG_MEDIA_LEAVE: {
-              const userId = msg.payload.userId as string
-              setPeers(prev => prev.filter(p => p.userId !== userId))
-              break
-            }
-            case MSG_MEDIA_OFFER: {
-              const { fromUserId, sdp } = msg.payload as { fromUserId: string; sdp: RTCSessionDescriptionInit }
-              onOffer.current?.(fromUserId, sdp)
-              break
-            }
-            case MSG_MEDIA_ANSWER: {
-              const { fromUserId, sdp } = msg.payload as { fromUserId: string; sdp: RTCSessionDescriptionInit }
-              onAnswer.current?.(fromUserId, sdp)
-              break
-            }
-            case MSG_MEDIA_ICE_CANDIDATE: {
-              const { fromUserId, candidate } = msg.payload as { fromUserId: string; candidate: RTCIceCandidateInit }
-              onIceCandidate.current?.(fromUserId, candidate)
-              break
-            }
-          }
-        } catch { /* ignore */ }
+        dispatch<ServerMessage>(event.data, {
+          [MSG.MEDIA_PEERS]: (p) => {
+            setPeers(p.peers as MediaPeerClient[])
+          },
+          [MSG.MEDIA_JOIN]: (p) => {
+            const peer = p.peer as MediaPeerClient
+            setPeers((prev) => [...prev.filter((x) => x.userId !== peer.userId), peer])
+          },
+          [MSG.MEDIA_LEAVE]: (p) => {
+            setPeers((prev) => prev.filter((x) => x.userId !== p.userId))
+          },
+          [MSG.MEDIA_OFFER]: (p) => {
+            onOffer.current?.(p.fromUserId, p.sdp as RTCSessionDescriptionInit)
+          },
+          [MSG.MEDIA_ANSWER]: (p) => {
+            onAnswer.current?.(p.fromUserId, p.sdp as RTCSessionDescriptionInit)
+          },
+          [MSG.MEDIA_ICE_CANDIDATE]: (p) => {
+            onIceCandidate.current?.(p.fromUserId, p.candidate as RTCIceCandidateInit)
+          },
+        })
       }
 
       ws.onclose = () => {
@@ -154,34 +140,40 @@ export function useMediaRoom(roomId: string): UseMediaRoomResult {
     setLocalStream(stream)
   }, [])
 
+  const sendBuilt = useCallback(
+    <M extends { type: string; payload: unknown }>(message: M) => {
+      const ws = wsRef.current
+      if (!ws || ws.readyState !== WebSocket.OPEN) return
+      ws.send(encode(message))
+    },
+    [],
+  )
+
   const disconnect = useCallback(() => {
     if (localStream) {
       localStream.getTracks().forEach(t => t.stop())
       setLocalStream(null)
     }
-    const ws = wsRef.current
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: MSG_MEDIA_LEAVE, payload: {} }))
-    }
-  }, [localStream])
+    sendBuilt(clientBuild.mediaLeave())
+  }, [localStream, sendBuilt])
 
-  const sendOffer = useCallback((targetUserId: string, sdp: RTCSessionDescriptionInit) => {
-    const ws = wsRef.current
-    if (!ws || ws.readyState !== WebSocket.OPEN) return
-    ws.send(JSON.stringify({ type: MSG_MEDIA_OFFER, payload: { targetUserId, sdp } }))
-  }, [])
+  const sendOffer = useCallback(
+    (targetUserId: string, sdp: RTCSessionDescriptionInit) =>
+      sendBuilt(clientBuild.mediaOffer(targetUserId, sdp)),
+    [sendBuilt],
+  )
 
-  const sendAnswer = useCallback((targetUserId: string, sdp: RTCSessionDescriptionInit) => {
-    const ws = wsRef.current
-    if (!ws || ws.readyState !== WebSocket.OPEN) return
-    ws.send(JSON.stringify({ type: MSG_MEDIA_ANSWER, payload: { targetUserId, sdp } }))
-  }, [])
+  const sendAnswer = useCallback(
+    (targetUserId: string, sdp: RTCSessionDescriptionInit) =>
+      sendBuilt(clientBuild.mediaAnswer(targetUserId, sdp)),
+    [sendBuilt],
+  )
 
-  const sendIceCandidate = useCallback((targetUserId: string, candidate: RTCIceCandidate) => {
-    const ws = wsRef.current
-    if (!ws || ws.readyState !== WebSocket.OPEN) return
-    ws.send(JSON.stringify({ type: MSG_MEDIA_ICE_CANDIDATE, payload: { targetUserId, candidate: candidate.toJSON() } }))
-  }, [])
+  const sendIceCandidate = useCallback(
+    (targetUserId: string, candidate: RTCIceCandidate) =>
+      sendBuilt(clientBuild.mediaIceCandidate(targetUserId, candidate.toJSON())),
+    [sendBuilt],
+  )
 
   return {
     peers,

@@ -17,6 +17,8 @@
 
 /// <reference types="@cloudflare/workers-types" />
 
+import type { ServerMessage } from '../../shared/protocol/messages'
+
 // ============================================================================
 // User Attachment (survives DO hibernation via WebSocket serialization)
 // ============================================================================
@@ -171,7 +173,7 @@ export abstract class BaseRoom {
   protected abstract onMessage(
     ws: WebSocket,
     user: UserAttachment,
-    message: { type: number; [key: string]: unknown }
+    message: { type: string; [key: string]: unknown }
   ): void | Promise<void>
 
   /**
@@ -235,8 +237,15 @@ export abstract class BaseRoom {
 
   /**
    * Send a JSON message to a specific WebSocket.
+   *
+   * Typed as `ServerMessage` so every room's outbound traffic is
+   * compile-checked against the wire protocol contract. Passing
+   * `{ type: 'whatever', payload: {...} }` with a non-matching arm fails
+   * to compile — that's the whole point of the typed layer. Apps that
+   * need to send an app-specific message should override `sendTo` in
+   * their subclass with a widened union (`ServerMessage | MyAppMessage`).
    */
-  protected sendTo(ws: WebSocket, message: { type: number; [key: string]: unknown }): void {
+  protected sendTo(ws: WebSocket, message: ServerMessage): void {
     try {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(message))
@@ -262,11 +271,10 @@ export abstract class BaseRoom {
   /**
    * Broadcast a JSON message to all connected WebSockets.
    * Optionally exclude a specific WebSocket (e.g. the sender).
+   *
+   * See `sendTo` for the reasoning behind typing as `ServerMessage`.
    */
-  protected broadcast(
-    message: { type: number; [key: string]: unknown },
-    exclude?: WebSocket
-  ): void {
+  protected broadcast(message: ServerMessage, exclude?: WebSocket): void {
     const encoded = JSON.stringify(message)
     for (const ws of this.state.getWebSockets()) {
       if (ws === exclude) continue

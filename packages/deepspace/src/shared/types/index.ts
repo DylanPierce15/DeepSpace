@@ -71,19 +71,9 @@ export interface YjsSubscription {
   fieldName: string
 }
 
-// ============================================================================
-// Connection Types
-// ============================================================================
-
-/** Stored on WebSocket attachment (survives hibernation) */
-export interface ConnectionAttachment {
-  userId: string
-  role: string
-  subscriptions: Subscription[]
-  yjsSubscriptions: YjsSubscription[]
-  yjsClientId?: number
-  awarenessClientId?: number
-}
+// NOTE: `ConnectionAttachment` and `HandlerContext` are defined in
+// `../protocol/types.ts` (they depend on CF Workers / Yjs imports). Import
+// them from `@/shared/protocol/types` rather than from here.
 
 // ============================================================================
 // Record Types
@@ -164,19 +154,6 @@ export interface CronTask {
 export interface CronConfig {
   ownerUserId: string
   tasks: CronTask[]
-}
-
-// ============================================================================
-// Handler Context (Worker-side)
-// ============================================================================
-
-export interface HandlerContext {
-  sql: unknown // SqlStorage from CF Workers
-  state: unknown // DurableObjectState from CF Workers
-  yjsDocs: Map<YjsDocKey, unknown> // Y.Doc instances
-  getWebSockets(): Iterable<WebSocket>
-  send(ws: WebSocket, message: { type: number; payload: unknown }): void
-  sendBinary(ws: WebSocket, data: Uint8Array): void
 }
 
 // ============================================================================

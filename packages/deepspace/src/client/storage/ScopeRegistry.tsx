@@ -20,9 +20,9 @@ import type { RoomConnectionState } from './types'
 
 export interface ScopeEntry {
   store: RecordStore
-  sendMessage: (msg: { type: number; payload: unknown }) => void
+  sendMessage: (msg: { type: string; payload: unknown }) => void
   sendConfirmed: (
-    msg: { type: number; payload: Record<string, unknown> },
+    msg: { type: string; payload: Record<string, unknown> },
     timeoutMs?: number,
   ) => Promise<unknown>
   registerSubscription: (subscriptionId: string, queryKey: string) => void

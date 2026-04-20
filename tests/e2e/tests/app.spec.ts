@@ -37,13 +37,13 @@ test.describe('Deployed app — anonymous browsing', () => {
       if (/fetch|NetworkError|net::ERR|Failed to fetch/.test(err.message)) return
       errors.push(err.message)
     })
-    await page.goto(APP_BASE!, { waitUntil: 'networkidle' })
+    await page.goto(APP_BASE!, { waitUntil: 'domcontentloaded' })
     await expect(page.locator('#root')).not.toBeEmpty({ timeout: 10_000 })
     expect(errors).toEqual([])
   })
 
   test('shows sign-in button', async ({ page }) => {
-    await page.goto(APP_BASE!, { waitUntil: 'networkidle' })
+    await page.goto(APP_BASE!, { waitUntil: 'domcontentloaded' })
     await expect(page.locator('[data-testid="nav-sign-in-button"]')).toBeVisible({ timeout: 10_000 })
   })
 })
@@ -89,7 +89,7 @@ test.describe('Deployed app — R2 file storage', () => {
 
 test.describe('Deployed app — auth overlay', () => {
   test('opens and closes', async ({ page }) => {
-    await page.goto(APP_BASE!, { waitUntil: 'networkidle' })
+    await page.goto(APP_BASE!, { waitUntil: 'domcontentloaded' })
     await page.locator('[data-testid="nav-sign-in-button"]').click()
     await expect(page.locator('[data-testid="auth-overlay"]')).toBeVisible({ timeout: 5_000 })
     await page.locator('[data-testid="auth-overlay-close"]').click()
@@ -97,7 +97,7 @@ test.describe('Deployed app — auth overlay', () => {
   })
 
   test('shows OAuth buttons, email form hidden by default', async ({ page }) => {
-    await page.goto(APP_BASE!, { waitUntil: 'networkidle' })
+    await page.goto(APP_BASE!, { waitUntil: 'domcontentloaded' })
     await page.locator('[data-testid="nav-sign-in-button"]').click()
     const overlay = page.locator('[data-testid="auth-overlay"]')
     await expect(overlay).toBeVisible({ timeout: 5_000 })
@@ -110,7 +110,7 @@ test.describe('Deployed app — auth overlay', () => {
   })
 
   test('email toggle reveals form', async ({ page }) => {
-    await page.goto(APP_BASE!, { waitUntil: 'networkidle' })
+    await page.goto(APP_BASE!, { waitUntil: 'domcontentloaded' })
     await page.locator('[data-testid="nav-sign-in-button"]').click()
     const overlay = page.locator('[data-testid="auth-overlay"]')
     await expect(overlay).toBeVisible({ timeout: 5_000 })
@@ -121,7 +121,7 @@ test.describe('Deployed app — auth overlay', () => {
   })
 
   test('wrong credentials show error', async ({ page }) => {
-    await page.goto(APP_BASE!, { waitUntil: 'networkidle' })
+    await page.goto(APP_BASE!, { waitUntil: 'domcontentloaded' })
     await page.locator('[data-testid="nav-sign-in-button"]').click()
     const overlay = page.locator('[data-testid="auth-overlay"]')
     await overlay.locator('[data-testid="auth-email-toggle"]').click()
@@ -132,7 +132,7 @@ test.describe('Deployed app — auth overlay', () => {
   })
 
   test('successful email sign-in shows user', async ({ page }) => {
-    await page.goto(APP_BASE!, { waitUntil: 'networkidle' })
+    await page.goto(APP_BASE!, { waitUntil: 'domcontentloaded' })
     await page.locator('[data-testid="nav-sign-in-button"]').click()
     const overlay = page.locator('[data-testid="auth-overlay"]')
     await overlay.locator('[data-testid="auth-email-toggle"]').click()

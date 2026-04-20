@@ -58,11 +58,14 @@ export function buildCronContext(
 
   /** Execute a tool call against the RecordRoom's tools API */
   async function executeTool(tool: string, params: Record<string, unknown>): Promise<any> {
-    const body = JSON.stringify({ tool, params, userId: ownerUserId })
     const response = await room.fetch(new Request('https://internal/api/tools/execute', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-Id': ownerUserId,
+        'X-App-Action': 'true',
+      },
+      body: JSON.stringify({ tool, params }),
     }))
     const result = await response.json() as { success: boolean; data?: any; error?: string }
     if (!result.success) {

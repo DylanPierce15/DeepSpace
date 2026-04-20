@@ -7,7 +7,7 @@
 import type { ConnectionAttachment } from '../../shared/protocol/types'
 import type { RecordResult, PutPayload, DeletePayload } from '../../shared/types'
 import type { ToolResult } from '../utils/tools'
-import { MSG_ERROR, MSG_ACK, MSG_RESUBSCRIBE } from '../../shared/protocol/constants'
+import { serverBuild } from '../../shared/protocol/messages'
 import {
   type CollectionSchema,
   type ResolvedColumn,
@@ -44,7 +44,7 @@ function getResolvedColumns(schema: CollectionSchema): ResolvedColumn[] {
 /**
  * When a team_members record is created/updated/deleted, the affected user's
  * team-scoped subscriptions (teams, tasks, projects, etc.) are stale — the
- * initial query was filtered by their old team list. Send MSG_RESUBSCRIBE to
+ * initial query was filtered by their old team list. Send MSG.RESUBSCRIBE to
  * tell the client to re-subscribe all active queries with fresh team data.
  */
 function notifyTeamMembershipChange(
@@ -62,7 +62,7 @@ function notifyTeamMembershipChange(
     const attachment = ws.deserializeAttachment() as ConnectionAttachment | null
     if (!attachment) continue
     if (attachment.userId === affectedUserId) {
-      ctx.send(ws, { type: MSG_RESUBSCRIBE, payload: {} })
+      ctx.send(ws, serverBuild.resubscribe())
     }
   }
 }
@@ -151,14 +151,14 @@ export function handlePut(
   const result = putRecord(ctx, collection, recordId, data, attachment.userId, attachment.role)
 
   if (requestId) {
-    ctx.send(ws, {
-      type: MSG_ACK,
-      payload: result.success
-        ? { requestId, success: true, recordId }
-        : { requestId, success: false, error: result.error }
-    })
+    ctx.send(
+      ws,
+      result.success
+        ? serverBuild.ackSuccess(requestId, recordId)
+        : serverBuild.ackFailure(requestId, result.error),
+    )
   } else if (!result.success) {
-    ctx.send(ws, { type: MSG_ERROR, payload: { error: result.error } })
+    ctx.send(ws, serverBuild.error(result.error))
   }
 }
 
@@ -176,14 +176,14 @@ export function handleDelete(
   const result = deleteRecord(ctx, collection, recordId, attachment.userId, attachment.role)
 
   if (requestId) {
-    ctx.send(ws, {
-      type: MSG_ACK,
-      payload: result.success
-        ? { requestId, success: true }
-        : { requestId, success: false, error: result.error }
-    })
+    ctx.send(
+      ws,
+      result.success
+        ? serverBuild.ackSuccess(requestId)
+        : serverBuild.ackFailure(requestId, result.error),
+    )
   } else if (!result.success) {
-    ctx.send(ws, { type: MSG_ERROR, payload: { error: result.error } })
+    ctx.send(ws, serverBuild.error(result.error))
   }
 }
 

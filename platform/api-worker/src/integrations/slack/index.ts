@@ -1,82 +1,15 @@
 /**
  * Slack integration handlers — channels, messaging, team info.
- * Uses raw fetch to the Slack Web API.
- *
- * OAuth pattern: handlers accept `body.accessToken`. If missing they return
- * `{ requiresOAuth: true, scopes, authUrl }` so the client can initiate the
- * OAuth consent flow. Full token exchange / storage / refresh will be added
- * later when the OAuth infrastructure is built.
+ * Uses raw fetch to the Slack Web API. Callers must supply an `accessToken`
+ * in the request body; obtaining one is the caller's responsibility.
  */
 
 import { z } from 'zod'
 import type { IntegrationHandler, EndpointDefinition } from '../_types'
 
 // ============================================================================
-// Slack OAuth scopes (user-token scopes, not bot scopes)
-// ============================================================================
-
-export const SLACK_SCOPES = {
-  CHAT_WRITE: 'chat:write',
-  CHANNELS_READ: 'channels:read',
-  CHANNELS_HISTORY: 'channels:history',
-  GROUPS_READ: 'groups:read',
-  GROUPS_HISTORY: 'groups:history',
-  IM_READ: 'im:read',
-  IM_HISTORY: 'im:history',
-  USERS_READ: 'users:read',
-  TEAM_READ: 'team:read',
-} as const
-
-export const SLACK_SCOPE_SETS = {
-  MESSAGING: [
-    SLACK_SCOPES.CHAT_WRITE,
-    SLACK_SCOPES.CHANNELS_READ,
-    SLACK_SCOPES.USERS_READ,
-    SLACK_SCOPES.TEAM_READ,
-  ],
-  MESSAGING_WITH_HISTORY: [
-    SLACK_SCOPES.CHAT_WRITE,
-    SLACK_SCOPES.CHANNELS_READ,
-    SLACK_SCOPES.CHANNELS_HISTORY,
-    SLACK_SCOPES.GROUPS_READ,
-    SLACK_SCOPES.GROUPS_HISTORY,
-    SLACK_SCOPES.IM_READ,
-    SLACK_SCOPES.IM_HISTORY,
-    SLACK_SCOPES.USERS_READ,
-    SLACK_SCOPES.TEAM_READ,
-  ],
-} as const
-
-// ============================================================================
 // Helpers
 // ============================================================================
-
-/**
- * Build a Slack OAuth 2.0 authorization URL (user-token flow).
- */
-export function buildSlackAuthUrl(
-  env: { SLACK_CLIENT_ID: string },
-  scopes: readonly string[],
-  redirectUri = 'https://api.deep.space/api/integrations/slack-callback',
-): string {
-  const params = new URLSearchParams({
-    client_id: env.SLACK_CLIENT_ID,
-    user_scope: scopes.join(','),
-    redirect_uri: redirectUri,
-  })
-  return `https://slack.com/oauth/v2/authorize?${params.toString()}`
-}
-
-function oauthRequired(env: { SLACK_CLIENT_ID?: string }, scopes: readonly string[]) {
-  return {
-    requiresOAuth: true,
-    provider: 'slack',
-    scopes: [...scopes],
-    authUrl: env.SLACK_CLIENT_ID
-      ? buildSlackAuthUrl(env as { SLACK_CLIENT_ID: string }, scopes)
-      : undefined,
-  }
-}
 
 async function slackApiFetch(
   url: string,
@@ -115,9 +48,9 @@ async function slackApiFetch(
 // list-channels — conversations.list
 // ============================================================================
 
-const listChannels: IntegrationHandler = async (env, body) => {
+const listChannels: IntegrationHandler = async (_env, body) => {
   const accessToken = body.accessToken as string | undefined
-  if (!accessToken) return oauthRequired(env, SLACK_SCOPE_SETS.MESSAGING_WITH_HISTORY)
+  if (!accessToken) throw new Error('accessToken is required')
 
   const params = new URLSearchParams({
     limit: String(Math.min(Number(body.limit) || 100, 200)),
@@ -135,9 +68,9 @@ const listChannels: IntegrationHandler = async (env, body) => {
 // send-message — chat.postMessage
 // ============================================================================
 
-const sendMessage: IntegrationHandler = async (env, body) => {
+const sendMessage: IntegrationHandler = async (_env, body) => {
   const accessToken = body.accessToken as string | undefined
-  if (!accessToken) return oauthRequired(env, SLACK_SCOPE_SETS.MESSAGING)
+  if (!accessToken) throw new Error('accessToken is required')
 
   const channel = body.channel as string
   const text = body.text as string
@@ -160,9 +93,9 @@ const sendMessage: IntegrationHandler = async (env, body) => {
 // channel-history — conversations.history
 // ============================================================================
 
-const channelHistory: IntegrationHandler = async (env, body) => {
+const channelHistory: IntegrationHandler = async (_env, body) => {
   const accessToken = body.accessToken as string | undefined
-  if (!accessToken) return oauthRequired(env, SLACK_SCOPE_SETS.MESSAGING_WITH_HISTORY)
+  if (!accessToken) throw new Error('accessToken is required')
 
   const channel = body.channel as string
   if (!channel) throw new Error('channel is required')
@@ -185,9 +118,9 @@ const channelHistory: IntegrationHandler = async (env, body) => {
 // team-info — team.info
 // ============================================================================
 
-const teamInfo: IntegrationHandler = async (env, body) => {
+const teamInfo: IntegrationHandler = async (_env, body) => {
   const accessToken = body.accessToken as string | undefined
-  if (!accessToken) return oauthRequired(env, SLACK_SCOPE_SETS.MESSAGING)
+  if (!accessToken) throw new Error('accessToken is required')
 
   return slackApiFetch('https://slack.com/api/team.info', accessToken)
 }
@@ -204,14 +137,14 @@ const SLACK_WRITE_BILLING = { model: 'per_request' as const, baseCost: 0.01, cur
 // ============================================================================
 
 const listChannelsSchema = z.object({
-  accessToken: z.string().optional(),
+  accessToken: z.string(),
   limit: z.number().min(1).max(200).default(100),
   types: z.string().default('public_channel,private_channel'),
   cursor: z.string().optional(),
 })
 
 const sendMessageSchema = z.object({
-  accessToken: z.string().optional(),
+  accessToken: z.string(),
   channel: z.string(),
   text: z.string(),
   thread_ts: z.string().optional(),
@@ -221,7 +154,7 @@ const sendMessageSchema = z.object({
 })
 
 const channelHistorySchema = z.object({
-  accessToken: z.string().optional(),
+  accessToken: z.string(),
   channel: z.string(),
   limit: z.number().min(1).max(200).default(100),
   cursor: z.string().optional(),
@@ -230,7 +163,7 @@ const channelHistorySchema = z.object({
 })
 
 const teamInfoSchema = z.object({
-  accessToken: z.string().optional(),
+  accessToken: z.string(),
 })
 
 export const endpoints: Record<string, EndpointDefinition> = {

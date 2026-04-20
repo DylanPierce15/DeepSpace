@@ -9,21 +9,15 @@
  * /ws/presence/:scopeId and receive real-time presence for that scope.
  *
  * Peers can attach arbitrary state (cursor position, typing indicator,
- * viewport, selection, etc.) via MSG_PRESENCE_UPDATE.
+ * viewport, selection, etc.) via MSG.PRESENCE_UPDATE.
  *
- * Message types: 130-139 (MSG_PRESENCE_*)
+ * Message types: presence.*
  */
 
 /// <reference types="@cloudflare/workers-types" />
 
 import { BaseRoom, type UserAttachment } from './base-room'
-import {
-  MSG_PRESENCE_SYNC,
-  MSG_PRESENCE_JOIN,
-  MSG_PRESENCE_LEAVE,
-  MSG_PRESENCE_UPDATE,
-  MSG_ERROR,
-} from '../../shared/protocol/constants'
+import { MSG } from '../../shared/protocol/constants'
 
 // ============================================================================
 // Types
@@ -73,14 +67,14 @@ export class PresenceRoom extends BaseRoom {
 
     // Send existing peers to the new connection (before adding self)
     this.sendTo(ws, {
-      type: MSG_PRESENCE_SYNC,
+      type: MSG.PRESENCE_SYNC,
       payload: { peers: Array.from(this.peers.values()) },
     })
 
     // Now add self and notify others
     this.peers.set(user.userId, peer)
     this.peerSockets.set(user.userId, ws)
-    this.broadcast({ type: MSG_PRESENCE_JOIN, payload: { peer } }, ws)
+    this.broadcast({ type: MSG.PRESENCE_JOIN, payload: { peer } }, ws)
 
     const attachment: PresenceAttachment = {
       ...user,
@@ -93,12 +87,12 @@ export class PresenceRoom extends BaseRoom {
   protected async onMessage(
     ws: WebSocket,
     user: UserAttachment,
-    message: { type: number; [key: string]: unknown }
+    message: { type: string; [key: string]: unknown }
   ): Promise<void> {
-    const { type, payload } = message as { type: number; payload: Record<string, unknown> }
+    const { type, payload } = message as { type: string; payload: Record<string, unknown> }
 
     switch (type) {
-      case MSG_PRESENCE_UPDATE: {
+      case MSG.PRESENCE_UPDATE: {
         const peer = this.peers.get(user.userId)
         if (!peer) break
 
@@ -109,7 +103,7 @@ export class PresenceRoom extends BaseRoom {
         // Broadcast the update to all other peers
         this.broadcast(
           {
-            type: MSG_PRESENCE_UPDATE,
+            type: MSG.PRESENCE_UPDATE,
             payload: { userId: user.userId, state: peer.state },
           },
           ws,
@@ -118,13 +112,13 @@ export class PresenceRoom extends BaseRoom {
       }
 
       default:
-        this.sendTo(ws, { type: MSG_ERROR, payload: { error: `Unknown presence message type: ${type}` } })
+        this.sendTo(ws, { type: MSG.ERROR, payload: { error: `Unknown presence message type: ${type}` } })
     }
   }
 
   protected onDisconnect(ws: WebSocket, user: UserAttachment): void {
     this.peers.delete(user.userId)
     this.peerSockets.delete(user.userId)
-    this.broadcast({ type: MSG_PRESENCE_LEAVE, payload: { userId: user.userId } }, ws)
+    this.broadcast({ type: MSG.PRESENCE_LEAVE, payload: { userId: user.userId } }, ws)
   }
 }

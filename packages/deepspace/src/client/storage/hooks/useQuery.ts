@@ -10,7 +10,7 @@ import { useEffect, useCallback, useRef, useMemo, useContext, useSyncExternalSto
 import { RecordContext } from '../context'
 import { useScopeRegistry } from '../ScopeRegistry'
 import type { Query, RecordData } from '../types'
-import { MSG_SUBSCRIBE, MSG_UNSUBSCRIBE } from '@/shared/protocol/constants'
+import { MSG } from '@/shared/protocol/constants'
 
 /**
  * Subscribe to a query with real-time updates.
@@ -85,7 +85,7 @@ export function useQuery<T = unknown>(
     if (isFirst) {
       store.setSubscriptionId(queryKey, subscriptionId)
       registerSub(subscriptionId, queryKey)
-      sendMessage({ type: MSG_SUBSCRIBE, payload: { subscriptionId, query } })
+      sendMessage({ type: MSG.SUBSCRIBE, payload: { subscriptionId, query } })
     }
 
     return () => {
@@ -93,7 +93,7 @@ export function useQuery<T = unknown>(
       const isLast = store.releaseQuery(queryKey)
 
       if (isLast) {
-        sendMessage({ type: MSG_UNSUBSCRIBE, payload: { subscriptionId: activeSubId } })
+        sendMessage({ type: MSG.UNSUBSCRIBE, payload: { subscriptionId: activeSubId } })
         unregisterSub(activeSubId)
       }
     }

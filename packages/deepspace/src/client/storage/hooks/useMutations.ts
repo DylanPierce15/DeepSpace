@@ -9,7 +9,7 @@
 import { useCallback, useContext, useMemo } from 'react'
 import { RecordContext } from '../context'
 import { useScopeRegistry } from '../ScopeRegistry'
-import { MSG_PUT, MSG_DELETE } from '@/shared/protocol/constants'
+import { MSG } from '@/shared/protocol/constants'
 
 /**
  * Get mutation functions for a collection.
@@ -55,7 +55,7 @@ export function useMutations<T = unknown>(collection: string): {
   const create = useCallback(
     async (data: T): Promise<string> => {
       const recordId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
-      sendMessage({ type: MSG_PUT, payload: { collection, recordId, data } })
+      sendMessage({ type: MSG.PUT, payload: { collection, recordId, data } })
       return recordId
     },
     [sendMessage, collection],
@@ -63,14 +63,14 @@ export function useMutations<T = unknown>(collection: string): {
 
   const put = useCallback(
     async (recordId: string, data: T): Promise<void> => {
-      sendMessage({ type: MSG_PUT, payload: { collection, recordId, data } })
+      sendMessage({ type: MSG.PUT, payload: { collection, recordId, data } })
     },
     [sendMessage, collection],
   )
 
   const remove = useCallback(
     async (recordId: string): Promise<void> => {
-      sendMessage({ type: MSG_DELETE, payload: { collection, recordId } })
+      sendMessage({ type: MSG.DELETE, payload: { collection, recordId } })
     },
     [sendMessage, collection],
   )
@@ -79,7 +79,7 @@ export function useMutations<T = unknown>(collection: string): {
     async (data: T): Promise<string> => {
       const recordId = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
       await sendConfirmed({
-        type: MSG_PUT,
+        type: MSG.PUT,
         payload: { collection, recordId, data: data as Record<string, unknown> },
       })
       return recordId
@@ -90,7 +90,7 @@ export function useMutations<T = unknown>(collection: string): {
   const putConfirmed = useCallback(
     async (recordId: string, data: T): Promise<void> => {
       await sendConfirmed({
-        type: MSG_PUT,
+        type: MSG.PUT,
         payload: { collection, recordId, data: data as Record<string, unknown> },
       })
     },
@@ -99,7 +99,7 @@ export function useMutations<T = unknown>(collection: string): {
 
   const removeConfirmed = useCallback(
     async (recordId: string): Promise<void> => {
-      await sendConfirmed({ type: MSG_DELETE, payload: { collection, recordId } })
+      await sendConfirmed({ type: MSG.DELETE, payload: { collection, recordId } })
     },
     [sendConfirmed, collection],
   )

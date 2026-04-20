@@ -24,12 +24,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getAuthToken } from '../../auth'
 import { wsLog } from '../ws-log'
+import { MSG } from '@/shared/protocol/constants'
 import {
-  MSG_PRESENCE_SYNC,
-  MSG_PRESENCE_JOIN,
-  MSG_PRESENCE_LEAVE,
-  MSG_PRESENCE_UPDATE,
-} from '@/shared/protocol/constants'
+  clientBuild,
+  dispatch,
+  encode,
+  type ServerMessage,
+} from '@/shared/protocol/messages'
 
 // ============================================================================
 // Types
@@ -86,35 +87,25 @@ export function usePresenceRoom(scopeId: string): UsePresenceRoomResult {
       }
 
       ws.onmessage = (event) => {
-        if (typeof event.data !== 'string') return
-        try {
-          const msg = JSON.parse(event.data) as { type: number; payload: Record<string, unknown> }
-          switch (msg.type) {
-            case MSG_PRESENCE_SYNC: {
-              setPeers(msg.payload.peers as PresencePeerClient[])
-              break
-            }
-            case MSG_PRESENCE_JOIN: {
-              const peer = msg.payload.peer as PresencePeerClient
-              setPeers(prev => [...prev.filter(p => p.userId !== peer.userId), peer])
-              break
-            }
-            case MSG_PRESENCE_LEAVE: {
-              const userId = msg.payload.userId as string
-              setPeers(prev => prev.filter(p => p.userId !== userId))
-              break
-            }
-            case MSG_PRESENCE_UPDATE: {
-              const { userId, state } = msg.payload as { userId: string; state: Record<string, unknown> }
-              setPeers(prev =>
-                prev.map(p =>
-                  p.userId === userId ? { ...p, state: { ...p.state, ...state } } : p,
-                ),
-              )
-              break
-            }
-          }
-        } catch { /* ignore parse errors */ }
+        dispatch<ServerMessage>(event.data, {
+          [MSG.PRESENCE_SYNC]: (p) => {
+            setPeers(p.peers as PresencePeerClient[])
+          },
+          [MSG.PRESENCE_JOIN]: (p) => {
+            const peer = p.peer as PresencePeerClient
+            setPeers((prev) => [...prev.filter((x) => x.userId !== peer.userId), peer])
+          },
+          [MSG.PRESENCE_LEAVE]: (p) => {
+            setPeers((prev) => prev.filter((x) => x.userId !== p.userId))
+          },
+          [MSG.PRESENCE_UPDATE]: (p) => {
+            setPeers((prev) =>
+              prev.map((x) =>
+                x.userId === p.userId ? { ...x, state: { ...x.state, ...p.state } } : x,
+              ),
+            )
+          },
+        })
       }
 
       ws.onclose = () => {
@@ -146,7 +137,7 @@ export function usePresenceRoom(scopeId: string): UsePresenceRoomResult {
   const updateState = useCallback((state: Record<string, unknown>) => {
     const ws = wsRef.current
     if (!ws || ws.readyState !== WebSocket.OPEN) return
-    ws.send(JSON.stringify({ type: MSG_PRESENCE_UPDATE, payload: state }))
+    ws.send(encode(clientBuild.presenceUpdate(state)))
   }, [])
 
   return { peers, connected, updateState }

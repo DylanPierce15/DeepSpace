@@ -2,7 +2,7 @@
  * usePresence — Derives online/offline from lastSeenAt in users collection.
  *
  * Two mechanisms keep presence working:
- * 1. Heartbeat: Sends MSG_USER_UPDATE every 60s so the server refreshes
+ * 1. Heartbeat: Sends MSG.USER_UPDATE every 60s so the server refreshes
  *    our lastSeenAt in the c_users table and broadcasts the change.
  * 2. Tick: A re-render trigger every 30s so isOnline() re-evaluates
  *    Date.now() and users who stopped heartbeating transition to offline.
@@ -12,7 +12,7 @@ import { useEffect, useCallback, useState } from 'react'
 import { useUser } from './useUser'
 import { useUsers } from './useUsers'
 import { useRecordContext } from '../context'
-import { MSG_USER_UPDATE } from '@/shared/protocol/constants'
+import { MSG } from '@/shared/protocol/constants'
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
 const HEARTBEAT_INTERVAL_MS = 60 * 1000 // 1 minute
@@ -30,11 +30,11 @@ export function usePresence(opts?: UsePresenceOptions) {
 
   const timeoutMs = opts?.timeoutMs ?? DEFAULT_TIMEOUT_MS
 
-  // Heartbeat: periodically send MSG_USER_UPDATE to refresh our lastSeenAt
+  // Heartbeat: periodically send MSG.USER_UPDATE to refresh our lastSeenAt
   useEffect(() => {
     if (!user || !ready) return
     const interval = setInterval(() => {
-      sendMessage({ type: MSG_USER_UPDATE, payload: {} })
+      sendMessage({ type: MSG.USER_UPDATE, payload: {} })
     }, HEARTBEAT_INTERVAL_MS)
     return () => clearInterval(interval)
   }, [user, ready, sendMessage])

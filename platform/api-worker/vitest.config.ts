@@ -73,8 +73,6 @@ export default defineConfig({
           LIVEKIT_URL: devVars.LIVEKIT_URL || 'wss://test.livekit.cloud',
           GOOGLE_CLIENT_ID: devVars.GOOGLE_CLIENT_ID || 'google-test-fake',
           GOOGLE_CLIENT_SECRET: devVars.GOOGLE_CLIENT_SECRET || 'google-secret-test-fake',
-          SLACK_CLIENT_ID: devVars.SLACK_CLIENT_ID || 'slack-test-fake',
-          SLACK_CLIENT_SECRET: devVars.SLACK_CLIENT_SECRET || 'slack-secret-test-fake',
         },
       },
     }),

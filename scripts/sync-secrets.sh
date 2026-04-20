@@ -117,8 +117,6 @@ sync_worker "$ROOT/platform/api-worker" "deepspace-api" \
   GITHUB_TOKEN \
   GOOGLE_CLIENT_ID \
   GOOGLE_CLIENT_SECRET \
-  SLACK_CLIENT_ID \
-  SLACK_CLIENT_SECRET \
   LIVEKIT_API_KEY \
   LIVEKIT_API_SECRET \
   LIVEKIT_URL \

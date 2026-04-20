@@ -30,18 +30,7 @@ import type {
   FetchUserProfile,
   RecordData,
 } from './types'
-import {
-  MSG_SUBSCRIBE,
-  MSG_QUERY_RESULT,
-  MSG_RECORD_CHANGE,
-  MSG_ERROR,
-  MSG_USER_INFO,
-  MSG_USER_LIST,
-  MSG_SET_ROLE,
-  MSG_YJS_JOIN,
-  MSG_ACK,
-  MSG_RESUBSCRIBE,
-} from '@/shared/protocol/constants'
+import { MSG } from '@/shared/protocol/constants'
 
 // ============================================================================
 // RecordContext (per-scope connection state)
@@ -57,21 +46,21 @@ export interface RecordContextValue {
   refetchUserProfile: () => Promise<void>
   roomRole: string | null
   allUsers: RoomUser[]
-  /** True once the first MSG_USER_LIST response has been received. */
+  /** True once the first MSG.USER_LIST response has been received. */
   usersLoaded: boolean
   status: RoomConnectionState
   ready: boolean
-  /** Schemas discovered via MSG_LIST_SCHEMAS from the server. Available after ready. */
+  /** Schemas discovered via MSG.LIST_SCHEMAS from the server. Available after ready. */
   discoveredSchemas?: CollectionSchema[]
   setUserRole: (userId: string, role: string) => void
   requestUserList: () => void
   registerSubscription: (subscriptionId: string, queryKey: string) => void
   unregisterSubscription: (subscriptionId: string) => void
-  sendMessage: (message: { type: number; payload: unknown }) => void
+  sendMessage: (message: { type: string; payload: unknown }) => void
   sendBinary: (data: Uint8Array) => void
   onBinaryMessage: (handler: (data: ArrayBuffer) => void) => () => void
   registerYjsJoinHandler: (docKey: string, handler: (canWrite: boolean) => void) => () => void
-  sendConfirmed: (message: { type: number; payload: Record<string, unknown> }, timeoutMs?: number) => Promise<unknown>
+  sendConfirmed: (message: { type: string; payload: Record<string, unknown> }, timeoutMs?: number) => Promise<unknown>
 }
 
 export const RecordContext = createContext<RecordContextValue | null>(null)
@@ -205,11 +194,11 @@ function RecordProviderCore({
     }
 
     try {
-      const msg = JSON.parse(event.data as string) as { type: number; payload: unknown }
+      const msg = JSON.parse(event.data as string) as { type: string; payload: unknown }
       const { type, payload } = msg
 
       switch (type) {
-        case MSG_USER_INFO: {
+        case MSG.USER_INFO: {
           const serverUser = payload as { role: string }
           console.log('[WS] Ready:', { roomId, role: serverUser.role })
           setRoomRole(serverUser.role)
@@ -218,15 +207,15 @@ function RecordProviderCore({
           // Auto-request user list as part of connection handshake
           const ws = wsRef.current
           if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: MSG_USER_LIST, payload: {} }))
+            ws.send(JSON.stringify({ type: MSG.USER_LIST, payload: {} }))
           }
           break
         }
-        case MSG_USER_LIST:
+        case MSG.USER_LIST:
           setAllUsers((payload as { users: RoomUser[] }).users)
           setUsersLoaded(true)
           break
-        case MSG_QUERY_RESULT: {
+        case MSG.QUERY_RESULT: {
           const { subscriptionId, records } = payload as { subscriptionId: string; records: RecordData[] }
           for (const [subId, queryKey] of subscriptionMapRef.current) {
             if (subId === subscriptionId) {
@@ -236,7 +225,7 @@ function RecordProviderCore({
           }
           break
         }
-        case MSG_RECORD_CHANGE: {
+        case MSG.RECORD_CHANGE: {
           const { collection, record, changeType } = payload as {
             collection: string; record: RecordData; changeType: 'create' | 'update' | 'delete'
           }
@@ -259,7 +248,7 @@ function RecordProviderCore({
           }
           break
         }
-        case MSG_ERROR: {
+        case MSG.ERROR: {
           const { subscriptionId, error } = payload as { subscriptionId?: string; error: string }
           if (subscriptionId) {
             for (const [subId, queryKey] of subscriptionMapRef.current) {
@@ -278,7 +267,7 @@ function RecordProviderCore({
           }
           break
         }
-        case MSG_YJS_JOIN: {
+        case MSG.YJS_JOIN: {
           const { collection, recordId, fieldName, canWrite } = payload as {
             collection: string; recordId: string; fieldName: string; canWrite: boolean
           }
@@ -286,7 +275,7 @@ function RecordProviderCore({
           yjsJoinHandlersRef.current.get(docKey)?.forEach(handler => handler(canWrite))
           break
         }
-        case MSG_ACK: {
+        case MSG.ACK: {
           const { requestId, success, error, ...rest } = payload as {
             requestId: string; success: boolean; error?: string; [key: string]: unknown
           }
@@ -299,14 +288,14 @@ function RecordProviderCore({
           }
           break
         }
-        case MSG_RESUBSCRIBE: {
+        case MSG.RESUBSCRIBE: {
           // Team membership changed — re-subscribe all active queries
           const ws = wsRef.current
           if (ws && ws.readyState === WebSocket.OPEN) {
             for (const [subscriptionId, queryKey] of subscriptionMapRef.current) {
               try {
                 const query = JSON.parse(queryKey)
-                ws.send(JSON.stringify({ type: MSG_SUBSCRIBE, payload: { subscriptionId, query } }))
+                ws.send(JSON.stringify({ type: MSG.SUBSCRIBE, payload: { subscriptionId, query } }))
               } catch { /* skip invalid */ }
             }
           }
@@ -427,18 +416,18 @@ function RecordProviderCore({
     }
   }, [roomId])
 
-  const sendMessage = useCallback((message: { type: number; payload: unknown }) => {
+  const sendMessage = useCallback((message: { type: string; payload: unknown }) => {
     const ws = wsRef.current
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message))
     else console.warn('[RecordProvider] Cannot send message, WebSocket not connected')
   }, [])
 
   const setUserRole = useCallback((userId: string, role: string) => {
-    sendMessage({ type: MSG_SET_ROLE, payload: { userId, role } })
+    sendMessage({ type: MSG.SET_ROLE, payload: { userId, role } })
   }, [sendMessage])
 
   const requestUserList = useCallback(() => {
-    sendMessage({ type: MSG_USER_LIST, payload: {} })
+    sendMessage({ type: MSG.USER_LIST, payload: {} })
   }, [sendMessage])
 
   const registerSubscription = useCallback((subscriptionId: string, queryKey: string) => {
@@ -474,7 +463,7 @@ function RecordProviderCore({
   }, [])
 
   const sendConfirmed = useCallback((
-    message: { type: number; payload: Record<string, unknown> },
+    message: { type: string; payload: Record<string, unknown> },
     timeoutMs = 10000
   ): Promise<unknown> => {
     const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`

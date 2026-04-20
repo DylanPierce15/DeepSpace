@@ -1,87 +1,52 @@
-# Known Issue: miniflare pinned to 4.20251217.0
+# Resolved: miniflare pin removed (was 4.20251217.0)
 
 ## Status
 
-**Active** — pin in place since 2026-04-10. Waiting for upstream fix in [cloudflare/workers-sdk#13013](https://github.com/cloudflare/workers-sdk/issues/13013).
+**Resolved** — pin removed 2026-04-20. Upstream fix shipped in `undici@7.24.8` (2026-04-13) and is now bundled into `miniflare@4.20260420.0` and later. Tracking issue [cloudflare/workers-sdk#13013](https://github.com/cloudflare/workers-sdk/issues/13013) closed 2026-04-14.
 
-## What's pinned
+Kept here as a post-mortem so the next person who trips on a similar miniflare/undici interaction has a paper trail.
 
-`miniflare` is forced to version `4.20251217.0` in two places via package-manager `overrides`:
+## What was pinned (2026-04-10 → 2026-04-20)
+
+`miniflare` was forced to version `4.20251217.0` via package-manager `overrides` in two places:
 
 - **Monorepo root** — `package.json` → `pnpm.overrides.miniflare`
 - **Starter template** — `packages/create-deepspace/templates/starter/package.json` → `overrides.miniflare`
 
-`wrangler@4.79.0` declares `miniflare@4.20260329.0` as a direct dep and `@cloudflare/vite-plugin@1.31.2` declares `miniflare@4.20260409.0`. The `overrides` block forces both to resolve to the pinned older version at install time, regardless of package manager (npm, pnpm, bun, yarn-berry all honor it).
+`wrangler` and `@cloudflare/vite-plugin` both declared newer miniflare versions as direct deps. The `overrides` block forced both to resolve to the pinned older version at install time, regardless of package manager (npm, pnpm, bun, yarn-berry all honor it).
 
-## Why
+On 2026-04-20, immediately before we unpinned, we also briefly pinned `@cloudflare/vite-plugin` to `1.31.2` because `1.32.0+` began importing `CorePaths` from miniflare — an API that didn't exist in the pinned `4.20251217.0`. Classic forward-compat drift: hold one dep back long enough and another dep pulls ahead of it. That pin was reverted in the same commit that removed the miniflare override.
 
-`miniflare@4.20260317.1` (via [workers-sdk#11642](https://github.com/cloudflare/workers-sdk/pull/11642)) added `options.reset = true` in `DispatchFetchDispatcher.dispatch()`. Under the `@cloudflare/vite-plugin` dev middleware, this causes POST requests that return non-2xx status codes to crash with `Internal server error: fetch failed` — the response is lost and the client sees a Vite error overlay instead of the real 401/403/etc.
+## Root cause (diagnosis)
 
-Full technical breakdown and reproduction in [`../gotchas/vite-plugin-non-2xx-crash.md`](../gotchas/vite-plugin-non-2xx-crash.md).
+Originally suspected as a miniflare bug because `miniflare@4.20260317.1` ([workers-sdk#11642](https://github.com/cloudflare/workers-sdk/pull/11642)) introduced `options.reset = true` in `DispatchFetchDispatcher.dispatch()`. Under the `@cloudflare/vite-plugin` dev middleware, POST requests that returned non-2xx status codes crashed with `Internal server error: fetch failed` — the response was lost and the client saw a Vite error overlay instead of the real 401/403/etc.
+
+The actual defect was one layer deeper. `options.reset = true` is an undici flag that forcibly resets the underlying socket after the request completes. When workerd responded with a non-2xx *before fully consuming the POST body*, undici treated the "reset-while-request-body-still-open" race as a network error and rejected the fetch promise instead of returning the response. The miniflare line was the trigger; the bug was in undici's lifecycle handling.
+
+Fix landed in [nodejs/undici#4941](https://github.com/nodejs/undici/pull/4941) and was released in `undici@7.24.8` (2026-04-13) / `8.0.3`. Cloudflare bumped miniflare's undici dep and the whole chain resolved without any miniflare source change — the `options.reset = true` line is still there, undici just handles it correctly now.
 
 Verified end-to-end with a scratch project on 2026-04-10:
 
 | miniflare version | POST /401 result |
 |---|---|
 | 4.20251217.0 (pinned) | real 401 ✅ |
-| 4.20260329.0 (broken) | crash with `fetch failed` stack trace ❌ |
+| 4.20260329.0 (pre-fix miniflare + pre-fix undici) | crash with `fetch failed` ❌ |
+| 4.20260420.0 (unpinned, undici 7.24.8) | real 401 ✅ |
 
-## How to unpin (when the upstream fix ships)
+## Unpinning procedure (for reference — already done)
 
-Before unpinning, check these two places to see if the fix has landed:
+The sequence we ran on 2026-04-20:
 
-1. [cloudflare/workers-sdk#13013](https://github.com/cloudflare/workers-sdk/issues/13013) — should be closed as merged
-2. Grep the latest `miniflare` release's `dist/src/index.js` for `options.reset = true`:
-   ```bash
-   cd /tmp && mkdir mf-check && cd mf-check && npm pack miniflare@latest
-   tar -xzf miniflare-*.tgz
-   grep -n "options\.reset" package/dist/src/index.js
-   ```
-   If the grep returns no hits inside `DispatchFetchDispatcher.dispatch`, the fix is released.
+1. Confirmed [#13013](https://github.com/cloudflare/workers-sdk/issues/13013) closed + read through the thread to find that the fix was in undici, not miniflare.
+2. Confirmed `npm view miniflare@latest` ships `undici@7.24.8` or newer by pulling the tarball and checking `package/package.json`.
+3. Removed the `pnpm.overrides.miniflare` block from the monorepo root `package.json`.
+4. Removed the template's `overrides` block and set `@cloudflare/vite-plugin` back to `^1.33.0`.
+5. `pnpm install` at the repo root to refresh the lockfile.
+6. `pnpm --filter deepspace build`.
+7. Ran `npx tsx tests/e2e/scripts/run.ts --deploy` — the deploy step is the real validator because it runs the scaffolded app's `vite build` with the unpinned plugin against the unpinned miniflare. All 37 tests passed (app + auth + cli).
 
-Once confirmed:
+Note: the e2e suite validates *build-time* compatibility (the `CorePaths` import must resolve) but does **not** directly reproduce the runtime POST/non-2xx bug, since e2e hits deployed workers rather than local vite dev. If a similar regression shows up in the future, use the reproduction recipe in [`../gotchas/vite-plugin-non-2xx-crash.md`](../gotchas/vite-plugin-non-2xx-crash.md) to exercise the local dev path.
 
-1. **Remove the pin from the monorepo root `package.json`:**
-   ```diff
-   - "pnpm": {
-   -   "overrides": {
-   -     "miniflare": "4.20251217.0"
-   -   }
-   - }
-   ```
-   If you also need to remove `pnpm.patchedDependencies` for a different pin, check that too.
+## Forward-compatibility lesson
 
-2. **Remove the pin from `packages/create-deepspace/templates/starter/package.json`:**
-   ```diff
-   - "overrides": {
-   -   "miniflare": "4.20251217.0"
-   - }
-   ```
-
-3. **Run `pnpm install` at the monorepo root** to update the lockfile.
-
-4. **Rebuild and test:**
-   ```bash
-   npx tsx tests/e2e/scripts/steps/build.ts
-   npx tsx tests/e2e/scripts/steps/scaffold.ts
-   # ...
-   ```
-   Then run the vite-plugin bug reproduction (see the gotcha doc's "Compatibility verification" section) to confirm the upstream fix actually works without our override.
-
-5. **Delete `docs/gotchas/vite-plugin-non-2xx-crash.md`** — it's only relevant while the bug is live.
-
-6. **Delete this file.**
-
-## Forward-compatibility risk
-
-Pinning to an old `miniflare` means if `wrangler` or `@cloudflare/vite-plugin` bumps to require an API that only exists in newer miniflare versions, our pin will break their runtime behavior. Today (2026-04-10) this is not a problem — `wrangler dev` and `@cloudflare/vite-plugin` both boot cleanly against `4.20251217.0` in smoke tests. If wrangler bumps past some miniflare compatibility barrier before the upstream fix lands, the fallback is:
-
-1. Switch to `patch-package` — universal across package managers, requires a `postinstall` script
-2. Switch to `pnpm.patchedDependencies` — pnpm-only but no postinstall required
-3. Hand-maintain a forked miniflare — maintenance hell, avoid
-
-Both patch approaches let us track newer miniflare versions while still removing the `options.reset = true` line.
-
-## Owner
-
-Whoever is on deps/dev-infra duty when [#13013](https://github.com/cloudflare/workers-sdk/issues/13013) closes.
+Pinning one dep back while leaving another on its caret range (`@cloudflare/vite-plugin: ^1.0.0`) is a slow-motion time bomb. On 2026-04-20 the bomb went off: a newer plugin imported a newer-miniflare-only API and npm install happily resolved into the broken combination. The next time we pin a dep to work around an upstream bug, also pin its consumers — or adopt `pnpm.patchedDependencies` / `patch-package` so we can stay on current minor versions while carrying the fix locally.

@@ -10,23 +10,13 @@
  * Subclasses implement game logic via lifecycle hooks:
  *   onTick, onPlayerJoin, onPlayerLeave, onGameStart, onGameEnd
  *
- * Message types: 40-59 (MSG_GAME_*)
+ * Message types: game.*
  */
 
 /// <reference types="@cloudflare/workers-types" />
 
 import { BaseRoom, type UserAttachment } from './base-room'
-import {
-  MSG_GAME_STATE,
-  MSG_GAME_INPUT,
-  MSG_GAME_PLAYER_JOIN,
-  MSG_GAME_PLAYER_LEAVE,
-  MSG_GAME_PLAYER_READY,
-  MSG_GAME_START,
-  MSG_GAME_END,
-  MSG_GAME_TICK,
-  MSG_ERROR,
-} from '../../shared/protocol/constants'
+import { MSG } from '../../shared/protocol/constants'
 
 // ============================================================================
 // Types
@@ -97,11 +87,14 @@ export abstract class GameRoom extends BaseRoom {
         updated_at TEXT NOT NULL
       )
     `)
-    // Load persisted state
+    // Load persisted state and give the subclass a chance to migrate it.
+    // Subclasses with evolving schemas should override `onHydrateState`
+    // to merge new fields, upgrade shapes, or discard stale blobs.
     const rows = this.sql.exec('SELECT state, tick FROM game_state WHERE id = 1').toArray()
     if (rows.length > 0) {
       try {
-        this.gameState = JSON.parse(rows[0].state as string)
+        const parsed = JSON.parse(rows[0].state as string) as Record<string, unknown>
+        this.gameState = this.onHydrateState(parsed)
         this.currentTick = rows[0].tick as number
       } catch { /* fresh state */ }
     }
@@ -138,7 +131,7 @@ export abstract class GameRoom extends BaseRoom {
     }
 
     if (this.config.maxPlayers !== Infinity && this.players.size >= this.config.maxPlayers) {
-      this.sendTo(ws, { type: MSG_ERROR, payload: { error: 'Game is full' } })
+      this.sendTo(ws, { type: MSG.ERROR, payload: { error: 'Game is full' } })
       return attachment
     }
 
@@ -146,7 +139,7 @@ export abstract class GameRoom extends BaseRoom {
 
     // Send current state to new player
     this.sendTo(ws, {
-      type: MSG_GAME_STATE,
+      type: MSG.GAME_STATE,
       payload: {
         state: this.gameState,
         tick: this.currentTick,
@@ -156,7 +149,7 @@ export abstract class GameRoom extends BaseRoom {
     })
 
     // Notify others
-    this.broadcast({ type: MSG_GAME_PLAYER_JOIN, payload: { player } }, ws)
+    this.broadcast({ type: MSG.GAME_PLAYER_JOIN, payload: { player } }, ws)
 
     this.onPlayerJoin(player)
 
@@ -166,14 +159,14 @@ export abstract class GameRoom extends BaseRoom {
   protected async onMessage(
     ws: WebSocket,
     user: UserAttachment,
-    message: { type: number; [key: string]: unknown }
+    message: { type: string; [key: string]: unknown }
   ): Promise<void> {
     this.ensureInitialized()
 
-    const { type, payload } = message as { type: number; payload: Record<string, unknown> }
+    const { type, payload } = message as { type: string; payload: Record<string, unknown> }
 
     switch (type) {
-      case MSG_GAME_INPUT: {
+      case MSG.GAME_INPUT: {
         this.inputBuffer.push({
           userId: user.userId,
           action: payload.action as string,
@@ -183,24 +176,24 @@ export abstract class GameRoom extends BaseRoom {
         break
       }
 
-      case MSG_GAME_PLAYER_READY: {
+      case MSG.GAME_PLAYER_READY: {
         const player = this.players.get(user.userId)
         if (player) {
           player.ready = true
-          this.broadcast({ type: MSG_GAME_PLAYER_READY, payload: { userId: user.userId } })
+          this.broadcast({ type: MSG.GAME_PLAYER_READY, payload: { userId: user.userId } })
           this.checkAutoStart()
         }
         break
       }
 
-      case MSG_GAME_START: {
+      case MSG.GAME_START: {
         if (!this.running) {
           this.startGame()
         }
         break
       }
 
-      case MSG_GAME_END: {
+      case MSG.GAME_END: {
         if (this.running) {
           this.stopGame()
         }
@@ -208,7 +201,7 @@ export abstract class GameRoom extends BaseRoom {
       }
 
       default:
-        this.sendTo(ws, { type: MSG_ERROR, payload: { error: `Unknown game message type: ${type}` } })
+        this.sendTo(ws, { type: MSG.ERROR, payload: { error: `Unknown game message type: ${type}` } })
     }
   }
 
@@ -216,7 +209,7 @@ export abstract class GameRoom extends BaseRoom {
     const player = this.players.get(user.userId)
     if (player) {
       this.players.delete(user.userId)
-      this.broadcast({ type: MSG_GAME_PLAYER_LEAVE, payload: { userId: user.userId } })
+      this.broadcast({ type: MSG.GAME_PLAYER_LEAVE, payload: { userId: user.userId } })
       this.onPlayerLeave(player)
 
       if (this.running && this.players.size === 0) {
@@ -245,7 +238,7 @@ export abstract class GameRoom extends BaseRoom {
 
     // Broadcast tick to all players
     this.broadcast({
-      type: MSG_GAME_TICK,
+      type: MSG.GAME_TICK,
       payload: {
         state: this.gameState,
         tick: this.currentTick,
@@ -276,7 +269,7 @@ export abstract class GameRoom extends BaseRoom {
     this.currentTick = 0
     this.inputBuffer = []
     this.onGameStart()
-    this.broadcast({ type: MSG_GAME_START, payload: { state: this.gameState, tick: 0 } })
+    this.broadcast({ type: MSG.GAME_START, payload: { state: this.gameState, tick: 0 } })
 
     // Start tick loop
     const intervalMs = 1000 / this.config.tickRate
@@ -287,7 +280,7 @@ export abstract class GameRoom extends BaseRoom {
     this.running = false
     this.persistState()
     this.onGameEnd(this.gameState)
-    this.broadcast({ type: MSG_GAME_END, payload: { state: this.gameState, tick: this.currentTick } })
+    this.broadcast({ type: MSG.GAME_END, payload: { state: this.gameState, tick: this.currentTick } })
   }
 
   // ==========================================================================
@@ -339,4 +332,27 @@ export abstract class GameRoom extends BaseRoom {
 
   /** Called when the game ends */
   protected onGameEnd(finalState: Record<string, unknown>): void {}
+
+  /**
+   * Called once when the DO first hydrates persisted state from storage.
+   * Receives the parsed state blob as it was written by a previous build.
+   * Return the state object to install as `gameState`.
+   *
+   * Subclasses with evolving schemas should override this hook to:
+   *   - merge new fields onto a default template,
+   *   - upgrade shapes across versioned states,
+   *   - or discard stale blobs entirely by returning a fresh object.
+   *
+   * The default implementation is a pass-through, preserving the legacy
+   * "stored blob is gospel" behavior for subclasses that don't care.
+   *
+   * If JSON parsing of the stored blob fails this hook is NOT called — the
+   * DO starts with an empty state and the subclass's `onGameStart` (or
+   * first `onTick`) is responsible for initializing.
+   */
+  protected onHydrateState(
+    stored: Record<string, unknown>,
+  ): Record<string, unknown> {
+    return stored
+  }
 }
