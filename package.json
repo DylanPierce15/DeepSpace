@@ -26,10 +26,5 @@
     "turbo": "^2.3.0",
     "typescript": "^5.7.0",
     "vitest": "^4.1.0"
-  },
-  "pnpm": {
-    "overrides": {
-      "miniflare": "4.20251217.0"
-    }
   }
 }
