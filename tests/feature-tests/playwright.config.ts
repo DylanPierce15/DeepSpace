@@ -15,13 +15,14 @@ export default defineConfig({
   testDir: './tests',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  // Same retry policy as tests/e2e — see that config for the why.
+  retries: process.env.CI ? 2 : 1,
   workers: 1,
   reporter: [['html', { open: 'never', outputFolder: './report' }], ['list']],
   timeout: 60_000,
 
   use: {
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
   },
 
   projects: [

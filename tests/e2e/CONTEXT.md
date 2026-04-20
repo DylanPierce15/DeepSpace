@@ -117,8 +117,16 @@ Core specs (`tests/e2e/tests/`):
 
 Feature specs (`tests/feature-tests/tests/`) — require the deployed app to have the corresponding feature installed:
 - `ai-chat.spec.ts` — `/assistant` page, `/api/ai/chat` auth + streaming + tool use.
-- `docs.spec.ts` — `/docs` list, create, Yjs editor textarea, persistence through reload.
+- `docs.spec.ts` — `/docs` list, create, Yjs editor textarea, persistence through reload, plus a two-user real-time collab round-trip (User A types → User B sees without reload).
 - `messaging.spec.ts` — `/chat` single-channel flow, join + send + receive.
+
+The `secondaryUser` fixture (see `tests/feature-tests/fixtures.ts`) provisions a fresh `@deepspace.test` account on demand for multi-user specs. It creates via the auth worker, signs in to capture a session cookie, opens a second browser context, and deletes the account on teardown. Auth worker caps at 10 test accounts per developer — always let the fixture clean up rather than skipping teardown.
+
+## Retries and traces
+
+Both Playwright configs (`tests/e2e/playwright.config.ts` and `tests/feature-tests/playwright.config.ts`) set `retries: 1` locally (2 in CI) with `trace: 'retain-on-failure'`. That policy exists specifically to absorb a Playwright/Chromium subprocess flake confirmed via trace capture: `BrowserContext.newPage()` occasionally hangs for ~30s on the local machine when many tests run back-to-back, before any navigation starts. The request never hits the wire, so the app/CF isn't involved.
+
+Real app bugs fail all retries deterministically — a trace zip ends up in `test-results/.../trace.zip` for post-mortem via `npx playwright show-trace <path>`. Tests that fail once then pass on retry don't produce traces, so flaky-but-eventually-passing runs don't spam artifacts.
 
 ## Adding a new core test spec
 1. Create `tests/your-spec.spec.ts` (use `getAppBase()` from fixtures for the deployed URL, `authedRequest` fixture for authenticated HTTP calls).
