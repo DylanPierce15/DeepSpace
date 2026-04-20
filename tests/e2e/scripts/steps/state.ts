@@ -16,6 +16,13 @@ export interface E2EState {
   workDir: string
   cliBin: string
   deployed?: boolean
+  /**
+   * Feature ids installed into the scaffolded app via
+   * `npx deepspace add <feature>`. Populated by `steps/add-feature.ts`
+   * and consumed by `steps/test.ts` to decide which
+   * `tests/feature-tests/tests/<feature>.spec.ts` files to run.
+   */
+  features?: string[]
 }
 
 export function loadState(): E2EState {
