@@ -29,40 +29,38 @@ describe('Slack', () => {
     }
   })
 
-  // ---- OAuth required when no accessToken ----
+  // ---- accessToken required ----
 
-  const oauthEndpoints = [
+  const tokenRequiredEndpoints = [
     'slack/list-channels',
     'slack/send-message',
     'slack/channel-history',
     'slack/team-info',
   ]
 
-  for (const key of oauthEndpoints) {
-    it(`${key}: returns requiresOAuth when no accessToken`, async () => {
-      const result = (await endpoints[key].handler(env as any, {}, ctx)) as any
-      expect(result.requiresOAuth).toBe(true)
-      expect(result.provider).toBe('slack')
-      expect(Array.isArray(result.scopes)).toBe(true)
-      expect(result.scopes.length).toBeGreaterThan(0)
+  for (const key of tokenRequiredEndpoints) {
+    it(`${key}: throws when no accessToken`, async () => {
+      await expect(endpoints[key].handler(env as any, {}, ctx)).rejects.toThrow(
+        'accessToken is required',
+      )
     })
   }
 
-  // ---- API tests skipped (require real OAuth tokens) ----
+  // ---- API tests skipped (require real access tokens) ----
 
-  it.skip('list-channels: lists channels (requires real OAuth token)', async () => {
-    // Requires a real Slack OAuth access token
+  it.skip('list-channels: lists channels (requires real access token)', async () => {
+    // Requires a real Slack user access token
   })
 
-  it.skip('send-message: sends message (requires real OAuth token)', async () => {
-    // Requires a real Slack OAuth access token
+  it.skip('send-message: sends message (requires real access token)', async () => {
+    // Requires a real Slack user access token
   })
 
-  it.skip('channel-history: gets history (requires real OAuth token)', async () => {
-    // Requires a real Slack OAuth access token
+  it.skip('channel-history: gets history (requires real access token)', async () => {
+    // Requires a real Slack user access token
   })
 
-  it.skip('team-info: gets team info (requires real OAuth token)', async () => {
-    // Requires a real Slack OAuth access token
+  it.skip('team-info: gets team info (requires real access token)', async () => {
+    // Requires a real Slack user access token
   })
 })

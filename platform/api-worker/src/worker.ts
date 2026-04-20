@@ -57,8 +57,6 @@ export type Env = {
     // OAuth integration credentials
     GOOGLE_CLIENT_ID: string
     GOOGLE_CLIENT_SECRET: string
-    SLACK_CLIENT_ID: string
-    SLACK_CLIENT_SECRET: string
   }
   Variables: {
     userId: string

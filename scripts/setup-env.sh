@@ -88,9 +88,7 @@ write_dev_vars "$ROOT/platform/api-worker" \
   LIVEKIT_API_SECRET \
   LIVEKIT_URL \
   GOOGLE_CLIENT_ID \
-  GOOGLE_CLIENT_SECRET \
-  SLACK_CLIENT_ID \
-  SLACK_CLIENT_SECRET
+  GOOGLE_CLIENT_SECRET
 
 # ── Platform Worker ──────────────────────────────────────────────────────────
 write_dev_vars "$ROOT/platform/platform-worker" \
