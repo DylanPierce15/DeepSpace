@@ -1,0 +1,74 @@
+# DeepSpace Dispatch Worker
+#
+# Routes *.app.space, *.spaces.site (legacy), and custom domains in
+# HOSTNAME_MAP to per-app user Workers in the `spaces-apps`
+# Workers-for-Platforms dispatch namespace, and fires a cron poller every
+# minute that triggers per-app scheduled tasks.
+#
+# Worker name is kept as `spaces-dispatch` because the CF dashboard routes
+# (*.app.space/*, *.spaces.site/*, and the custom-domain catch-all) already
+# point at that name. Renaming would require re-pointing every route.
+#
+# Routes (set up in the Cloudflare dashboard, not here):
+#    app.space/*    → this worker (landing)
+#   *.app.space/*   → this worker
+#    spaces.site/*  → this worker (legacy)
+#   *.spaces.site/* → this worker (legacy)
+#   */*             → this worker (custom domains, matched via HOSTNAME_MAP)
+
+name = "spaces-dispatch"
+main = "src/worker.ts"
+compatibility_date = "2025-05-08"
+compatibility_flags = ["nodejs_compat"]
+
+# Workers for Platforms dispatch namespace binding
+[[dispatch_namespaces]]
+binding = "USER_APPS"
+namespace = "spaces-apps"
+
+# KV: custom hostname → app-name mappings (for vanity domains)
+[[kv_namespaces]]
+binding = "HOSTNAME_MAP"
+id = "5c57d809011d4574b8fa4f4e7b03ef9a"
+
+# KV: per-app cron task registry. Shared with deploy-worker, which writes
+# entries keyed `cron:{appName}` at deploy time. Miyagi's deployer wrote
+# bare `{appName}` keys; the dispatcher accepts both for compatibility.
+[[kv_namespaces]]
+binding = "CRON_TASKS"
+id = "a13702840633449ab9a5e5371491ac18"
+
+# Cloudflare Browser Rendering — used by /internal/og-screenshot to
+# render deployed pages at 1200×630 for OG-image generation.
+[browser]
+binding = "BROWSER"
+
+# R2 bucket where OG screenshots land at og-images/{appName}/og-image.png.
+# Bucket name kept as `miyagi-user-files` for compatibility with existing
+# objects uploaded by the prior (Miyagi-sourced) deployment of this worker.
+[[r2_buckets]]
+binding = "OG_IMAGES"
+bucket_name = "miyagi-user-files"
+
+# Analytics Engine dataset for per-request traffic events (country, method,
+# UA, referrer, hashed IP, response status). Dataset name kept as
+# `MINIAPP_TRAFFIC` for compatibility with any existing queries.
+[[analytics_engine_datasets]]
+binding = "MINIAPP_ANALYTICS"
+dataset = "MINIAPP_TRAFFIC"
+
+# Cron: runs every minute. Worker reads CRON_TASKS KV and triggers any
+# per-app tasks whose interval / cron expression has elapsed.
+[triggers]
+crons = ["* * * * *"]
+
+# Workers Logs — per-invocation structured logs in the CF dashboard.
+[observability.logs]
+enabled = true
+
+[dev]
+port = 8793
+inspector_port = 9234
+
+# Secrets (set via `wrangler secret put`):
+#   INTERNAL_STORAGE_HMAC_SECRET — shared HMAC for cron-trigger signing
