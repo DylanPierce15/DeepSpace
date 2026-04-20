@@ -7,7 +7,7 @@
 import type { ConnectionAttachment } from '../../shared/protocol/types'
 import type { RecordResult, PutPayload, DeletePayload } from '../../shared/types'
 import type { ToolResult } from '../utils/tools'
-import { MSG } from '../../shared/protocol/constants'
+import { serverBuild } from '../../shared/protocol/messages'
 import {
   type CollectionSchema,
   type ResolvedColumn,
@@ -62,7 +62,7 @@ function notifyTeamMembershipChange(
     const attachment = ws.deserializeAttachment() as ConnectionAttachment | null
     if (!attachment) continue
     if (attachment.userId === affectedUserId) {
-      ctx.send(ws, { type: MSG.RESUBSCRIBE, payload: {} })
+      ctx.send(ws, serverBuild.resubscribe())
     }
   }
 }
@@ -154,20 +154,11 @@ export function handlePut(
     ctx.send(
       ws,
       result.success
-        ? {
-            type: MSG.ACK,
-            payload: { requestId, success: true, recordId },
-          }
-        : {
-            type: MSG.ACK,
-            payload: { requestId, success: false, error: result.error ?? 'unknown error' },
-          },
+        ? serverBuild.ackSuccess(requestId, recordId)
+        : serverBuild.ackFailure(requestId, result.error),
     )
   } else if (!result.success) {
-    ctx.send(ws, {
-      type: MSG.ERROR,
-      payload: { error: result.error ?? 'unknown error' },
-    })
+    ctx.send(ws, serverBuild.error(result.error))
   }
 }
 
@@ -188,17 +179,11 @@ export function handleDelete(
     ctx.send(
       ws,
       result.success
-        ? { type: MSG.ACK, payload: { requestId, success: true } }
-        : {
-            type: MSG.ACK,
-            payload: { requestId, success: false, error: result.error ?? 'unknown error' },
-          },
+        ? serverBuild.ackSuccess(requestId)
+        : serverBuild.ackFailure(requestId, result.error),
     )
   } else if (!result.success) {
-    ctx.send(ws, {
-      type: MSG.ERROR,
-      payload: { error: result.error ?? 'unknown error' },
-    })
+    ctx.send(ws, serverBuild.error(result.error))
   }
 }
 

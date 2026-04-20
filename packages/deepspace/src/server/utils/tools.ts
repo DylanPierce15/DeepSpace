@@ -16,11 +16,13 @@ export interface ToolSchema {
   }>
 }
 
-export interface ToolResult {
-  success: boolean
-  data?: unknown
-  error?: string
-}
+/**
+ * Discriminated union so callers don't have to guard on `error` being
+ * defined when `success` is false — TS enforces the invariant.
+ */
+export type ToolResult =
+  | { success: true; data?: unknown }
+  | { success: false; error: string }
 
 /**
  * Built-in tool definitions for storage, record, schema, user, and backup operations
