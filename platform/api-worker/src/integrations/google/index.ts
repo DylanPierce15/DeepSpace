@@ -186,13 +186,32 @@ async function handleGoogleResponse(
     // so the client can prompt for the missing scope — without this, a
     // user connected to e.g. Drive only would get an opaque 502 when
     // trying to list calendar events.
-    if (
-      oauthFallback &&
-      response.status === 403 &&
-      (errorText.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT') ||
-        errorText.includes('insufficientPermissions'))
-    ) {
-      return oauthRequired(oauthFallback.env, oauthFallback.scopes, oauthFallback.userId)
+    if (oauthFallback) {
+      // 403: stored token doesn't have the required scope (incremental-auth
+      // gap). Translate to requiresOAuth so the client prompts for the
+      // missing scope.
+      if (
+        response.status === 403 &&
+        (errorText.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT') ||
+          errorText.includes('insufficientPermissions'))
+      ) {
+        return oauthRequired(oauthFallback.env, oauthFallback.scopes, oauthFallback.userId)
+      }
+      // 401: stored token is invalid — typically because the user revoked
+      // app access in their Google account, the refresh token expired
+      // (refresh tokens for unverified apps die after 7 days of disuse),
+      // or the stored expiresAt drifted. Same UX answer: tell the client
+      // to re-auth instead of returning an opaque error. The stale row
+      // stays for now (next successful callback will overwrite it via
+      // upsertOAuthTokens), so disconnect-then-reconnect cleanly recovers.
+      if (
+        response.status === 401 &&
+        (errorText.includes('UNAUTHENTICATED') ||
+          errorText.includes('Invalid Credentials') ||
+          errorText.includes('authError'))
+      ) {
+        return oauthRequired(oauthFallback.env, oauthFallback.scopes, oauthFallback.userId)
+      }
     }
     throw new Error(`Google API error ${response.status}: ${errorText}`)
   }
