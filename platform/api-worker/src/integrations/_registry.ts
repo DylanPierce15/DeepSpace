@@ -5,7 +5,7 @@
  */
 
 import type { z } from 'zod'
-import type { IntegrationHandler, BillingConfig } from './_types'
+import type { IntegrationHandler, BillingConfig, OAuthProvider } from './_types'
 import { endpoints as amazon } from './amazon'
 import { endpoints as anthropic } from './anthropic'
 import { endpoints as cloudconvert } from './cloudconvert'
@@ -17,7 +17,7 @@ import { endpoints as firecrawl } from './firecrawl'
 import { endpoints as freepik } from './freepik'
 import { endpoints as gemini } from './gemini'
 import { endpoints as github } from './github'
-import { endpoints as google } from './google'
+import { endpoints as google, oauthProvider as googleOAuth } from './google'
 import { endpoints as instagram } from './instagram'
 import { endpoints as latex } from './latex'
 import { endpoints as linkedin } from './linkedin'
@@ -75,6 +75,11 @@ const ALL_ENDPOINTS = {
 export const HANDLER_REGISTRY = new Map<string, IntegrationHandler>()
 export const BILLING_CONFIGS: Record<string, BillingConfig & { integrationName: string; endpoint: string }> = {}
 export const SCHEMA_REGISTRY = new Map<string, z.ZodType>()
+
+/** OAuth providers — populated for integrations that export `oauthProvider`. */
+export const OAUTH_PROVIDERS = new Map<string, OAuthProvider>([
+  ['google', googleOAuth],
+])
 
 for (const [key, def] of Object.entries(ALL_ENDPOINTS)) {
   const [integrationName, endpoint] = key.split('/')

@@ -236,6 +236,31 @@ export const workspaceFormResponsesSchema: CollectionSchema = {
 }
 
 // ============================================================================
+// Email Handles (cross-app user identity)
+// ============================================================================
+
+/**
+ * Maps DeepSpace users to their claimed @app.space email handles.
+ * Shared across all apps so any app can look up a user's email address.
+ * All handles are under the @app.space domain.
+ */
+export const workspaceEmailHandlesSchema: CollectionSchema = {
+  name: 'email_handles',
+  columns: [
+    { name: 'UserId', storage: 'text', interpretation: 'plain' },
+    { name: 'Handle', storage: 'text', interpretation: 'plain' },
+    { name: 'EmailAddress', storage: 'text', interpretation: { kind: 'email' } },
+    { name: 'Status', storage: 'text', interpretation: { kind: 'select', options: ['active', 'disabled'] } },
+  ],
+  uniqueOn: ['Handle'],
+  ownerField: 'UserId',
+  permissions: {
+    '*': { read: true, create: true, update: 'own', delete: false },
+    admin: { read: true, create: true, update: true, delete: true },
+  },
+}
+
+// ============================================================================
 // Export
 // ============================================================================
 
@@ -250,4 +275,5 @@ export const WORKSPACE_SCHEMAS: CollectionSchema[] = [
   workspaceAccountsSchema,
   workspaceContentSharesSchema,
   workspaceFormResponsesSchema,
+  workspaceEmailHandlesSchema,
 ]

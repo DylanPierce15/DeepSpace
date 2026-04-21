@@ -59,6 +59,23 @@ export const stripeInvoices = sqliteTable('stripe_invoices', {
 })
 
 // ============================================================================
+// OAuth Tokens (Google, Slack, etc.)
+// ============================================================================
+
+export const oauthTokens = sqliteTable('oauth_tokens', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').notNull(),
+  provider: text('provider').notNull(), // 'google', 'slack', etc.
+  accessToken: text('access_token').notNull(),
+  refreshToken: text('refresh_token'),
+  tokenType: text('token_type').default('Bearer'),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }), // when access_token expires
+  scopes: text('scopes'), // space-separated granted scopes
+  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`).notNull(),
+})
+
+// ============================================================================
 // Inferred types
 // ============================================================================
 
@@ -67,3 +84,5 @@ export type NewUserProfile = typeof userProfiles.$inferInsert
 export type IntegrationUsageRow = typeof integrationUsage.$inferSelect
 export type NewIntegrationUsage = typeof integrationUsage.$inferInsert
 export type StripeInvoice = typeof stripeInvoices.$inferSelect
+export type OAuthToken = typeof oauthTokens.$inferSelect
+export type NewOAuthToken = typeof oauthTokens.$inferInsert

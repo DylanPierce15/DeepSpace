@@ -83,7 +83,7 @@ app.use(
   '*',
   cors({
     origin: ['https://deep.space', 'https://*.deep.space', 'https://*.app.space', 'http://localhost:*'],
-    allowMethods: ['GET', 'POST', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
     maxAge: 86400,
   }),
@@ -114,6 +114,7 @@ app.post('/_migrate', async (c) => {
     "CREATE TABLE IF NOT EXISTS user_profiles (id TEXT PRIMARY KEY, email TEXT, name TEXT, image TEXT, stripe_customer_id TEXT, stripe_subscription_id TEXT, subscription_status TEXT DEFAULT 'free', subscription_tier TEXT DEFAULT 'free', subscription_current_period_end INTEGER, subscription_credits REAL DEFAULT 0, purchased_credits REAL DEFAULT 0, bonus_credits_remaining REAL DEFAULT 0, bonus_credits_expires_at INTEGER, created_at INTEGER NOT NULL DEFAULT (unixepoch()), updated_at INTEGER NOT NULL DEFAULT (unixepoch()))",
     "CREATE TABLE IF NOT EXISTS integration_usage (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, integration_name TEXT NOT NULL, endpoint TEXT NOT NULL, billing_units TEXT NOT NULL, unit_cost TEXT NOT NULL, total_cost TEXT NOT NULL, currency TEXT DEFAULT 'USD', status TEXT NOT NULL DEFAULT 'pending', external_request_id TEXT, created_at INTEGER NOT NULL DEFAULT (unixepoch()), completed_at INTEGER)",
     "CREATE TABLE IF NOT EXISTS stripe_invoices (id TEXT PRIMARY KEY, user_id TEXT, stripe_customer_id TEXT, amount_due INTEGER, amount_paid INTEGER, status TEXT DEFAULT 'void', credits_purchased REAL, updated_at INTEGER DEFAULT (unixepoch()))",
+    "CREATE TABLE IF NOT EXISTS oauth_tokens (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, provider TEXT NOT NULL, access_token TEXT NOT NULL, refresh_token TEXT, token_type TEXT DEFAULT 'Bearer', expires_at INTEGER, scopes TEXT, created_at INTEGER NOT NULL DEFAULT (unixepoch()), updated_at INTEGER NOT NULL DEFAULT (unixepoch()), UNIQUE(user_id, provider))",
   ]
   for (const sql of migrations) {
     await db.exec(sql)
