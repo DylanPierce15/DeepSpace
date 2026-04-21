@@ -2,14 +2,18 @@
  * Google integration handlers — Gmail, Calendar, Drive, Contacts.
  * Uses raw fetch to Google REST APIs (no googleapis SDK).
  *
- * OAuth pattern: handlers accept `body.accessToken`. If missing they return
- * `{ requiresOAuth: true, scopes, authUrl }` so the client can initiate the
- * OAuth consent flow. Full token exchange / storage / refresh will be added
- * later when the OAuth infrastructure is built.
+ * OAuth flow:
+ * 1. Client POSTs to an endpoint as the authenticated user
+ * 2. Handler looks up stored tokens in oauth_tokens; auto-refreshes if expired
+ * 3. If no stored tokens, returns { requiresOAuth: true, authUrl } with a signed state param
+ * 4. Client opens authUrl → Google consent → callback exchanges code for tokens → stores in DB
  */
 
 import { z } from 'zod'
-import type { IntegrationHandler, EndpointDefinition } from '../_types'
+import { eq, and } from 'drizzle-orm'
+import type { DrizzleD1Database } from 'drizzle-orm/d1'
+import type { IntegrationHandler, EndpointDefinition, HandlerContext, OAuthProvider } from '../_types'
+import { oauthTokens } from '../../db/schema'
 
 // ============================================================================
 // Google OAuth scopes
@@ -20,20 +24,99 @@ export const GOOGLE_SCOPES = {
   USER_EMAIL: 'https://www.googleapis.com/auth/userinfo.email',
   USER_PROFILE: 'https://www.googleapis.com/auth/userinfo.profile',
   GMAIL_SEND: 'https://www.googleapis.com/auth/gmail.send',
-  GMAIL_MODIFY: 'https://www.googleapis.com/auth/gmail.modify',
+  GMAIL_READONLY: 'https://www.googleapis.com/auth/gmail.readonly',
   CONTACTS_READONLY: 'https://www.googleapis.com/auth/contacts.readonly',
-  CALENDAR: 'https://www.googleapis.com/auth/calendar',
   CALENDAR_EVENTS: 'https://www.googleapis.com/auth/calendar.events',
   DRIVE_FILE: 'https://www.googleapis.com/auth/drive.file',
 } as const
 
+/**
+ * Per-purpose scope sets — kept narrow on purpose. Each scope set targets
+ * exactly one Google API surface so the consent screen only asks for what
+ * the user is actually trying to use. Bundling unrelated scopes (e.g.,
+ * gmail + contacts) triggers Google's "unverified app" warning earlier
+ * than necessary and makes incremental auth (`include_granted_scopes`)
+ * meaningful.
+ */
 export const SCOPE_SETS = {
-  GMAIL: [GOOGLE_SCOPES.GMAIL_SEND, GOOGLE_SCOPES.CONTACTS_READONLY],
-  GMAIL_FULL: [GOOGLE_SCOPES.GMAIL_MODIFY, GOOGLE_SCOPES.CONTACTS_READONLY],
-  CALENDAR: [GOOGLE_SCOPES.CALENDAR, GOOGLE_SCOPES.CALENDAR_EVENTS],
+  GMAIL_SEND: [GOOGLE_SCOPES.GMAIL_SEND],
+  GMAIL_READ: [GOOGLE_SCOPES.GMAIL_READONLY],
+  CALENDAR: [GOOGLE_SCOPES.CALENDAR_EVENTS],
   DRIVE: [GOOGLE_SCOPES.DRIVE_FILE],
   CONTACTS: [GOOGLE_SCOPES.CONTACTS_READONLY],
 } as const
+
+export const GOOGLE_CALLBACK_URI = 'https://deepspace-api.eudaimonicincorporated.workers.dev/api/integrations/oauth/google/callback'
+
+// ============================================================================
+// OAuth state helpers (HMAC-signed, stateless)
+// ============================================================================
+
+function base64UrlEncode(data: ArrayBuffer | Uint8Array): string {
+  const bytes = data instanceof Uint8Array ? data : new Uint8Array(data)
+  let binary = ''
+  for (const byte of bytes) binary += String.fromCharCode(byte)
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+function base64UrlDecode(str: string): Uint8Array {
+  const padded = str.replace(/-/g, '+').replace(/_/g, '/') + '=='.slice(0, (4 - (str.length % 4)) % 4)
+  const binary = atob(padded)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return bytes
+}
+
+async function hmacSign(secret: string, data: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  )
+  const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(data))
+  return base64UrlEncode(sig)
+}
+
+async function hmacVerify(secret: string, data: string, signature: string): Promise<boolean> {
+  const expected = await hmacSign(secret, data)
+  return expected === signature
+}
+
+const STATE_TTL_MS = 10 * 60 * 1000 // 10 minutes
+
+export async function createOAuthState(
+  env: { GOOGLE_CLIENT_SECRET: string },
+  userId: string,
+): Promise<string> {
+  const payload = JSON.stringify({ uid: userId, ts: Date.now() })
+  const encodedPayload = base64UrlEncode(new TextEncoder().encode(payload))
+  const signature = await hmacSign(env.GOOGLE_CLIENT_SECRET, encodedPayload)
+  return `${encodedPayload}.${signature}`
+}
+
+export async function verifyOAuthState(
+  env: { GOOGLE_CLIENT_SECRET: string },
+  state: string,
+): Promise<string> {
+  const dotIndex = state.indexOf('.')
+  if (dotIndex === -1) throw new Error('Invalid state token format')
+
+  const encodedPayload = state.slice(0, dotIndex)
+  const signature = state.slice(dotIndex + 1)
+
+  const valid = await hmacVerify(env.GOOGLE_CLIENT_SECRET, encodedPayload, signature)
+  if (!valid) throw new Error('Invalid state token signature')
+
+  const payloadBytes = base64UrlDecode(encodedPayload)
+  const payload = JSON.parse(new TextDecoder().decode(payloadBytes)) as { uid: string; ts: number }
+
+  if (Date.now() - payload.ts > STATE_TTL_MS) throw new Error('State token expired')
+
+  return payload.uid
+}
 
 // ============================================================================
 // Helpers
@@ -41,12 +124,12 @@ export const SCOPE_SETS = {
 
 /**
  * Build a Google OAuth 2.0 authorization URL.
- * Used to redirect users to Google consent when no accessToken is present.
  */
 export function buildGoogleAuthUrl(
   env: { GOOGLE_CLIENT_ID: string },
   scopes: readonly string[],
-  redirectUri = 'https://api.deep.space/api/integrations/google-callback',
+  state?: string,
+  redirectUri = GOOGLE_CALLBACK_URI,
 ): string {
   const allScopes = [
     GOOGLE_SCOPES.OPENID,
@@ -63,20 +146,24 @@ export function buildGoogleAuthUrl(
     prompt: 'consent',
     include_granted_scopes: 'true',
   })
+  if (state) params.set('state', state)
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
 }
 
 /**
  * Return a standard requiresOAuth response for a given set of scopes.
  */
-function oauthRequired(env: { GOOGLE_CLIENT_ID: string }, scopes: readonly string[]) {
+async function oauthRequired(
+  env: { GOOGLE_CLIENT_ID: string; GOOGLE_CLIENT_SECRET: string },
+  scopes: readonly string[],
+  userId: string,
+) {
+  const state = await createOAuthState(env, userId)
   return {
     requiresOAuth: true,
     provider: 'google',
     scopes: [...scopes],
-    authUrl: env.GOOGLE_CLIENT_ID
-      ? buildGoogleAuthUrl(env, scopes)
-      : undefined,
+    authUrl: buildGoogleAuthUrl(env, scopes, state),
   }
 }
 
@@ -84,12 +171,219 @@ function bearerHeaders(accessToken: string) {
   return { Authorization: `Bearer ${accessToken}` }
 }
 
-async function handleGoogleResponse(response: Response): Promise<unknown> {
+async function handleGoogleResponse(
+  response: Response,
+  oauthFallback?: {
+    env: { GOOGLE_CLIENT_ID: string; GOOGLE_CLIENT_SECRET: string }
+    scopes: readonly string[]
+    userId: string
+  },
+): Promise<unknown> {
   if (!response.ok) {
     const errorText = await response.text()
+    // Stored token exists but lacks the scope this endpoint needs (user
+    // granted other scopes but not this one). Translate to requiresOAuth
+    // so the client can prompt for the missing scope — without this, a
+    // user connected to e.g. Drive only would get an opaque 502 when
+    // trying to list calendar events.
+    if (
+      oauthFallback &&
+      response.status === 403 &&
+      (errorText.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT') ||
+        errorText.includes('insufficientPermissions'))
+    ) {
+      return oauthRequired(oauthFallback.env, oauthFallback.scopes, oauthFallback.userId)
+    }
     throw new Error(`Google API error ${response.status}: ${errorText}`)
   }
   return response.json()
+}
+
+// ============================================================================
+// Token storage & refresh
+// ============================================================================
+
+export async function getStoredGoogleToken(
+  db: DrizzleD1Database,
+  userId: string,
+): Promise<{ accessToken: string; refreshToken: string | null; expiresAt: Date | null; scopes: string | null } | null> {
+  const [row] = await db
+    .select()
+    .from(oauthTokens)
+    .where(and(eq(oauthTokens.userId, userId), eq(oauthTokens.provider, 'google')))
+    .limit(1)
+  if (!row) return null
+  return {
+    accessToken: row.accessToken,
+    refreshToken: row.refreshToken,
+    expiresAt: row.expiresAt,
+    scopes: row.scopes,
+  }
+}
+
+export async function refreshGoogleAccessToken(
+  env: { GOOGLE_CLIENT_ID: string; GOOGLE_CLIENT_SECRET: string },
+  db: DrizzleD1Database,
+  userId: string,
+  refreshToken: string,
+): Promise<string> {
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: env.GOOGLE_CLIENT_ID,
+      client_secret: env.GOOGLE_CLIENT_SECRET,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    }),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Token refresh failed: ${errorText}`)
+  }
+
+  const tokens = (await response.json()) as {
+    access_token: string
+    expires_in: number
+    token_type: string
+  }
+
+  const expiresAt = new Date(Date.now() + tokens.expires_in * 1000)
+
+  await db
+    .update(oauthTokens)
+    .set({
+      accessToken: tokens.access_token,
+      expiresAt,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(oauthTokens.userId, userId), eq(oauthTokens.provider, 'google')))
+
+  return tokens.access_token
+}
+
+/**
+ * Resolve a valid Google access token for a user from stored tokens.
+ * Returns the token string, or null if the user hasn't connected Google.
+ */
+async function resolveAccessToken(
+  env: { GOOGLE_CLIENT_ID: string; GOOGLE_CLIENT_SECRET: string },
+  ctx: HandlerContext,
+): Promise<string | null> {
+  const stored = await getStoredGoogleToken(ctx.db, ctx.userId)
+  if (!stored) return null
+
+  // Refresh if expired (with 60s buffer)
+  const isExpired = stored.expiresAt && stored.expiresAt.getTime() < Date.now() + 60_000
+  if (isExpired && stored.refreshToken) {
+    return refreshGoogleAccessToken(env, ctx.db, ctx.userId, stored.refreshToken)
+  }
+
+  return stored.accessToken
+}
+
+// ============================================================================
+// Token exchange (used by callback route)
+// ============================================================================
+
+export async function exchangeCodeForTokens(
+  env: { GOOGLE_CLIENT_ID: string; GOOGLE_CLIENT_SECRET: string },
+  code: string,
+  redirectUri = GOOGLE_CALLBACK_URI,
+): Promise<{
+  access_token: string
+  refresh_token?: string
+  expires_in: number
+  scope: string
+  token_type: string
+}> {
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      code,
+      client_id: env.GOOGLE_CLIENT_ID,
+      client_secret: env.GOOGLE_CLIENT_SECRET,
+      redirect_uri: redirectUri,
+      grant_type: 'authorization_code',
+    }),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Token exchange failed: ${errorText}`)
+  }
+
+  return response.json() as Promise<{
+    access_token: string
+    refresh_token?: string
+    expires_in: number
+    scope: string
+    token_type: string
+  }>
+}
+
+/** Union two space-separated scope strings, preserving order, no duplicates. */
+function mergeScopes(prior: string | null | undefined, next: string | null | undefined): string {
+  const set = new Set<string>()
+  for (const s of (prior ?? '').split(/\s+/).filter(Boolean)) set.add(s)
+  for (const s of (next ?? '').split(/\s+/).filter(Boolean)) set.add(s)
+  return Array.from(set).join(' ')
+}
+
+export async function upsertOAuthTokens(
+  db: DrizzleD1Database,
+  userId: string,
+  provider: string,
+  tokens: {
+    access_token: string
+    refresh_token?: string
+    expires_in: number
+    scope: string
+    token_type: string
+  },
+): Promise<void> {
+  const now = new Date()
+  const expiresAt = new Date(Date.now() + tokens.expires_in * 1000)
+
+  // Look up the existing row so we can union scopes. We can't trust Google's
+  // response.scope to be cumulative across incremental-auth grants — different
+  // tenants/clients have observed it returning only the just-granted scopes.
+  // If we naively overwrite, granting calendar after drive flips drive: false
+  // in /status even though the actual access_token (with include_granted_scopes)
+  // still has both. Defensive union here keeps the status truthful.
+  const [existing] = await db
+    .select({ id: oauthTokens.id, scopes: oauthTokens.scopes })
+    .from(oauthTokens)
+    .where(and(eq(oauthTokens.userId, userId), eq(oauthTokens.provider, provider)))
+    .limit(1)
+
+  if (existing) {
+    await db
+      .update(oauthTokens)
+      .set({
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token ?? undefined,
+        tokenType: tokens.token_type,
+        expiresAt,
+        scopes: mergeScopes(existing.scopes, tokens.scope),
+        updatedAt: now,
+      })
+      .where(eq(oauthTokens.id, existing.id))
+  } else {
+    await db.insert(oauthTokens).values({
+      userId,
+      provider,
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token ?? null,
+      tokenType: tokens.token_type,
+      expiresAt,
+      scopes: tokens.scope,
+      createdAt: now,
+      updatedAt: now,
+    })
+  }
 }
 
 // ============================================================================
@@ -134,9 +428,9 @@ function createRawEmail(
   return btoa(raw).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-const gmailSend: IntegrationHandler = async (env, body) => {
-  const accessToken = body.accessToken as string | undefined
-  if (!accessToken) return oauthRequired(env, SCOPE_SETS.GMAIL_FULL)
+const gmailSend: IntegrationHandler = async (env, body, ctx) => {
+  const accessToken = await resolveAccessToken(env, ctx)
+  if (!accessToken) return oauthRequired(env, SCOPE_SETS.GMAIL_SEND, ctx.userId)
 
   const to = body.to as string
   const subject = body.subject as string
@@ -155,16 +449,16 @@ const gmailSend: IntegrationHandler = async (env, body) => {
       body: JSON.stringify(requestBody),
     },
   )
-  return handleGoogleResponse(response)
+  return handleGoogleResponse(response, { env, scopes: SCOPE_SETS.GMAIL_SEND, userId: ctx.userId })
 }
 
 // ============================================================================
 // Gmail — list
 // ============================================================================
 
-const gmailList: IntegrationHandler = async (env, body) => {
-  const accessToken = body.accessToken as string | undefined
-  if (!accessToken) return oauthRequired(env, SCOPE_SETS.GMAIL_FULL)
+const gmailList: IntegrationHandler = async (env, body, ctx) => {
+  const accessToken = await resolveAccessToken(env, ctx)
+  if (!accessToken) return oauthRequired(env, SCOPE_SETS.GMAIL_READ, ctx.userId)
 
   const params = new URLSearchParams()
   if (body.maxResults) params.set('maxResults', String(body.maxResults))
@@ -179,16 +473,16 @@ const gmailList: IntegrationHandler = async (env, body) => {
 
   const url = `https://gmail.googleapis.com/gmail/v1/users/me/messages?${params.toString()}`
   const response = await fetch(url, { headers: bearerHeaders(accessToken) })
-  return handleGoogleResponse(response)
+  return handleGoogleResponse(response, { env, scopes: SCOPE_SETS.GMAIL_READ, userId: ctx.userId })
 }
 
 // ============================================================================
 // Gmail — get single message
 // ============================================================================
 
-const gmailGet: IntegrationHandler = async (env, body) => {
-  const accessToken = body.accessToken as string | undefined
-  if (!accessToken) return oauthRequired(env, SCOPE_SETS.GMAIL_FULL)
+const gmailGet: IntegrationHandler = async (env, body, ctx) => {
+  const accessToken = await resolveAccessToken(env, ctx)
+  if (!accessToken) return oauthRequired(env, SCOPE_SETS.GMAIL_READ, ctx.userId)
 
   const messageId = body.messageId || body.id
   if (!messageId) throw new Error('messageId is required')
@@ -196,16 +490,16 @@ const gmailGet: IntegrationHandler = async (env, body) => {
   const format = body.format || 'full'
   const url = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=${format}`
   const response = await fetch(url, { headers: bearerHeaders(accessToken) })
-  return handleGoogleResponse(response)
+  return handleGoogleResponse(response, { env, scopes: SCOPE_SETS.GMAIL_READ, userId: ctx.userId })
 }
 
 // ============================================================================
 // Gmail — search (thin wrapper around list with q param)
 // ============================================================================
 
-const gmailSearch: IntegrationHandler = async (env, body) => {
-  const accessToken = body.accessToken as string | undefined
-  if (!accessToken) return oauthRequired(env, SCOPE_SETS.GMAIL_FULL)
+const gmailSearch: IntegrationHandler = async (env, body, ctx) => {
+  const accessToken = await resolveAccessToken(env, ctx)
+  if (!accessToken) return oauthRequired(env, SCOPE_SETS.GMAIL_READ, ctx.userId)
 
   const query = body.query || body.q
   if (!query) throw new Error('query is required')
@@ -218,16 +512,16 @@ const gmailSearch: IntegrationHandler = async (env, body) => {
 
   const url = `https://gmail.googleapis.com/gmail/v1/users/me/messages?${params.toString()}`
   const response = await fetch(url, { headers: bearerHeaders(accessToken) })
-  return handleGoogleResponse(response)
+  return handleGoogleResponse(response, { env, scopes: SCOPE_SETS.GMAIL_READ, userId: ctx.userId })
 }
 
 // ============================================================================
 // Calendar — list events
 // ============================================================================
 
-const calendarListEvents: IntegrationHandler = async (env, body) => {
-  const accessToken = body.accessToken as string | undefined
-  if (!accessToken) return oauthRequired(env, SCOPE_SETS.CALENDAR)
+const calendarListEvents: IntegrationHandler = async (env, body, ctx) => {
+  const accessToken = await resolveAccessToken(env, ctx)
+  if (!accessToken) return oauthRequired(env, SCOPE_SETS.CALENDAR, ctx.userId)
 
   const calendarId = encodeURIComponent(String(body.calendarId || 'primary'))
   const params = new URLSearchParams({
@@ -241,16 +535,21 @@ const calendarListEvents: IntegrationHandler = async (env, body) => {
 
   const url = `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?${params.toString()}`
   const response = await fetch(url, { headers: bearerHeaders(accessToken) })
-  return handleGoogleResponse(response)
+  const result = await handleGoogleResponse(response, { env, scopes: SCOPE_SETS.CALENDAR, userId: ctx.userId }) as Record<string, unknown>
+  // Normalize: Google returns `items`, clients expect `events`
+  if (Array.isArray(result.items)) {
+    result.events = result.items
+  }
+  return result
 }
 
 // ============================================================================
 // Calendar — create event
 // ============================================================================
 
-const calendarCreateEvent: IntegrationHandler = async (env, body) => {
-  const accessToken = body.accessToken as string | undefined
-  if (!accessToken) return oauthRequired(env, SCOPE_SETS.CALENDAR)
+const calendarCreateEvent: IntegrationHandler = async (env, body, ctx) => {
+  const accessToken = await resolveAccessToken(env, ctx)
+  if (!accessToken) return oauthRequired(env, SCOPE_SETS.CALENDAR, ctx.userId)
 
   const calendarId = encodeURIComponent(String(body.calendarId || 'primary'))
   const title = body.title || body.summary
@@ -293,16 +592,16 @@ const calendarCreateEvent: IntegrationHandler = async (env, body) => {
     headers: { ...bearerHeaders(accessToken), 'Content-Type': 'application/json' },
     body: JSON.stringify(resource),
   })
-  return handleGoogleResponse(response)
+  return handleGoogleResponse(response, { env, scopes: SCOPE_SETS.CALENDAR, userId: ctx.userId })
 }
 
 // ============================================================================
 // Calendar — delete event
 // ============================================================================
 
-const calendarDeleteEvent: IntegrationHandler = async (env, body) => {
-  const accessToken = body.accessToken as string | undefined
-  if (!accessToken) return oauthRequired(env, SCOPE_SETS.CALENDAR)
+const calendarDeleteEvent: IntegrationHandler = async (env, body, ctx) => {
+  const accessToken = await resolveAccessToken(env, ctx)
+  if (!accessToken) return oauthRequired(env, SCOPE_SETS.CALENDAR, ctx.userId)
 
   const calendarId = encodeURIComponent(String(body.calendarId || 'primary'))
   const eventId = body.eventId
@@ -315,16 +614,16 @@ const calendarDeleteEvent: IntegrationHandler = async (env, body) => {
   })
 
   if (response.status === 204) return { deleted: true, eventId }
-  return handleGoogleResponse(response)
+  return handleGoogleResponse(response, { env, scopes: SCOPE_SETS.CALENDAR, userId: ctx.userId })
 }
 
 // ============================================================================
 // Drive — list files
 // ============================================================================
 
-const driveList: IntegrationHandler = async (env, body) => {
-  const accessToken = body.accessToken as string | undefined
-  if (!accessToken) return oauthRequired(env, SCOPE_SETS.DRIVE)
+const driveList: IntegrationHandler = async (env, body, ctx) => {
+  const accessToken = await resolveAccessToken(env, ctx)
+  if (!accessToken) return oauthRequired(env, SCOPE_SETS.DRIVE, ctx.userId)
 
   const params = new URLSearchParams({
     pageSize: String(body.pageSize || 50),
@@ -335,16 +634,16 @@ const driveList: IntegrationHandler = async (env, body) => {
 
   const url = `https://www.googleapis.com/drive/v3/files?${params.toString()}`
   const response = await fetch(url, { headers: bearerHeaders(accessToken) })
-  return handleGoogleResponse(response)
+  return handleGoogleResponse(response, { env, scopes: SCOPE_SETS.DRIVE, userId: ctx.userId })
 }
 
 // ============================================================================
 // Drive — get file metadata
 // ============================================================================
 
-const driveGet: IntegrationHandler = async (env, body) => {
-  const accessToken = body.accessToken as string | undefined
-  if (!accessToken) return oauthRequired(env, SCOPE_SETS.DRIVE)
+const driveGet: IntegrationHandler = async (env, body, ctx) => {
+  const accessToken = await resolveAccessToken(env, ctx)
+  if (!accessToken) return oauthRequired(env, SCOPE_SETS.DRIVE, ctx.userId)
 
   const fileId = body.fileId
   if (!fileId) throw new Error('fileId is required')
@@ -352,16 +651,16 @@ const driveGet: IntegrationHandler = async (env, body) => {
   const fields = body.fields || 'id,name,mimeType,size,createdTime,modifiedTime,webViewLink'
   const url = `https://www.googleapis.com/drive/v3/files/${fileId}?fields=${encodeURIComponent(String(fields))}`
   const response = await fetch(url, { headers: bearerHeaders(accessToken) })
-  return handleGoogleResponse(response)
+  return handleGoogleResponse(response, { env, scopes: SCOPE_SETS.DRIVE, userId: ctx.userId })
 }
 
 // ============================================================================
 // Contacts — list
 // ============================================================================
 
-const contactsList: IntegrationHandler = async (env, body) => {
-  const accessToken = body.accessToken as string | undefined
-  if (!accessToken) return oauthRequired(env, SCOPE_SETS.CONTACTS)
+const contactsList: IntegrationHandler = async (env, body, ctx) => {
+  const accessToken = await resolveAccessToken(env, ctx)
+  if (!accessToken) return oauthRequired(env, SCOPE_SETS.CONTACTS, ctx.userId)
 
   const pageSize = body.pageSize || 1000
   const personFields = body.personFields || 'names,emailAddresses,phoneNumbers,organizations,occupations,biographies'
@@ -373,7 +672,7 @@ const contactsList: IntegrationHandler = async (env, body) => {
 
   const url = `https://people.googleapis.com/v1/people/me/connections?${params.toString()}`
   const response = await fetch(url, { headers: bearerHeaders(accessToken) })
-  return handleGoogleResponse(response)
+  return handleGoogleResponse(response, { env, scopes: SCOPE_SETS.CONTACTS, userId: ctx.userId })
 }
 
 // ============================================================================
@@ -387,7 +686,6 @@ const GOOGLE_BILLING = { model: 'per_request' as const, baseCost: 0.01, currency
 // ============================================================================
 
 const gmailSendSchema = z.object({
-  accessToken: z.string().optional(),
   to: z.string(),
   subject: z.string(),
   content: z.string(),
@@ -396,7 +694,6 @@ const gmailSendSchema = z.object({
 })
 
 const gmailListSchema = z.object({
-  accessToken: z.string().optional(),
   maxResults: z.number().min(1).optional(),
   pageToken: z.string().optional(),
   labelIds: z.union([z.string(), z.array(z.string())]).optional(),
@@ -404,14 +701,12 @@ const gmailListSchema = z.object({
 })
 
 const gmailGetSchema = z.object({
-  accessToken: z.string().optional(),
   messageId: z.string().optional(),
   id: z.string().optional(),
   format: z.string().default('full'),
 })
 
 const gmailSearchSchema = z.object({
-  accessToken: z.string().optional(),
   query: z.string().optional(),
   q: z.string().optional(),
   maxResults: z.number().min(1).default(20),
@@ -419,7 +714,6 @@ const gmailSearchSchema = z.object({
 })
 
 const calendarListEventsSchema = z.object({
-  accessToken: z.string().optional(),
   calendarId: z.string().default('primary'),
   timeMin: z.string().optional(),
   timeMax: z.string().optional(),
@@ -428,7 +722,6 @@ const calendarListEventsSchema = z.object({
 })
 
 const calendarCreateEventSchema = z.object({
-  accessToken: z.string().optional(),
   calendarId: z.string().default('primary'),
   title: z.string().optional(),
   summary: z.string().optional(),
@@ -442,30 +735,168 @@ const calendarCreateEventSchema = z.object({
 })
 
 const calendarDeleteEventSchema = z.object({
-  accessToken: z.string().optional(),
   calendarId: z.string().default('primary'),
   eventId: z.string(),
 })
 
 const driveListSchema = z.object({
-  accessToken: z.string().optional(),
   pageSize: z.number().min(1).max(1000).default(50),
   q: z.string().optional(),
   pageToken: z.string().optional(),
 })
 
 const driveGetSchema = z.object({
-  accessToken: z.string().optional(),
   fileId: z.string(),
   fields: z.string().optional(),
 })
 
 const contactsListSchema = z.object({
-  accessToken: z.string().optional(),
   pageSize: z.number().min(1).max(2000).default(1000),
   personFields: z.string().optional(),
   pageToken: z.string().optional(),
 })
+
+// ============================================================================
+// OAuth callback, status, disconnect — used by route layer
+// ============================================================================
+
+function htmlPage(title: string, body: string) {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
+<style>body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f8f9fa}
+.card{text-align:center;padding:2rem;border-radius:12px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.1);max-width:400px}
+h1{margin:0 0 .5rem;font-size:1.5rem}p{color:#666;margin:.5rem 0}</style>
+</head><body><div class="card">${body}</div></body></html>`
+}
+
+/**
+ * Handle the Google OAuth callback (browser redirect from Google).
+ * Verifies state, exchanges code for tokens, stores them, returns HTML.
+ */
+export async function handleGoogleCallback(
+  env: { GOOGLE_CLIENT_ID: string; GOOGLE_CLIENT_SECRET: string },
+  db: DrizzleD1Database,
+  code: string | undefined,
+  state: string | undefined,
+): Promise<{ html: string; status: number }> {
+  if (!code || !state) {
+    return {
+      html: htmlPage('Connection Failed', '<h1>Connection Failed</h1><p>Missing authorization code or state token.</p><p>Please close this tab and try again.</p>'),
+      status: 400,
+    }
+  }
+
+  let userId: string
+  try {
+    userId = await verifyOAuthState(env, state)
+  } catch (err) {
+    console.error('[google-callback] State verification failed:', err)
+    return {
+      html: htmlPage('Connection Failed', '<h1>Connection Failed</h1><p>Invalid or expired authorization. Please close this tab and try again.</p>'),
+      status: 400,
+    }
+  }
+
+  try {
+    const tokens = await exchangeCodeForTokens(env, code, GOOGLE_CALLBACK_URI)
+    await upsertOAuthTokens(db, userId, 'google', tokens)
+    return {
+      html: htmlPage('Connected!', `<h1>Google Connected!</h1><p>You can close this tab now.</p>
+<script>setTimeout(function(){try{window.close()}catch(e){}},1500)</script>`),
+      status: 200,
+    }
+  } catch (err) {
+    console.error('[google-callback] Token exchange failed:', err)
+    return {
+      html: htmlPage('Connection Failed', '<h1>Connection Failed</h1><p>Could not complete Google authorization. Please close this tab and try again.</p>'),
+      status: 500,
+    }
+  }
+}
+
+/**
+ * Return integration connection status for a user.
+ */
+export async function getIntegrationStatus(
+  db: DrizzleD1Database,
+  userId: string,
+): Promise<Record<string, unknown>> {
+  const [googleRow] = await db
+    .select({ scopes: oauthTokens.scopes })
+    .from(oauthTokens)
+    .where(and(eq(oauthTokens.userId, userId), eq(oauthTokens.provider, 'google')))
+    .limit(1)
+
+  // Detect granted capabilities by checking the stored scope string for
+  // any scope that grants the capability — direct or via a broader parent.
+  // Google's scope hierarchy means a token with `gmail.modify` can also
+  // send and read; a token with the broad `calendar` scope can also do
+  // anything `calendar.events` can. Without this, users who granted
+  // a broader scope (or who granted via an older bundled SCOPE_SET that
+  // we've since narrowed) appear "not connected" in status, even though
+  // their token works for the underlying API calls.
+  const granted = (googleRow?.scopes ?? '').split(/\s+/).filter(Boolean)
+  const has = (...scopes: string[]) => scopes.some((s) => granted.includes(s))
+  const SCOPE = {
+    gmailSend: 'https://www.googleapis.com/auth/gmail.send',
+    gmailRead: 'https://www.googleapis.com/auth/gmail.readonly',
+    gmailModify: 'https://www.googleapis.com/auth/gmail.modify',
+    gmailFull: 'https://mail.google.com/',
+    calendarEvents: 'https://www.googleapis.com/auth/calendar.events',
+    calendarFull: 'https://www.googleapis.com/auth/calendar',
+    driveFile: 'https://www.googleapis.com/auth/drive.file',
+    driveReadonly: 'https://www.googleapis.com/auth/drive.readonly',
+    driveFull: 'https://www.googleapis.com/auth/drive',
+    contactsReadonly: 'https://www.googleapis.com/auth/contacts.readonly',
+    contactsFull: 'https://www.googleapis.com/auth/contacts',
+  }
+
+  const gmailSend = has(SCOPE.gmailSend, SCOPE.gmailModify, SCOPE.gmailFull)
+  const gmailRead = has(SCOPE.gmailRead, SCOPE.gmailModify, SCOPE.gmailFull)
+  const calendar = has(SCOPE.calendarEvents, SCOPE.calendarFull)
+  const drive = has(SCOPE.driveFile, SCOPE.driveReadonly, SCOPE.driveFull)
+  const contacts = has(SCOPE.contactsReadonly, SCOPE.contactsFull)
+
+  return {
+    connected: !!googleRow,
+    // Granular per-scope flags (preferred for new clients)
+    gmailSend,
+    gmailRead,
+    calendar,
+    drive,
+    contacts,
+    // Back-compat aggregate: gmail = either send or read
+    gmail: gmailSend || gmailRead,
+  }
+}
+
+/**
+ * Disconnect Google — revoke token (best effort) and delete from DB.
+ */
+export async function disconnectGoogle(
+  db: DrizzleD1Database,
+  userId: string,
+): Promise<void> {
+  const [row] = await db
+    .select({ accessToken: oauthTokens.accessToken })
+    .from(oauthTokens)
+    .where(and(eq(oauthTokens.userId, userId), eq(oauthTokens.provider, 'google')))
+    .limit(1)
+
+  if (row) {
+    try {
+      await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(row.accessToken)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      })
+    } catch {
+      // Ignore revocation errors
+    }
+
+    await db
+      .delete(oauthTokens)
+      .where(and(eq(oauthTokens.userId, userId), eq(oauthTokens.provider, 'google')))
+  }
+}
 
 // ============================================================================
 // Exports
@@ -482,4 +913,10 @@ export const endpoints: Record<string, EndpointDefinition> = {
   'google/drive-list':             { handler: driveList,           billing: GOOGLE_BILLING, schema: driveListSchema },
   'google/drive-get':              { handler: driveGet,            billing: GOOGLE_BILLING, schema: driveGetSchema },
   'google/contacts-list':          { handler: contactsList,        billing: GOOGLE_BILLING, schema: contactsListSchema },
+}
+
+export const oauthProvider: OAuthProvider = {
+  handleCallback: handleGoogleCallback,
+  getStatus: getIntegrationStatus,
+  disconnect: disconnectGoogle,
 }

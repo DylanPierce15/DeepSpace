@@ -17,7 +17,7 @@ import {
   COST_MARKUP_MULTIPLIER,
 } from '../billing/service'
 import { getIntegrationConfig } from '../billing/configs'
-import { HANDLER_REGISTRY, BILLING_CONFIGS, SCHEMA_REGISTRY } from '../integrations/_registry'
+import { HANDLER_REGISTRY, BILLING_CONFIGS, SCHEMA_REGISTRY, OAUTH_PROVIDERS } from '../integrations/_registry'
 
 const integrations = new Hono<Env>()
 
@@ -62,6 +62,37 @@ integrations.get('/', (c) => {
   }
 
   return c.json({ integrations: catalog })
+})
+
+// ============================================================================
+// OAuth — generic provider routes (callback, status, disconnect)
+// ============================================================================
+
+// GET /oauth/:provider/callback — browser redirect from OAuth provider (no auth)
+integrations.get('/oauth/:provider/callback', async (c) => {
+  const oauth = OAUTH_PROVIDERS.get(c.req.param('provider'))
+  if (!oauth) return c.json({ error: 'Unknown OAuth provider' }, 404)
+  const result = await oauth.handleCallback(c.env, getDb(c.env), c.req.query('code'), c.req.query('state'))
+  return c.html(result.html, result.status as any)
+})
+
+// GET /status — aggregated connection status for all OAuth providers (authenticated)
+integrations.get('/status', authMiddleware, async (c) => {
+  const db = getDb(c.env)
+  const userId = c.get('userId')
+  const status: Record<string, unknown> = {}
+  for (const [name, oauth] of OAUTH_PROVIDERS) {
+    status[name] = await oauth.getStatus(db, userId)
+  }
+  return c.json(status)
+})
+
+// DELETE /oauth/:provider/disconnect — revoke and remove tokens (authenticated)
+integrations.delete('/oauth/:provider/disconnect', authMiddleware, async (c) => {
+  const oauth = OAUTH_PROVIDERS.get(c.req.param('provider'))
+  if (!oauth) return c.json({ error: 'Unknown OAuth provider' }, 404)
+  await oauth.disconnect(getDb(c.env), c.get('userId'))
+  return c.json({ success: true })
 })
 
 // POST /:name/:endpoint — authenticated, billed integration call

@@ -18,6 +18,7 @@ import {
   checkFieldPermissions,
   SYSTEM_MANAGED_COLUMNS,
   resolveColumn,
+  columnId,
   collectionTableName,
   rowToData,
   dataToColumnValues,
@@ -309,6 +310,26 @@ export function putRecord(
   const colValues = dataToColumnValues(finalData, columns)
   const now = new Date().toISOString()
   const tbl = collectionTableName(collection)
+
+  // Enforce uniqueOn constraint before INSERT
+  if (!isUpdate && schema.uniqueOn && schema.uniqueOn.length > 0) {
+    const uniqueWhere = schema.uniqueOn.map(fieldName => {
+      const colSqlId = columnId(fieldName)
+      return `"${colSqlId}" = ?`
+    })
+    const uniqueParams = schema.uniqueOn.map(fieldName => {
+      const val = finalData[fieldName]
+      return val !== undefined ? val : null
+    })
+    const existing = ctx.sql.exec(
+      `SELECT _row_id FROM "${tbl}" WHERE ${uniqueWhere.join(' AND ')} LIMIT 1`,
+      ...uniqueParams
+    )
+    if (existing.toArray().length > 0) {
+      const fields = schema.uniqueOn.map(f => `${f}=${finalData[f] ?? 'null'}`).join(', ')
+      return { success: false, error: `Duplicate: a record with ${fields} already exists in ${collection}` }
+    }
+  }
 
   if (isUpdate) {
     const setClauses: string[] = [`_updated_at = ?`]

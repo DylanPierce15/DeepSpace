@@ -14,6 +14,33 @@ export interface HandlerContext {
 }
 
 /**
+ * OAuth provider interface — callback, status, disconnect.
+ * Each provider (google, microsoft, etc.) exports one of these.
+ * The route layer dispatches to the correct provider generically.
+ */
+export interface OAuthProvider {
+  /** Handle the OAuth callback — verify state, exchange code, store tokens. */
+  handleCallback(
+    env: Env['Bindings'],
+    db: DrizzleD1Database,
+    code: string | undefined,
+    state: string | undefined,
+  ): Promise<{ html: string; status: number }>
+
+  /** Return connection status for this provider. */
+  getStatus(
+    db: DrizzleD1Database,
+    userId: string,
+  ): Promise<Record<string, unknown>>
+
+  /** Disconnect — revoke and delete tokens. */
+  disconnect(
+    db: DrizzleD1Database,
+    userId: string,
+  ): Promise<void>
+}
+
+/**
  * Pure function that calls an external API and returns the result.
  * Throws on failure — the route handler catches and records billing status.
  */

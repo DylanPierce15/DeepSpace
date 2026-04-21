@@ -189,6 +189,41 @@ app.get('/api/integrations', async (c) => {
   }
 })
 
+// OAuth: per-user connection status. Always user-billed — must forward caller's JWT.
+app.get('/api/integrations/status', async (c) => {
+  const auth = await resolveAuth(c.req.raw, c.env)
+  if (!auth) return c.json({ error: 'Sign in required' }, 401)
+  const token = c.req.header('Authorization')?.slice(7)
+  try {
+    const res = await c.env.API_WORKER.fetch('https://api-worker/api/integrations/status', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    return new Response(res.body, { status: res.status, headers: res.headers })
+  } catch {
+    return c.json({ error: 'Status proxy failed' }, 502)
+  }
+})
+
+// OAuth: disconnect a provider for the calling user. Always user-billed.
+app.delete('/api/integrations/oauth/:provider/disconnect', async (c) => {
+  const auth = await resolveAuth(c.req.raw, c.env)
+  if (!auth) return c.json({ error: 'Sign in required' }, 401)
+  const token = c.req.header('Authorization')?.slice(7)
+  const provider = c.req.param('provider')
+  try {
+    const res = await c.env.API_WORKER.fetch(
+      `https://api-worker/api/integrations/oauth/${encodeURIComponent(provider)}/disconnect`,
+      {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      },
+    )
+    return new Response(res.body, { status: res.status, headers: res.headers })
+  } catch {
+    return c.json({ error: 'Disconnect proxy failed' }, 502)
+  }
+})
+
 app.all('/api/integrations/:name/:endpoint', async (c) => {
   const integrationName = c.req.param('name')
   const billingMode = integrations[integrationName]?.billing ?? 'developer'

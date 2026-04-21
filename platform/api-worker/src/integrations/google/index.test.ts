@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { ctx, env } from '../_test-helpers'
 import { endpoints } from '.'
 
-describe('Google', () => {
-  // ---- Billing verification ----
+// Behavioral coverage (OAuth fallback, token refresh, real API calls) belongs
+// in tests/e2e against the deployed api-worker — handlers now hit D1, and we
+// don't stand up local D1/oauth_tokens stubs in unit tests.
 
+describe('Google', () => {
   it('billing: has 10 endpoints', () => {
     expect(Object.keys(endpoints).length).toBe(10)
   })
@@ -23,46 +24,4 @@ describe('Google', () => {
     }
   })
 
-  // ---- OAuth required when no accessToken ----
-
-  const oauthEndpoints = [
-    'google/gmail-send',
-    'google/gmail-list',
-    'google/gmail-get',
-    'google/gmail-search',
-    'google/calendar-list-events',
-    'google/calendar-create-event',
-    'google/calendar-delete-event',
-    'google/drive-list',
-    'google/drive-get',
-    'google/contacts-list',
-  ]
-
-  for (const key of oauthEndpoints) {
-    it(`${key}: returns requiresOAuth when no accessToken`, async () => {
-      const result = (await endpoints[key].handler(env as any, {}, ctx)) as any
-      expect(result.requiresOAuth).toBe(true)
-      expect(result.provider).toBe('google')
-      expect(Array.isArray(result.scopes)).toBe(true)
-      expect(result.scopes.length).toBeGreaterThan(0)
-    })
-  }
-
-  // ---- API tests skipped (require real OAuth tokens) ----
-
-  it.skip('gmail-send: sends email (requires real OAuth token)', async () => {
-    // Requires a real Google OAuth access token
-  })
-
-  it.skip('calendar-list-events: lists events (requires real OAuth token)', async () => {
-    // Requires a real Google OAuth access token
-  })
-
-  it.skip('drive-list: lists files (requires real OAuth token)', async () => {
-    // Requires a real Google OAuth access token
-  })
-
-  it.skip('contacts-list: lists contacts (requires real OAuth token)', async () => {
-    // Requires a real Google OAuth access token
-  })
 })

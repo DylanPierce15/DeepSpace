@@ -4,7 +4,7 @@
  * Also runs automatically via pnpm dev/deploy/test hooks.
  */
 
-import { readdirSync, statSync, writeFileSync } from 'node:fs'
+import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -19,12 +19,26 @@ const integrations = readdirSync(integrationsDir)
   })
   .sort()
 
+// Detect which integrations export `oauthProvider` (i.e., have a real OAuth flow).
+const oauthIntegrations = integrations.filter((name) => {
+  const src = readFileSync(join(integrationsDir, name, 'index.ts'), 'utf8')
+  return /export\s+const\s+oauthProvider\b/.test(src)
+})
+
 const imports = integrations
-  .map((name) => `import { endpoints as ${name} } from './${name}'`)
+  .map((name) =>
+    oauthIntegrations.includes(name)
+      ? `import { endpoints as ${name}, oauthProvider as ${name}OAuth } from './${name}'`
+      : `import { endpoints as ${name} } from './${name}'`,
+  )
   .join('\n')
 
 const spread = integrations
   .map((name) => `  ...${name},`)
+  .join('\n')
+
+const oauthEntries = oauthIntegrations
+  .map((name) => `  ['${name}', ${name}OAuth],`)
   .join('\n')
 
 const content = `/**
@@ -34,7 +48,7 @@ const content = `/**
  */
 
 import type { z } from 'zod'
-import type { IntegrationHandler, BillingConfig } from './_types'
+import type { IntegrationHandler, BillingConfig, OAuthProvider } from './_types'
 ${imports}
 
 const ALL_ENDPOINTS = {
@@ -45,6 +59,11 @@ export const HANDLER_REGISTRY = new Map<string, IntegrationHandler>()
 export const BILLING_CONFIGS: Record<string, BillingConfig & { integrationName: string; endpoint: string }> = {}
 export const SCHEMA_REGISTRY = new Map<string, z.ZodType>()
 
+/** OAuth providers — populated for integrations that export \`oauthProvider\`. */
+export const OAUTH_PROVIDERS = new Map<string, OAuthProvider>([
+${oauthEntries}
+])
+
 for (const [key, def] of Object.entries(ALL_ENDPOINTS)) {
   const [integrationName, endpoint] = key.split('/')
   HANDLER_REGISTRY.set(key, def.handler)
@@ -54,4 +73,6 @@ for (const [key, def] of Object.entries(ALL_ENDPOINTS)) {
 `
 
 writeFileSync(join(integrationsDir, '_registry.ts'), content)
-console.log(`✓ Generated _registry.ts with ${integrations.length} integrations: ${integrations.join(', ')}`)
+console.log(
+  `✓ Generated _registry.ts with ${integrations.length} integrations (${oauthIntegrations.length} with OAuth: ${oauthIntegrations.join(', ') || 'none'})`,
+)
