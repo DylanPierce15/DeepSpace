@@ -1,0 +1,222 @@
+@import "tailwindcss" source(none);
+
+/* Scan local source + SDK components for Tailwind class usage */
+@source "./**/*.{ts,tsx}";
+@source "../node_modules/deepspace/dist/**/*.js";
+
+/*
+ * Theme — Music Studio "Midnight Session"
+ * Dark professional studio at night. Deep indigo-black canvas, electric violet accent.
+ */
+@theme {
+  /* ── Core surface ─────────────────────────────────────────────────────────── */
+  --color-background:        #05060f;
+  --color-foreground:        #e4e6f0;
+  --color-card:              #0b0d1a;
+  --color-card-foreground:   #e4e6f0;
+  --color-popover:           #0e1020;
+  --color-popover-foreground:#e4e6f0;
+
+  /* ── Primary accent — electric violet ────────────────────────────────────── */
+  --color-primary:           #7c3aed;
+  --color-primary-foreground:#ffffff;
+
+  /* ── Secondaries & muteds ─────────────────────────────────────────────────── */
+  --color-secondary:         #131628;
+  --color-secondary-foreground: #e4e6f0;
+  --color-muted:             #131628;
+  --color-muted-foreground:  #6b7394;
+  --color-accent:            #181b2e;
+  --color-accent-foreground: #e4e6f0;
+
+  /* ── Status ───────────────────────────────────────────────────────────────── */
+  --color-destructive:        #f43f5e;
+  --color-destructive-foreground: #ffffff;
+  --color-success:            #10b981;
+  --color-success-foreground: #ffffff;
+  --color-warning:            #f59e0b;
+  --color-warning-foreground: #ffffff;
+  --color-info:               #3b82f6;
+  --color-info-foreground:    #ffffff;
+
+  /* ── Borders & inputs ─────────────────────────────────────────────────────── */
+  --color-border:  rgba(108, 92, 231, 0.18);
+  --color-input:   rgba(108, 92, 231, 0.18);
+  --color-ring:    rgba(124, 58, 237, 0.55);
+  --radius: 0.5rem;
+
+  /* ── Shadows ──────────────────────────────────────────────────────────────── */
+  --shadow-card:         0 4px 24px rgba(0, 0, 0, 0.55);
+  --shadow-card-hover:   0 8px 36px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(124,58,237,0.12);
+  --shadow-glow-violet:  0 0 28px rgba(124, 58, 237, 0.35);
+  --shadow-glow-cyan:    0 0 24px rgba(6, 182, 212, 0.30);
+  --shadow-glow-emerald: 0 0 24px rgba(16, 185, 129, 0.30);
+  --shadow-glow-amber:   0 0 24px rgba(245, 158, 11, 0.30);
+
+  /* ── Animations ───────────────────────────────────────────────────────────── */
+  --animate-pulse-glow: pulse-glow 2.4s ease-in-out infinite;
+
+  /* ── Backward-compat aliases ──────────────────────────────────────────────── */
+  --color-surface:           var(--color-background);
+  --color-surface-elevated:  var(--color-card);
+  --color-surface-overlay:   var(--color-muted);
+  --color-surface-input:     rgba(19, 22, 40, 0.8);
+  --color-content:           var(--color-foreground);
+  --color-content-secondary: var(--color-muted-foreground);
+  --color-content-muted:     #4a5180;
+  --color-content-inverse:   #05060f;
+  --color-border-strong:     rgba(108, 92, 231, 0.32);
+  --color-border-focus:      var(--color-ring);
+  --color-primary-hover:     #8b5cf6;
+  --color-primary-muted:     rgba(124, 58, 237, 0.18);
+  --color-primary-border:    rgba(124, 58, 237, 0.32);
+  --color-danger:            var(--color-destructive);
+  --color-danger-muted:      rgba(244, 63, 94, 0.15);
+  --color-danger-border:     rgba(244, 63, 94, 0.35);
+  --color-success-muted:     rgba(16, 185, 129, 0.15);
+  --color-success-border:    rgba(16, 185, 129, 0.35);
+  --color-warning-muted:     rgba(245, 158, 11, 0.15);
+  --color-warning-border:    rgba(245, 158, 11, 0.35);
+  --color-info-muted:        rgba(59, 130, 246, 0.15);
+  --color-info-border:       rgba(59, 130, 246, 0.35);
+}
+
+/*
+ * Animation keyframes for shadcn components.
+ * These replace the tailwindcss-animate plugin which is not compatible with Tailwind v4.
+ */
+@keyframes animate-in {
+  from { opacity: var(--tw-enter-opacity, 1); transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0) scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), var(--tw-enter-scale, 1)) rotate(var(--tw-enter-rotate, 0)); }
+}
+
+@keyframes animate-out {
+  to { opacity: var(--tw-exit-opacity, 1); transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0) scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), var(--tw-exit-scale, 1)) rotate(var(--tw-exit-rotate, 0)); }
+}
+
+@utility animate-in {
+  animation-name: animate-in;
+  animation-duration: 150ms;
+  --tw-enter-opacity: initial;
+  --tw-enter-scale: initial;
+  --tw-enter-translate-x: initial;
+  --tw-enter-translate-y: initial;
+  --tw-enter-rotate: initial;
+}
+
+@utility animate-out {
+  animation-name: animate-out;
+  animation-duration: 150ms;
+  --tw-exit-opacity: initial;
+  --tw-exit-scale: initial;
+  --tw-exit-translate-x: initial;
+  --tw-exit-translate-y: initial;
+  --tw-exit-rotate: initial;
+}
+
+@utility fade-in-0 { --tw-enter-opacity: 0; }
+@utility fade-out-0 { --tw-exit-opacity: 0; }
+@utility zoom-in-95 { --tw-enter-scale: .95; }
+@utility zoom-out-95 { --tw-exit-scale: .95; }
+@utility slide-in-from-top-2 { --tw-enter-translate-y: -0.5rem; }
+@utility slide-in-from-bottom-2 { --tw-enter-translate-y: 0.5rem; }
+@utility slide-in-from-left-2 { --tw-enter-translate-x: -0.5rem; }
+@utility slide-in-from-right-2 { --tw-enter-translate-x: 0.5rem; }
+@utility slide-out-to-top-2 { --tw-exit-translate-y: -0.5rem; }
+@utility slide-out-to-bottom-2 { --tw-exit-translate-y: 0.5rem; }
+@utility slide-out-to-left-2 { --tw-exit-translate-x: -0.5rem; }
+@utility slide-out-to-right-2 { --tw-exit-translate-x: 0.5rem; }
+
+
+/*
+ * Custom base styles — must be in @layer base so utility classes can override.
+ */
+@layer base {
+  html, body, #root {
+    min-height: 100vh;
+    background-color: var(--color-background);
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Inter', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-size: 14px;
+    color: var(--color-foreground);
+    letter-spacing: -0.01em;
+  }
+
+  /* Range slider — critical for DAW controls (volume, pan, ADSR) */
+  input[type="range"]::-webkit-slider-runnable-track {
+    background: rgba(108, 92, 231, 0.35);
+    border-radius: 4px;
+    height: 4px;
+  }
+  input[type="range"]::-moz-range-track {
+    background: rgba(108, 92, 231, 0.35);
+    border-radius: 4px;
+    height: 4px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: currentColor;
+    border: 2px solid rgba(255,255,255,0.15);
+    cursor: pointer;
+    margin-top: -4px;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: currentColor;
+    border: 2px solid rgba(255,255,255,0.15);
+    cursor: pointer;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border-radius: 0.25rem;
+    background-color: var(--color-border);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-muted-foreground);
+  }
+
+  /* Selection styling */
+  ::selection {
+    background-color: var(--color-primary);
+    color: var(--color-primary-foreground);
+  }
+
+  /* Focus states for accessibility */
+  *:focus-visible {
+    outline-style: solid;
+    outline-width: 2px;
+    outline-offset: 2px;
+    outline-color: var(--color-primary);
+  }
+
+  /* Prevent 300ms tap delay on mobile */
+  a, button, [role="button"], input, select, textarea {
+    touch-action: manipulation;
+  }
+
+  /* Form input calendar icons (dark mode invert) */
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.7);
+  }
+}
